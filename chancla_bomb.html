@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chancla Bomb: Isa vs. Su Gringo Para Siempre</title>
+<style>
+    :root {
+        --bg-top: #0d1b2a;
+        --bg-bottom: #192f43;
+        --accent: #ff79c6;
+        --super: #ffb347;
+        --text: #f8f8f2;
+        --dialog: #1f4068;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at 20% 20%, #1c2f4a 0%, #0b1726 50%, #050910 100%);
+        color: var(--text);
+        font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    }
+    .wrapper {
+        text-align: center;
+    }
+    canvas {
+        background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+        border-radius: 16px;
+        box-shadow: 0 12px 35px rgba(0,0,0,0.35);
+        width: min(95vw, 420px);
+        aspect-ratio: 4 / 7;
+        height: auto;
+        touch-action: none;
+        display: block;
+        margin: 0 auto;
+    }
+    #mobile-controls {
+        position: relative;
+        width: min(95vw, 420px);
+        aspect-ratio: 4 / 7;
+        margin: 0 auto;
+        transform: translateY(-100%);
+        pointer-events: none;
+    }
+    .touch-zone {
+        position: absolute;
+        bottom: 0;
+        width: 50%;
+        height: 40%;
+        pointer-events: auto;
+    }
+    .touch-left { left: 0; }
+    .touch-right { right: 0; }
+    .touch-overlay {
+        position: absolute;
+        inset: 0;
+        border-radius: 16px;
+        pointer-events: none;
+    }
+</style>
+</head>
+<body>
+<div class="wrapper">
+    <canvas id="game" width="400" height="700"></canvas>
+    <div id="mobile-controls">
+        <div class="touch-zone touch-left"></div>
+        <div class="touch-zone touch-right"></div>
+        <div class="touch-overlay" id="overlay-left"></div>
+        <div class="touch-overlay" id="overlay-right"></div>
+    </div>
+</div>
+<script>
+(() => {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const overlayLeft = document.getElementById('overlay-left');
+    const overlayRight = document.getElementById('overlay-right');
+    const touchLeft = document.querySelector('.touch-left');
+    const touchRight = document.querySelector('.touch-right');
+
+    const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover' };
+    let state = STATE.TITLE;
+
+    const player = { x: canvas.width/2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false };
+    const isa = { x: canvas.width/2, y: 70 };
+
+    let chanclas = [];
+    let pets = [];
+    let score = 0;
+    let bestScore = 0;
+    let spawnInterval = 1.2;
+    let minSpawnInterval = 0.45;
+    let spawnTimer = 0;
+    let baseSpeed = 140;
+    let timeElapsed = 0;
+    let superEnabled = false;
+
+    let dialogueTimer = 0;
+    let dialogueText = '';
+    const dialogueDuration = 3.3;
+
+    const keys = { left: false, right: false };
+    const touch = { left: false, right: false };
+
+    const dialogue = {
+        start: [
+            "A ver, mi vida, ¿listo para tu entrenamiento oficial de chancla?",
+            "Esto no es un juego, es examen de reflejos, ¿ok?",
+            "No llores luego, tú mismo abriste esta página."
+        ],
+        hitNormal: [
+            "¡Eso te pasa por andar dando like a otras, eh! 😈",
+            "Te dije, mi vida, la chancla siempre encuentra tu cara.",
+            "Ay, gringo, ni esquivar sabes… ven pa’ acá.",
+            "Mira nomás, directo en tu carita bonita, jajaja.",
+            "Relájate, es chancla con amor… pero igual duele."
+        ],
+        hitSuper: [
+            "Esta es la de 15 centímetros, para que respetes a tu reina. 💥",
+            "Chancla XL activada… F por tu carita, mi vida.",
+            "Te advertí de la chancla deluxe, ¿no?"
+        ],
+        nearMiss: [
+            "Te salvaste por las pestañas, ¿eh?",
+            "Uy, casi te acomodo la nariz, gringuito.",
+            "Corre, corre… pero la chancla tiene GPS."
+        ],
+        lowHealth: [
+            "Te queda una vidita, cuídala más que tu WiFi.",
+            "Última vida, mi amor… igual que mi paciencia cuando me dejas en visto.",
+            "Ya casi te mando directo a ‘Game Over, mi vida’."
+        ],
+        gameOver: [
+            "Isa ganó, como siempre. 😏",
+            "Game over, mi gringo. ¿Otra vez o ya te rindes?",
+            "Te lo dije: con chancla no se juega.",
+            "Perdiste, pero igual te amo poquito… muy poquito."
+        ],
+        highScore: [
+            "Ok, estoy impresionada… sí sabes esquivar, ¿eh?",
+            "Mi gringo pro player, qué miedo y qué ganas.",
+            "Está bien… hoy guardo la chancla. Pero solo hoy."
+        ],
+        petOwen: [
+            "¡Owen Alejandro al rescate, gato ninja! 🐈‍⬛",
+            "Mira, hasta Owen te defiende de mis chanclas.",
+            "Si sobrevives es por Owen, no por tus reflejos, ¿eh?"
+        ],
+        petRita: [
+            "Rita Cat-Alina dice miau y te regala una vida. 🐱",
+            "La reina Rita canceló una chancla por ti, da las gracias.",
+            "Hasta la gata te cuida… yo solo te aviento chancla."
+        ]
+    };
+
+    function sayRandom(category) {
+        const lines = dialogue[category];
+        if (!lines || !lines.length) return;
+        dialogueText = lines[Math.floor(Math.random() * lines.length)];
+        dialogueTimer = dialogueDuration;
+    }
+
+    function resetGame() {
+        player.x = canvas.width/2;
+        player.y = canvas.height - 70;
+        player.lives = 3;
+        player.shield = false;
+        chanclas = [];
+        pets = [];
+        score = 0;
+        spawnInterval = 1.2;
+        baseSpeed = 140;
+        timeElapsed = 0;
+        superEnabled = false;
+        sayRandom('start');
+        state = STATE.PLAYING;
+    }
+
+    const cityShapes = [];
+    const cactusShapes = [];
+    const starDots = [];
+
+    function buildBackgroundElements() {
+        cityShapes.length = 0;
+        cactusShapes.length = 0;
+        starDots.length = 0;
+        for(let i=0;i<6;i++) {
+            const w = 40 + Math.random()*30;
+            const h = 60 + Math.random()*80;
+            const x = (canvas.width/6)*i + Math.random()*20;
+            const y = canvas.height - h - 20;
+            cityShapes.push({x,y,w,h});
+        }
+        for(let i=0;i<3;i++) {
+            const baseX = 60 + i*120 + Math.random()*40;
+            const baseY = canvas.height - 30;
+            cactusShapes.push({baseX, baseY});
+        }
+        for(let i=0;i<30;i++) {
+            starDots.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height*0.6});
+        }
+    }
+
+    function drawBackground() {
+        const grad = ctx.createLinearGradient(0,0,0,canvas.height);
+        grad.addColorStop(0,'#0b1930');
+        grad.addColorStop(1,'#0f243a');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+
+        ctx.fillStyle = '#0a1527';
+        cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+
+        ctx.fillStyle = '#1b8c6e';
+        cactusShapes.forEach(c => {
+            ctx.beginPath();
+            ctx.moveTo(c.baseX, c.baseY);
+            ctx.lineTo(c.baseX+20, c.baseY-70);
+            ctx.lineTo(c.baseX+40, c.baseY);
+            ctx.fill();
+        });
+
+        ctx.fillStyle = '#ffe066';
+        starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+    }
+
+    function drawPlayer() {
+        const {x,y,w,h} = player;
+        ctx.save();
+        ctx.fillStyle = '#9ad0f5';
+        roundRect(ctx, x-w/2, y-h/2, w, h, 10);
+        ctx.fill();
+        ctx.strokeStyle = '#5aa9e6';
+        ctx.lineWidth = 2;
+        roundRect(ctx, x-w/2, y-h/2, w, h, 10);
+        ctx.stroke();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('GRINGO', x, y-h/2-6);
+
+        ctx.fillStyle = '#222';
+        ctx.beginPath();
+        ctx.arc(x-10, y-6, 4, 0, Math.PI*2);
+        ctx.arc(x+10, y-6, 4, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y+6, 10, 0.1*Math.PI, 0.9*Math.PI, false);
+        ctx.stroke();
+
+        if(player.shield) {
+            ctx.strokeStyle = '#9bfffa';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, w*0.65, 0, Math.PI*2);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function drawIsa() {
+        ctx.save();
+        const headY = isa.y;
+        ctx.fillStyle = '#ffb6c1';
+        roundRect(ctx, isa.x-35, headY-25, 70, 50, 12);
+        ctx.fill();
+        ctx.fillStyle = '#c77dff';
+        ctx.beginPath();
+        ctx.arc(isa.x, headY-25, 45, Math.PI, 2*Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(isa.x-10, headY-5, 4, 0, Math.PI*2);
+        ctx.arc(isa.x+10, headY-5, 4, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(isa.x, headY+8, 10, 0.15*Math.PI, 0.85*Math.PI, false);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffd166';
+        ctx.fillRect(isa.x+25, headY-40, 12, 40);
+        ctx.fillStyle = '#ff8fab';
+        ctx.fillRect(isa.x+20, headY-42, 30, 10);
+        ctx.fillText('👡', isa.x+35, headY-15);
+
+        ctx.fillStyle = '#fff';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('ISA', isa.x, headY-40);
+        ctx.restore();
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x+r, y);
+        ctx.lineTo(x+w-r, y);
+        ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+        ctx.lineTo(x+w, y+h-r);
+        ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+        ctx.lineTo(x+r, y+h);
+        ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+        ctx.lineTo(x, y+r);
+        ctx.quadraticCurveTo(x, y, x+r, y);
+        ctx.closePath();
+    }
+
+    function drawChancla(c) {
+        ctx.save();
+        ctx.fillStyle = c.type === 'super' ? '#ffce73' : '#ff7eb6';
+        ctx.strokeStyle = c.type === 'super' ? '#ff9f1c' : '#d94c7d';
+        roundRect(ctx, c.x-c.w/2, c.y-c.h/2, c.w, c.h, 8);
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.font = c.type === 'super' ? '14px sans-serif' : '12px sans-serif';
+        ctx.fillStyle = '#3b1f2b';
+        ctx.textAlign = 'center';
+        if(c.type === 'super') {
+            ctx.fillText('15cm', c.x, c.y-2);
+        }
+        ctx.fillText('👡', c.x, c.y+5);
+        ctx.restore();
+    }
+
+    function drawPets() {
+        pets.forEach(p => {
+            if(p.kind === 'owen') drawOwen(p);
+            if(p.kind === 'rita') drawRita(p);
+        });
+    }
+
+    function drawOwen(p) {
+        ctx.save();
+        ctx.fillStyle = '#444';
+        roundRect(ctx, p.x-25, p.y-15, 50, 30, 10);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(p.x-20, p.y-15);
+        ctx.lineTo(p.x-10, p.y-35);
+        ctx.lineTo(p.x, p.y-15);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(p.x+20, p.y-15);
+        ctx.lineTo(p.x+10, p.y-35);
+        ctx.lineTo(p.x, p.y-15);
+        ctx.fill();
+        ctx.fillStyle = '#eee';
+        ctx.beginPath();
+        ctx.arc(p.x-8, p.y-2, 4, 0, Math.PI*2);
+        ctx.arc(p.x+8, p.y-2, 4, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#eee';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y+6, 10, 0.2*Math.PI, 0.8*Math.PI);
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Owen Alejandro', p.x, p.y-24);
+        ctx.restore();
+    }
+
+    function drawRita(p) {
+        ctx.save();
+        ctx.fillStyle = '#f2c6de';
+        roundRect(ctx, p.x-23, p.y-13, 46, 26, 9);
+        ctx.fill();
+        ctx.fillStyle = '#f7e463';
+        ctx.beginPath();
+        ctx.moveTo(p.x-8, p.y-18);
+        ctx.lineTo(p.x-2, p.y-30);
+        ctx.lineTo(p.x+4, p.y-18);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#222';
+        ctx.beginPath();
+        ctx.arc(p.x-6, p.y-2, 3.5, 0, Math.PI*2);
+        ctx.arc(p.x+6, p.y-2, 3.5, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#222';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y+5, 9, 0.2*Math.PI, 0.8*Math.PI);
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Rita Cat-Alina', p.x, p.y-22);
+        ctx.restore();
+    }
+
+    function drawDialogue() {
+        if(dialogueTimer <= 0 || !dialogueText) return;
+        const bubbleWidth = 280;
+        const x = isa.x - bubbleWidth/2;
+        const y = isa.y + 30;
+        ctx.save();
+        ctx.fillStyle = 'rgba(31,64,104,0.9)';
+        roundRect(ctx, x, y, bubbleWidth, 70, 12);
+        ctx.fill();
+        ctx.strokeStyle = '#6dd3ff';
+        ctx.lineWidth = 2;
+        roundRect(ctx, x, y, bubbleWidth, 70, 12);
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        wrapText(ctx, dialogueText, isa.x, y+35, bubbleWidth-14, 16);
+        ctx.restore();
+    }
+
+    function wrapText(context, text, x, y, maxWidth, lineHeight) {
+        const words = text.split(' ');
+        let line = '';
+        let lines = [];
+        for(let n=0;n<words.length;n++) {
+            const test = line + words[n] + ' ';
+            const metrics = context.measureText(test);
+            if(metrics.width > maxWidth && n>0) {
+                lines.push(line);
+                line = words[n] + ' ';
+            } else {
+                line = test;
+            }
+        }
+        lines.push(line);
+        lines.forEach((l,i) => context.fillText(l.trim(), x, y + i*lineHeight - (lines.length-1)*lineHeight/2));
+    }
+
+    function drawHUD() {
+        ctx.save();
+        ctx.fillStyle = '#fff';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('Score: ' + score, 12, 22);
+        ctx.textAlign = 'right';
+        ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width-12, 22);
+        ctx.restore();
+    }
+
+    function drawTitleScreen() {
+        drawBackground();
+        drawIsa();
+        drawPlayer();
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        roundRect(ctx, 30, 260, canvas.width-60, 200, 16);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('Chancla Bomb', canvas.width/2, 300);
+        ctx.font = '16px sans-serif';
+        ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width/2, 330);
+        ctx.font = '14px sans-serif';
+        ctx.fillText('Esquiva las chanclas, mi amor. Mobile/desktop listo.', canvas.width/2, 360);
+        ctx.fillStyle = '#ff9f1c';
+        roundRect(ctx, 110, 380, canvas.width-220, 46, 12);
+        ctx.fill();
+        ctx.fillStyle = '#222';
+        ctx.font = '18px sans-serif';
+        ctx.fillText('Jugar / Play', canvas.width/2, 410);
+        ctx.restore();
+    }
+
+    function drawGameOver() {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.font = '28px sans-serif';
+        ctx.fillText('Isa ganó', canvas.width/2, 240);
+        ctx.font = '18px sans-serif';
+        ctx.fillText('Score: ' + score + ' | Mejores: ' + bestScore, canvas.width/2, 275);
+        ctx.font = '16px sans-serif';
+        ctx.fillText(dialogueText || 'Fue un honor, supongo.', canvas.width/2, 305);
+        ctx.fillStyle = '#ff9f1c';
+        roundRect(ctx, 110, 330, canvas.width-220, 50, 12);
+        ctx.fill();
+        ctx.fillStyle = '#222';
+        ctx.font = '20px sans-serif';
+        ctx.fillText('Play again', canvas.width/2, 362);
+        ctx.restore();
+    }
+
+    function spawnChancla() {
+        const isSuper = superEnabled && Math.random() < 0.18;
+        const w = isSuper ? 46 : 32;
+        const h = isSuper ? 26 : 18;
+        const x = 40 + Math.random() * (canvas.width - 80);
+        const y = isa.y + 40;
+        const vy = baseSpeed + Math.random()*60 + (isSuper ? 40 : 0);
+        const vx = (Math.random()-0.5) * 60;
+        chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal' });
+    }
+
+    function spawnOwen() {
+        const side = Math.random() < 0.5 ? 'left' : 'right';
+        const x = side === 'left' ? -40 : canvas.width + 40;
+        const y = canvas.height - 110;
+        const vx = side === 'left' ? 180 : -180;
+        pets.push({ kind: 'owen', x, y, vx, active: true, duration: 6 });
+        sayRandom('petOwen');
+    }
+
+    function spawnRita() {
+        const x = player.x + (Math.random()*60-30);
+        const y = player.y - 80;
+        pets.push({ kind: 'rita', x, y, vx: 0, active: true, duration: 3, alpha: 1 });
+        if(player.lives < player.maxLives) player.lives++;
+        baseSpeed *= 0.85;
+        sayRandom('petRita');
+    }
+
+    function updateChanclas(dt) {
+        for(let i=chanclas.length-1;i>=0;i--) {
+            const c = chanclas[i];
+            c.x += c.vx * dt;
+            c.y += c.vy * dt;
+            if(c.x < 10) { c.x = 10; c.vx *= -0.5; }
+            if(c.x > canvas.width-10) { c.x = canvas.width-10; c.vx *= -0.5; }
+            if(rectsOverlap(player, c)) {
+                if(player.shield) {
+                    player.shield = false;
+                    chanclas.splice(i,1);
+                    continue;
+                }
+                const dmg = c.type === 'super' ? 2 : 1;
+                player.lives -= dmg;
+                chanclas.splice(i,1);
+                sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
+                if(player.lives === 1) sayRandom('lowHealth');
+                if(player.lives <= 0) {
+                    endGame();
+                    return;
+                }
+            } else if(c.y > canvas.height + c.h) {
+                score += 1;
+                const prevBest = bestScore;
+                bestScore = Math.max(bestScore, score);
+                if(score > prevBest && score % 10 === 0) sayRandom('highScore');
+                if(Math.random() < 0.2) sayRandom('nearMiss');
+                chanclas.splice(i,1);
+            }
+        }
+    }
+
+    function updatePets(dt) {
+        for(let i=pets.length-1;i>=0;i--) {
+            const p = pets[i];
+            p.duration -= dt;
+            if(p.kind === 'owen') {
+                p.x += p.vx * dt;
+                if(p.x < -60 || p.x > canvas.width + 60 || p.duration <= 0) {
+                    pets.splice(i,1);
+                    continue;
+                }
+                for(let j=chanclas.length-1;j>=0;j--) {
+                    if(rectsOverlap({x:p.x,y:p.y,w:50,h:30}, chanclas[j])) {
+                        chanclas.splice(j,1);
+                    }
+                }
+            } else if(p.kind === 'rita') {
+                p.y += Math.sin(timeElapsed*3) * 10 * dt;
+                p.alpha = Math.max(0, p.duration/3);
+                if(p.duration <= 0) {
+                    pets.splice(i,1);
+                }
+            }
+        }
+    }
+
+    function drawPetsOverlay() {
+        pets.forEach(p => {
+            if(p.kind === 'rita') {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                drawRita(p);
+                ctx.restore();
+            }
+        });
+    }
+
+    function rectsOverlap(a,b) {
+        return Math.abs(a.x - b.x) < (a.w/2 + b.w/2) && Math.abs(a.y - b.y) < (a.h/2 + b.h/2);
+    }
+
+    function endGame() {
+        state = STATE.GAMEOVER;
+        bestScore = Math.max(bestScore, score);
+        sayRandom('gameOver');
+    }
+
+    function update(dt) {
+        if(state !== STATE.PLAYING) return;
+        timeElapsed += dt;
+        spawnTimer += dt;
+        if(timeElapsed > 12) {
+            spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt*0.02);
+            baseSpeed += dt*5;
+        }
+        if(timeElapsed > 18) superEnabled = true;
+        if(spawnTimer >= spawnInterval) {
+            spawnChancla();
+            spawnTimer = 0;
+        }
+
+        const speed = player.speed;
+        const moveLeft = keys.left || touch.left;
+        const moveRight = keys.right || touch.right;
+        if(moveLeft) player.x -= speed * dt;
+        if(moveRight) player.x += speed * dt;
+        player.x = Math.max(player.w/2 + 10, Math.min(canvas.width - player.w/2 - 10, player.x));
+
+        if(!pets.some(p=>p.kind==='owen') && (player.lives <=2 && Math.random() < 0.003 || Math.random()<0.0007)) {
+            spawnOwen();
+        }
+        if(!pets.some(p=>p.kind==='rita') && Math.random() < 0.0007) {
+            spawnRita();
+        }
+
+        updateChanclas(dt);
+        updatePets(dt);
+
+        if(dialogueTimer > 0) dialogueTimer -= dt;
+    }
+
+    function draw() {
+        drawBackground();
+        drawIsa();
+        drawChanclasAll();
+        drawPets();
+        drawPlayer();
+        drawPetsOverlay();
+        drawHUD();
+        drawDialogue();
+    }
+
+    function drawChanclasAll() {
+        for(const c of chanclas) drawChancla(c);
+    }
+
+    let last = 0;
+    function loop(ts) {
+        const now = ts/1000;
+        const dt = last ? Math.min(0.05, now - last) : 0;
+        last = now;
+        update(dt);
+        if(state === STATE.TITLE) drawTitleScreen();
+        else {
+            draw();
+            if(state === STATE.GAMEOVER) drawGameOver();
+        }
+        requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    function startGameFromTitle() {
+        resetGame();
+    }
+
+    canvas.addEventListener('click', (e) => {
+        if(state === STATE.TITLE) {
+            startGameFromTitle();
+        } else if(state === STATE.GAMEOVER) {
+            resetGame();
+        }
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+        if(state !== STATE.PLAYING) return;
+        const rect = canvas.getBoundingClientRect();
+        for(const touchPoint of e.changedTouches) {
+            const x = touchPoint.clientX - rect.left;
+            if(x < rect.width/2) touch.left = true; else touch.right = true;
+        }
+    }, {passive:true});
+    canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
+
+    function handleKey(e, isDown) {
+        if(['ArrowLeft','a','A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
+        if(['ArrowRight','d','D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+        if(isDown && e.key === 'Enter' && state !== STATE.PLAYING) {
+            resetGame();
+        }
+    }
+    window.addEventListener('keydown', e => handleKey(e,true));
+    window.addEventListener('keyup', e => handleKey(e,false));
+
+    function updateTouchOverlay() {
+        overlayLeft.style.background = touch.left ? 'rgba(255,255,255,0.06)' : 'transparent';
+        overlayRight.style.background = touch.right ? 'rgba(255,255,255,0.06)' : 'transparent';
+        requestAnimationFrame(updateTouchOverlay);
+    }
+    updateTouchOverlay();
+
+    function handleMobileZones(zone, dir) {
+        zone.addEventListener('touchstart', (e) => {
+            if(state !== STATE.PLAYING) return;
+            touch[dir] = true;
+            e.preventDefault();
+        }, {passive:false});
+        zone.addEventListener('touchend', () => { touch[dir] = false; });
+        zone.addEventListener('touchcancel', () => { touch[dir] = false; });
+    }
+    handleMobileZones(touchLeft, 'left');
+    handleMobileZones(touchRight, 'right');
+
+    function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        canvas.dataset.scaleX = scaleX;
+        canvas.dataset.scaleY = scaleY;
+        const control = document.getElementById('mobile-controls');
+        control.style.width = rect.width + 'px';
+        buildBackgroundElements();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function initTitle() {
+        sayRandom('start');
+    }
+    initTitle();
+})();
+</script>
+</body>
+</html>
