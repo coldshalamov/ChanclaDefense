@@ -38,6 +38,12 @@
         display: block;
         margin: 0 auto;
     }
+    .mobile-hint {
+        color: #d7e8ff;
+        font-size: 14px;
+        margin-top: 6px;
+        letter-spacing: 0.3px;
+    }
     #mobile-controls {
         position: relative;
         width: min(95vw, 420px);
@@ -61,6 +67,26 @@
         border-radius: 16px;
         pointer-events: none;
     }
+    .touch-visual {
+        position: absolute;
+        bottom: 16px;
+        width: 42%;
+        height: 70px;
+        border-radius: 18px;
+        background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.18), rgba(255,255,255,0.05));
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fdf5ff;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        pointer-events: none;
+        border: 1px solid rgba(255,255,255,0.08);
+    }
+    .touch-visual span { font-size: 18px; display: block; }
+    .touch-visual-left { left: 10px; }
+    .touch-visual-right { right: 10px; }
 </style>
 </head>
 <body>
@@ -71,7 +97,10 @@
         <div class="touch-zone touch-right"></div>
         <div class="touch-overlay" id="overlay-left"></div>
         <div class="touch-overlay" id="overlay-right"></div>
+        <div class="touch-visual touch-visual-left"><span>⬅️ Drag aquí</span></div>
+        <div class="touch-visual touch-visual-right"><span>➡️ Drag aquí</span></div>
     </div>
+    <div class="mobile-hint">Toca izquierda/derecha o usa las flechas. 🩴💖🍺</div>
 </div>
 <script>
 (() => {
@@ -90,12 +119,15 @@
 
     let chanclas = [];
     let pets = [];
+    let powerups = [];
+    let floatTexts = [];
     let score = 0;
     let bestScore = 0;
     let spawnInterval = 1.2;
     let minSpawnInterval = 0.45;
     let spawnTimer = 0;
     let baseSpeed = 140;
+    const slowEffect = { timer: 0, factor: 0.62 };
     let timeElapsed = 0;
     let superEnabled = false;
 
@@ -171,11 +203,14 @@
         player.shield = false;
         chanclas = [];
         pets = [];
+        powerups = [];
+        floatTexts = [];
         score = 0;
         spawnInterval = 1.2;
         baseSpeed = 140;
         timeElapsed = 0;
         superEnabled = false;
+        slowEffect.timer = 0;
         sayRandom('start');
         state = STATE.PLAYING;
     }
@@ -269,126 +304,168 @@
     function drawIsaAvatar(ctx, x, y, size) {
         ctx.save();
         ctx.translate(x, y);
-        const faceW = size * 0.7;
-        const faceH = size * 0.78;
-        const hairColor = '#4a2c24';
-        const skin = '#f6c8a5';
+        const faceW = size * 0.72;
+        const faceH = size * 0.82;
+        const hairColor = '#3a2522';
+        const skin = '#f8cdb3';
 
+        // Flowing hair and bun
         ctx.fillStyle = hairColor;
         ctx.beginPath();
-        ctx.moveTo(-faceW/2 - 6, -faceH/2 + 10);
-        ctx.quadraticCurveTo(-faceW/2 - 12, -faceH/2, -faceW/2 - 4, -faceH/2 - 6);
-        ctx.quadraticCurveTo(0, -faceH/2 - 16, faceW/2 + 6, -faceH/2 - 4);
-        ctx.quadraticCurveTo(faceW/2 + 14, -faceH/2 + 10, faceW/2 + 2, -faceH/2 + 18);
-        ctx.lineTo(faceW/2 + 10, faceH/3);
-        ctx.quadraticCurveTo(0, faceH/2 + 16, -faceW/2 - 8, faceH/3);
+        ctx.moveTo(-faceW/2 - 14, -faceH/2 + 16);
+        ctx.quadraticCurveTo(-faceW/2 - 24, -faceH/2, -faceW/2 - 6, -faceH/2 - 12);
+        ctx.quadraticCurveTo(-2, -faceH/2 - 22, faceW/2 + 10, -faceH/2 - 6);
+        ctx.quadraticCurveTo(faceW/2 + 20, -faceH/2 + 12, faceW/2 + 6, -faceH/2 + 22);
+        ctx.lineTo(faceW/2 + 10, faceH/2 - 10);
+        ctx.quadraticCurveTo(0, faceH/2 + 26, -faceW/2 - 10, faceH/3);
         ctx.closePath();
         ctx.fill();
 
-        ctx.fillStyle = skin;
-        roundRect(ctx, -faceW/2, -faceH/2 + 4, faceW, faceH, faceW*0.22);
+        // Bun
+        ctx.fillStyle = '#2c1a18';
+        ctx.beginPath();
+        ctx.ellipse(0, -faceH/2 - 12, faceW*0.32, faceH*0.16, 0, 0, Math.PI*2);
         ctx.fill();
 
-        ctx.fillStyle = '#2a1a16';
-        ctx.beginPath();
-        ctx.arc(-faceW*0.18, -faceH*0.05, faceW*0.08, 0, Math.PI*2);
-        ctx.arc(faceW*0.18, -faceH*0.05, faceW*0.08, 0, Math.PI*2);
+        ctx.fillStyle = skin;
+        roundRect(ctx, -faceW/2, -faceH/2 + 4, faceW, faceH, faceW*0.24);
         ctx.fill();
+
+        // Cheeks
+        ctx.fillStyle = 'rgba(255,126,171,0.55)';
+        ctx.beginPath();
+        ctx.ellipse(-faceW*0.22, faceH*0.1, faceW*0.12, faceH*0.08, 0, 0, Math.PI*2);
+        ctx.ellipse(faceW*0.22, faceH*0.1, faceW*0.12, faceH*0.08, 0, 0, Math.PI*2);
+        ctx.fill();
+
+        // Eyes with lashes
+        ctx.fillStyle = '#1d1411';
+        ctx.beginPath();
+        ctx.arc(-faceW*0.2, -faceH*0.05, faceW*0.08, 0, Math.PI*2);
+        ctx.arc(faceW*0.2, -faceH*0.05, faceW*0.08, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#1d1411';
+        ctx.lineWidth = 2.2;
+        const lash = (sx, dir) => {
+            ctx.beginPath();
+            ctx.moveTo(sx, -faceH*0.15);
+            ctx.quadraticCurveTo(sx + dir*6, -faceH*0.18, sx + dir*12, -faceH*0.16);
+            ctx.stroke();
+        };
+        lash(-faceW*0.2, -1);
+        lash(faceW*0.2, 1);
+
         ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.arc(-faceW*0.18 + 2, -faceH*0.07, faceW*0.03, 0, Math.PI*2);
-        ctx.arc(faceW*0.18 + 2, -faceH*0.07, faceW*0.03, 0, Math.PI*2);
+        ctx.arc(-faceW*0.2 + 2, -faceH*0.07, faceW*0.03, 0, Math.PI*2);
+        ctx.arc(faceW*0.2 + 2, -faceH*0.07, faceW*0.03, 0, Math.PI*2);
         ctx.fill();
 
-        ctx.strokeStyle = '#2a1a16';
-        ctx.lineWidth = 2.2;
+        // Smile and lips
+        ctx.strokeStyle = '#d93c7a';
+        ctx.lineWidth = 2.4;
         ctx.beginPath();
-        ctx.arc(-faceW*0.18, -faceH*0.14, faceW*0.16, Math.PI*0.08, Math.PI*0.4, true);
-        ctx.arc(faceW*0.18, -faceH*0.14, faceW*0.16, Math.PI*0.6, Math.PI*0.92, true);
+        ctx.arc(0, faceH*0.15, faceW*0.2, Math.PI*0.2, Math.PI*0.8, false);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-faceW*0.12, faceH*0.17);
+        ctx.quadraticCurveTo(0, faceH*0.22, faceW*0.12, faceH*0.17);
         ctx.stroke();
 
-        ctx.strokeStyle = '#c12d5b';
-        ctx.lineWidth = 2.5;
+        // Earrings
+        ctx.fillStyle = '#ffef9f';
         ctx.beginPath();
-        ctx.arc(0, faceH*0.12, faceW*0.16, Math.PI*0.15, Math.PI*0.85, false);
-        ctx.stroke();
-
-        ctx.fillStyle = '#f0c419';
-        ctx.beginPath();
-        ctx.arc(faceW/2 + 6, faceH*0.05, faceW*0.06, 0, Math.PI*2);
+        ctx.arc(-faceW/2 + 6, faceH*0.15, faceW*0.04, 0, Math.PI*2);
+        ctx.arc(faceW/2 - 6, faceH*0.15, faceW*0.04, 0, Math.PI*2);
         ctx.fill();
-        ctx.strokeStyle = '#d9a514';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(faceW/2 + 6, faceH*0.05, faceW*0.07, 0, Math.PI*2);
-        ctx.stroke();
 
-        ctx.strokeStyle = '#f0c419';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, faceH*0.35, faceW*0.22, Math.PI*0.1, Math.PI*0.9);
-        ctx.stroke();
-
-        const labelW = faceW * 0.7;
-        const labelH = 18;
-        ctx.fillStyle = '#ff8fb5';
-        roundRect(ctx, -labelW/2, -faceH/2 - labelH - 4, labelW, labelH, 9);
+        // Headband label
+        const labelW = faceW * 0.76;
+        const labelH = 20;
+        ctx.fillStyle = '#ff7fb6';
+        roundRect(ctx, -labelW/2, -faceH/2 - labelH - 2, labelW, labelH, 10);
         ctx.fill();
         ctx.strokeStyle = '#c7437e';
-        ctx.lineWidth = 1.2;
+        ctx.lineWidth = 1.4;
         ctx.stroke();
 
         ctx.fillStyle = '#fff';
         ctx.font = '16px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('ISA', 0, -faceH/2 - 4);
+        ctx.fillText('ISA', 0, -faceH/2 - 6);
         ctx.restore();
     }
 
     function drawPlayerAvatar(ctx, x, y, size) {
         ctx.save();
         ctx.translate(x, y);
-        const headW = size * 1.05;
-        const headH = size * 0.85;
-        const skin = '#f1d2b6';
-        const hair = '#c59b6d';
-        const beard = '#b18555';
+        const headW = size * 1.1;
+        const headH = size * 0.9;
+        const skin = '#f3d9bf';
+        const hair = '#362417';
+        const beard = '#4b2c1d';
 
         ctx.fillStyle = skin;
-        roundRect(ctx, -headW/2, -headH/2, headW, headH, headW*0.18);
+        roundRect(ctx, -headW/2, -headH/2, headW, headH, headW*0.2);
         ctx.fill();
 
         ctx.fillStyle = hair;
         ctx.beginPath();
-        ctx.moveTo(-headW/2, -headH/2 + 10);
-        ctx.quadraticCurveTo(0, -headH/2 - 12, headW/2, -headH/2 + 10);
-        ctx.lineTo(headW/2, -headH/4);
-        ctx.quadraticCurveTo(0, -headH/5, -headW/2, -headH/4);
+        ctx.moveTo(-headW/2 - 6, -headH/2 + 16);
+        ctx.quadraticCurveTo(-headW/4, -headH/2 - 14, headW/4, -headH/2 + 4);
+        ctx.quadraticCurveTo(headW/2 + 8, -headH/4, headW/2 - 4, -headH/8);
+        ctx.lineTo(headW/2 - 2, headH/10);
+        ctx.quadraticCurveTo(-headW/4, 0, -headW/2 + 4, headH/10);
         ctx.closePath();
         ctx.fill();
 
-        ctx.fillStyle = beard;
+        // Glasses frame
+        ctx.strokeStyle = '#1e130c';
+        ctx.lineWidth = 2.4;
+        roundRect(ctx, -headW*0.32, -headH*0.1, headW*0.24, headH*0.18, 6);
+        ctx.stroke();
+        roundRect(ctx, headW*0.08, -headH*0.1, headW*0.24, headH*0.18, 6);
+        ctx.stroke();
         ctx.beginPath();
-        roundRect(ctx, -headW/2 + 4, headH/6, headW-8, headH/3, headW*0.16);
-        ctx.fill();
-
-        ctx.fillStyle = '#2b1d13';
-        ctx.beginPath();
-        ctx.arc(-headW*0.18, -headH*0.05, headW*0.055, 0, Math.PI*2);
-        ctx.arc(headW*0.18, -headH*0.05, headW*0.055, 0, Math.PI*2);
-        ctx.fill();
-
-        ctx.strokeStyle = '#2b1d13';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, headH*0.12, headW*0.17, Math.PI*0.15, Math.PI*0.85, false);
+        ctx.moveTo(-headW*0.08, -headH*0.02);
+        ctx.lineTo(headW*0.08, -headH*0.02);
         ctx.stroke();
 
-        ctx.strokeStyle = '#dcdcdc';
-        ctx.lineWidth = 1.8;
+        // Eyes
+        ctx.fillStyle = '#2a1b12';
         ctx.beginPath();
-        ctx.moveTo(-headW*0.15, headH/2);
-        ctx.quadraticCurveTo(0, headH*0.46, headW*0.15, headH/2);
+        ctx.arc(-headW*0.2, -headH*0.03, headW*0.055, 0, Math.PI*2);
+        ctx.arc(headW*0.2, -headH*0.03, headW*0.055, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(-headW*0.19, -headH*0.05, headW*0.025, 0, Math.PI*2);
+        ctx.arc(headW*0.21, -headH*0.05, headW*0.025, 0, Math.PI*2);
+        ctx.fill();
+
+        // Beard fade
+        ctx.fillStyle = beard;
+        roundRect(ctx, -headW/2 + 6, headH/7, headW-12, headH/2.7, headW*0.18);
+
+        ctx.fillStyle = '#1c120c';
+        ctx.beginPath();
+        ctx.arc(0, headH*0.14, headW*0.2, Math.PI*0.2, Math.PI*0.8, false);
+        ctx.strokeStyle = '#1c120c';
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        // Smile
+        ctx.beginPath();
+        ctx.moveTo(-headW*0.1, headH*0.22);
+        ctx.quadraticCurveTo(0, headH*0.3, headW*0.1, headH*0.22);
+        ctx.stroke();
+
+        // Jaw highlight
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(-headW*0.18, headH/2);
+        ctx.quadraticCurveTo(0, headH*0.46, headW*0.18, headH/2);
         ctx.stroke();
         ctx.restore();
     }
@@ -397,8 +474,8 @@
         ctx.save();
         ctx.translate(x, y);
         const radius = h/2;
-        const soleColor = isSuper ? '#ff89c5' : '#ff7eb6';
-        const strapColor = isSuper ? '#c03ea5' : '#b1368c';
+        const soleColor = isSuper ? '#ffb4d9' : '#f9a8d4';
+        const strapColor = isSuper ? '#b347ff' : '#b7418e';
         ctx.fillStyle = soleColor;
         ctx.beginPath();
         ctx.moveTo(-w/2 + radius, -h/2);
@@ -409,23 +486,32 @@
         ctx.closePath();
         ctx.fill();
 
+        ctx.fillStyle = '#fdf2f8';
+        ctx.beginPath();
+        ctx.ellipse(0, h*0.05, w*0.35, h*0.7, -0.2, 0, Math.PI*2);
+        ctx.fill();
+
         if(isSuper) {
-            ctx.strokeStyle = '#ffb347';
+            ctx.strokeStyle = '#ffd166';
             ctx.lineWidth = 3;
             ctx.stroke();
         }
 
         ctx.strokeStyle = strapColor;
-        ctx.lineWidth = Math.max(2, h * 0.2);
+        ctx.lineWidth = Math.max(2, h * 0.22);
         ctx.beginPath();
-        ctx.moveTo(-w*0.28, -h*0.05);
-        ctx.lineTo(0, -h*0.4);
-        ctx.lineTo(w*0.28, -h*0.05);
+        ctx.moveTo(-w*0.3, -h*0.05);
+        ctx.quadraticCurveTo(0, -h*0.55, w*0.3, -h*0.05);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(0, -h*0.4);
-        ctx.lineTo(0, h*0.05);
+        ctx.moveTo(0, -h*0.36);
+        ctx.quadraticCurveTo(-w*0.04, h*0.2, 0, h*0.18);
         ctx.stroke();
+
+        ctx.font = `${Math.max(14, h*1.2)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = strapColor;
+        ctx.fillText('🩴', 0, h*0.25);
 
         if(isSuper) {
             ctx.fillStyle = '#ffd166';
@@ -561,6 +647,12 @@
         ctx.fillText('Score: ' + score, 12, 22);
         ctx.textAlign = 'right';
         ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width-12, 22);
+        if(slowEffect.timer > 0) {
+            ctx.fillStyle = '#ffd166';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🍺 chill ' + slowEffect.timer.toFixed(1)+'s', canvas.width/2, 22);
+        }
         ctx.restore();
     }
 
@@ -579,7 +671,7 @@
         ctx.font = '16px sans-serif';
         ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width/2, 330);
         ctx.font = '14px sans-serif';
-        ctx.fillText('Esquiva las chanclas, mi amor. Mobile/desktop listo.', canvas.width/2, 360);
+        ctx.fillText('Esquiva las chanclas, mi amor. Ahora con powerups y modo touch.', canvas.width/2, 360);
         ctx.fillStyle = '#ff9f1c';
         roundRect(ctx, 110, 380, canvas.width-220, 46, 12);
         ctx.fill();
@@ -633,17 +725,41 @@
     function spawnRita() {
         const x = player.x + (Math.random()*60-30);
         const y = player.y - 80;
-        pets.push({ kind: 'rita', x, y, vx: 0, active: true, duration: 3, alpha: 1 });
+        pets.push({ kind: 'rita', x, y, vx: 0, active: true, duration: 3, alpha: 1, dropped: false });
         if(player.lives < player.maxLives) player.lives++;
         baseSpeed *= 0.85;
         sayRandom('petRita');
     }
 
+    function spawnPowerup(kind, x, y) {
+        powerups.push({ kind, x, y, vy: 110, w: 26, h: 26 });
+    }
+
+    function addFloatText(text, x, y) {
+        floatTexts.push({ text, x, y, time: 1.8, max: 1.8 });
+    }
+
+    function applyPowerup(p) {
+        if(p.kind === 'heart') {
+            if(player.lives < player.maxLives) {
+                player.lives++;
+                addFloatText('I love you! +1 ❤️', p.x, p.y);
+            } else {
+                addFloatText('Full corazón', p.x, p.y);
+            }
+        }
+        if(p.kind === 'beer') {
+            slowEffect.timer = 4.5;
+            addFloatText('Cerveza chill 🍺', p.x, p.y);
+        }
+    }
+
     function updateChanclas(dt) {
+        const slowFactor = slowEffect.timer > 0 ? slowEffect.factor : 1;
         for(let i=chanclas.length-1;i>=0;i--) {
             const c = chanclas[i];
             c.x += c.vx * dt;
-            c.y += c.vy * dt;
+            c.y += c.vy * dt * slowFactor;
             if(c.x < 10) { c.x = 10; c.vx *= -0.5; }
             if(c.x > canvas.width-10) { c.x = canvas.width-10; c.vx *= -0.5; }
             if(rectsOverlap(player, c)) {
@@ -678,6 +794,10 @@
             p.duration -= dt;
             if(p.kind === 'owen') {
                 p.x += p.vx * dt;
+                if(!p.dropped && Math.random() < 0.12*dt) {
+                    spawnPowerup('beer', p.x, p.y - 10);
+                    p.dropped = true;
+                }
                 if(p.x < -60 || p.x > canvas.width + 60 || p.duration <= 0) {
                     pets.splice(i,1);
                     continue;
@@ -690,6 +810,10 @@
             } else if(p.kind === 'rita') {
                 p.y += Math.sin(timeElapsed*3) * 10 * dt;
                 p.alpha = Math.max(0, p.duration/3);
+                if(!p.dropped && Math.random() < 0.16*dt) {
+                    spawnPowerup('heart', p.x, p.y + 20);
+                    p.dropped = true;
+                }
                 if(p.duration <= 0) {
                     pets.splice(i,1);
                 }
@@ -708,8 +832,71 @@
         });
     }
 
+    function drawPowerups() {
+        powerups.forEach(p => {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            if(p.kind === 'heart') {
+                ctx.fillStyle = '#ff6fae';
+                ctx.beginPath();
+                ctx.moveTo(0, 6);
+                ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
+                ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('I ❤️ U', 0, 22);
+            } else if(p.kind === 'beer') {
+                ctx.fillStyle = '#f2c94c';
+                roundRect(ctx, -12, -18, 24, 36, 6);
+                ctx.fill();
+                ctx.fillStyle = '#fff3a3';
+                roundRect(ctx, -10, -22, 20, 10, 4);
+                ctx.fill();
+                ctx.fillStyle = '#5f4b32';
+                ctx.font = '12px sans-serif';
+                ctx.fillText('🍺', 0, 6);
+            }
+            ctx.restore();
+        });
+    }
+
+    function drawFloatTexts() {
+        floatTexts.forEach(f => {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, f.time / f.max);
+            ctx.fillStyle = '#fff';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(f.text, f.x, f.y);
+            ctx.restore();
+        });
+    }
+
     function rectsOverlap(a,b) {
         return Math.abs(a.x - b.x) < (a.w/2 + b.w/2) && Math.abs(a.y - b.y) < (a.h/2 + b.h/2);
+    }
+
+    function updatePowerups(dt) {
+        for(let i=powerups.length-1;i>=0;i--) {
+            const p = powerups[i];
+            p.y += p.vy * dt;
+            if(rectsOverlap(player, p)) {
+                applyPowerup(p);
+                powerups.splice(i,1);
+                continue;
+            }
+            if(p.y > canvas.height + p.h) {
+                powerups.splice(i,1);
+            }
+        }
+        for(let i=floatTexts.length-1;i>=0;i--) {
+            const f = floatTexts[i];
+            f.y -= 18 * dt;
+            f.time -= dt;
+            if(f.time <= 0) floatTexts.splice(i,1);
+        }
     }
 
     function endGame() {
@@ -748,6 +935,8 @@
 
         updateChanclas(dt);
         updatePets(dt);
+        updatePowerups(dt);
+        if(slowEffect.timer > 0) slowEffect.timer -= dt;
 
         if(dialogueTimer > 0) dialogueTimer -= dt;
     }
@@ -756,10 +945,12 @@
         drawBackground();
         drawIsa();
         drawChanclasAll();
+        drawPowerups();
         drawPets();
         drawPlayer();
         drawPetsOverlay();
         drawHUD();
+        drawFloatTexts();
         drawDialogue();
     }
 
@@ -795,7 +986,8 @@
     });
 
     canvas.addEventListener('touchstart', (e) => {
-        if(state !== STATE.PLAYING) return;
+        if(state === STATE.TITLE) { startGameFromTitle(); return; }
+        if(state === STATE.GAMEOVER) { resetGame(); return; }
         const rect = canvas.getBoundingClientRect();
         for(const touchPoint of e.changedTouches) {
             const x = touchPoint.clientX - rect.left;
@@ -832,6 +1024,11 @@
     }
     handleMobileZones(touchLeft, 'left');
     handleMobileZones(touchRight, 'right');
+
+    document.getElementById('mobile-controls').addEventListener('touchstart', () => {
+        if(state === STATE.TITLE) startGameFromTitle();
+        else if(state === STATE.GAMEOVER) resetGame();
+    }, {passive:true});
 
     function resize() {
         const rect = canvas.getBoundingClientRect();
