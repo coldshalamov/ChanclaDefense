@@ -87,6 +87,19 @@
     .touch-visual span { font-size: 18px; display: block; }
     .touch-visual-left { left: 10px; }
     .touch-visual-right { right: 10px; }
+
+    .touch-visual,
+    .mobile-hint {
+        transition: transform 0.35s ease, opacity 0.35s ease;
+    }
+    .hide-directions .touch-visual {
+        transform: translateY(140%);
+        opacity: 0;
+    }
+    .hide-directions .mobile-hint {
+        transform: translateY(12px);
+        opacity: 0;
+    }
 </style>
 </head>
 <body>
@@ -110,6 +123,7 @@
     const overlayRight = document.getElementById('overlay-right');
     const touchLeft = document.querySelector('.touch-left');
     const touchRight = document.querySelector('.touch-right');
+    const body = document.body;
 
     const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover' };
     let state = STATE.TITLE;
@@ -213,6 +227,7 @@
         slowEffect.timer = 0;
         sayRandom('start');
         state = STATE.PLAYING;
+        setDirectionsVisible(false);
     }
 
     const cityShapes = [];
@@ -937,6 +952,10 @@
         resetGame();
     }
 
+    function setDirectionsVisible(show) {
+        body.classList.toggle('hide-directions', !show);
+    }
+
     canvas.addEventListener('click', (e) => {
         if(state === STATE.TITLE) {
             startGameFromTitle();
@@ -1005,6 +1024,7 @@
 
     function initTitle() {
         sayRandom('start');
+        setDirectionsVisible(true);
     }
     initTitle();
 })();
