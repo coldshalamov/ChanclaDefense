@@ -307,7 +307,7 @@
         const faceW = size * 0.72;
         const faceH = size * 0.82;
         const hairColor = '#3a2522';
-        const skin = '#f8cdb3';
+        const skin = '#e7b28f';
 
         // Flowing hair and bun
         ctx.fillStyle = hairColor;
@@ -328,7 +328,12 @@
         ctx.fill();
 
         ctx.fillStyle = skin;
-        roundRect(ctx, -faceW/2, -faceH/2 + 4, faceW, faceH, faceW*0.24);
+        ctx.beginPath();
+        ctx.moveTo(-faceW/2, -faceH/2 + 6);
+        ctx.quadraticCurveTo(-faceW*0.55, -faceH*0.05, -faceW*0.28, faceH*0.3);
+        ctx.quadraticCurveTo(0, faceH*0.52, faceW*0.28, faceH*0.3);
+        ctx.quadraticCurveTo(faceW*0.55, -faceH*0.05, faceW/2, -faceH/2 + 6);
+        ctx.closePath();
         ctx.fill();
 
         // Cheeks
@@ -403,7 +408,7 @@
         const headH = size * 0.9;
         const skin = '#f3d9bf';
         const hair = '#362417';
-        const beard = '#4b2c1d';
+        const beard = '#3b2418';
 
         ctx.fillStyle = skin;
         roundRect(ctx, -headW/2, -headH/2, headW, headH, headW*0.2);
@@ -445,14 +450,20 @@
 
         // Beard fade
         ctx.fillStyle = beard;
-        roundRect(ctx, -headW/2 + 6, headH/7, headW-12, headH/2.7, headW*0.18);
-
-        ctx.fillStyle = '#1c120c';
+        roundRect(ctx, -headW/2 + 4, headH/9, headW-8, headH/2.1, headW*0.2);
+        ctx.fillStyle = '#2a1a10';
         ctx.beginPath();
-        ctx.arc(0, headH*0.14, headW*0.2, Math.PI*0.2, Math.PI*0.8, false);
-        ctx.strokeStyle = '#1c120c';
-        ctx.lineWidth = 2.2;
-        ctx.stroke();
+        ctx.moveTo(-headW*0.18, headH*0.12);
+        ctx.quadraticCurveTo(-headW*0.06, headH*0.26, 0, headH*0.24);
+        ctx.quadraticCurveTo(headW*0.06, headH*0.26, headW*0.18, headH*0.12);
+        ctx.fill();
+        // Mustache
+        ctx.fillStyle = '#2f1d12';
+        ctx.beginPath();
+        ctx.moveTo(-headW*0.16, headH*0.1);
+        ctx.quadraticCurveTo(-headW*0.05, headH*0.16, 0, headH*0.12);
+        ctx.quadraticCurveTo(headW*0.05, headH*0.16, headW*0.16, headH*0.1);
+        ctx.fill();
 
         // Smile
         ctx.beginPath();
@@ -473,64 +484,11 @@
     function drawChancla(ctx, x, y, w, h, isSuper) {
         ctx.save();
         ctx.translate(x, y);
-        const radius = h/2;
-        const soleColor = isSuper ? '#ffb4d9' : '#f9a8d4';
-        const strapColor = isSuper ? '#b347ff' : '#b7418e';
-        ctx.fillStyle = soleColor;
-        ctx.beginPath();
-        ctx.moveTo(-w/2 + radius, -h/2);
-        ctx.lineTo(w/2 - radius, -h/2);
-        ctx.arc(w/2 - radius, 0, radius, -Math.PI/2, Math.PI/2);
-        ctx.lineTo(-w/2 + radius, h/2);
-        ctx.arc(-w/2 + radius, 0, radius, Math.PI/2, -Math.PI/2);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = '#fdf2f8';
-        ctx.beginPath();
-        ctx.ellipse(0, h*0.05, w*0.35, h*0.7, -0.2, 0, Math.PI*2);
-        ctx.fill();
-
-        if(isSuper) {
-            ctx.strokeStyle = '#ffd166';
-            ctx.lineWidth = 3;
-            ctx.stroke();
-        }
-
-        ctx.strokeStyle = strapColor;
-        ctx.lineWidth = Math.max(2, h * 0.22);
-        ctx.beginPath();
-        ctx.moveTo(-w*0.3, -h*0.05);
-        ctx.quadraticCurveTo(0, -h*0.55, w*0.3, -h*0.05);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, -h*0.36);
-        ctx.quadraticCurveTo(-w*0.04, h*0.2, 0, h*0.18);
-        ctx.stroke();
-
-        ctx.font = `${Math.max(14, h*1.2)}px sans-serif`;
+        const emoji = isSuper ? '🩴💥' : '🩴💨';
+        ctx.font = `${Math.max(28, w*1.4)}px 'Segoe UI Emoji','Apple Color Emoji', sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillStyle = strapColor;
-        ctx.fillText('🩴', 0, h*0.25);
-
-        if(isSuper) {
-            ctx.fillStyle = '#ffd166';
-            const sparkle = (sx, sy, s) => {
-                ctx.save();
-                ctx.translate(sx, sy);
-                ctx.beginPath();
-                ctx.moveTo(0, -s);
-                ctx.lineTo(s*0.35, 0);
-                ctx.lineTo(0, s);
-                ctx.lineTo(-s*0.35, 0);
-                ctx.closePath();
-                ctx.fill();
-                ctx.restore();
-            };
-            sparkle(-w*0.6, -h*0.3, 4);
-            sparkle(w*0.65, 0, 5);
-            sparkle(-w*0.2, h*0.45, 3.5);
-        }
+        ctx.rotate(-0.22);
+        ctx.fillText(emoji, 0, h*0.2);
         ctx.restore();
     }
 
@@ -732,7 +690,7 @@
     }
 
     function spawnPowerup(kind, x, y) {
-        powerups.push({ kind, x, y, vy: 110, w: 26, h: 26 });
+        powerups.push({ kind, x, y, vy: 110, w: 38, h: 38 });
     }
 
     function addFloatText(text, x, y) {
@@ -836,6 +794,8 @@
         powerups.forEach(p => {
             ctx.save();
             ctx.translate(p.x, p.y);
+            const scale = p.w / 26;
+            ctx.scale(scale, scale);
             if(p.kind === 'heart') {
                 ctx.fillStyle = '#ff6fae';
                 ctx.beginPath();
