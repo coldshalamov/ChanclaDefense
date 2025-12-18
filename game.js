@@ -14,65 +14,91 @@ const finalScoreEl = document.getElementById('final-score-val');
 // Game State
 let gameActive = false;
 let score = 0;
-let wave = 1;
+let difficultyLevel = 1; // Replaces 'wave' concept
 let lives = 3;
 let frameCount = 0;
 
 // Entities
-let projectiles = [];
-let enemies = [];
+let player = {
+    x: 0,
+    y: 0,
+    radius: 20
+};
+let chanclas = [];
 let particles = [];
 
 // Configuration
-const SPAWN_RATE = 100; // Frames between spawns (decreases with waves)
-let currentSpawnRate = SPAWN_RATE;
+let spawnRate = 60; // Frames between spawns
 
 // Resize handling
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    // Center player initially
+    if (!gameActive) {
+        player.x = canvas.width / 2;
+        player.y = canvas.height / 2;
+    }
 }
 window.addEventListener('resize', resize);
 resize();
 
-// Input handling
-canvas.addEventListener('mousedown', (e) => {
+// Input handling (Mouse movement)
+canvas.addEventListener('mousemove', (e) => {
     if (!gameActive) return;
-    
-    // Shoot chancla towards click
-    const angle = Math.atan2(
-        e.clientY - (canvas.height - 50),
-        e.clientX - (canvas.width / 2)
-    );
-    
-    const velocity = {
-        x: Math.cos(angle) * 15,
-        y: Math.sin(angle) * 15
-    };
-
-    projectiles.push(new Projectile(
-        canvas.width / 2,
-        canvas.height - 50,
-        velocity
-    ));
+    player.x = e.clientX;
+    player.y = e.clientY;
 });
 
-// Classes
-class Projectile {
-    constructor(x, y, velocity) {
-        this.x = x;
-        this.y = y;
-        this.velocity = velocity;
-        this.radius = 20;
+// Touch support 
+canvas.addEventListener('touchmove', (e) => {
+    if (!gameActive) return;
+    e.preventDefault(); // Stop scrolling
+    player.x = e.touches[0].clientX;
+    player.y = e.touches[0].clientY;
+}, { passive: false });
+
+
+class Chancla {
+    constructor() {
+        // Spawn from random edge
+        const edge = Math.floor(Math.random() * 4); // 0:top, 1:right, 2:bottom, 3:left
+
+        if (edge === 0) { // Top
+            this.x = Math.random() * canvas.width;
+            this.y = -50;
+        } else if (edge === 1) { // Right
+            this.x = canvas.width + 50;
+            this.y = Math.random() * canvas.height;
+        } else if (edge === 2) { // Bottom
+            this.x = Math.random() * canvas.width;
+            this.y = canvas.height + 50;
+        } else { // Left
+            this.x = -50;
+            this.y = Math.random() * canvas.height;
+        }
+
+        // Target the player's CURRENT position (predictive aiming is too cruel for now)
+        const angle = Math.atan2(player.y - this.y, player.x - this.x);
+
+        // Speed increases with difficulty
+        const speed = (Math.random() * 3 + 4) + (difficultyLevel * 0.5);
+
+        this.velocity = {
+            x: Math.cos(angle) * speed,
+            y: Math.sin(angle) * speed
+        };
+
+        this.radius = 25;
         this.rotation = 0;
-        this.spinSpeed = 0.5;
+        this.spinSpeed = (Math.random() - 0.5) * 0.5;
     }
 
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation);
-        ctx.font = '30px Arial';
+        ctx.font = '40px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('🩴', 0, 0);
@@ -86,50 +112,25 @@ class Projectile {
     }
 }
 
-class Enemy {
-    constructor(x, y, velocity) {
-        this.x = x;
-        this.y = y;
-        this.velocity = velocity;
-        this.radius = 25;
-        this.type = Math.random() > 0.5 ? '👹' : (Math.random() > 0.5 ? '👻' : '🤡');
-    }
-
-    draw() {
-        ctx.font = '40px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.type, this.x, this.y);
-    }
-
-    update() {
-        this.x += this.velocity.x;
-        this.y += this.velocity.y;
-    }
-}
-
 class Particle {
-    constructor(x, y, velocity, color, text = null) {
+    constructor(x, y, color) {
         this.x = x;
         this.y = y;
-        this.velocity = velocity;
+        this.velocity = {
+            x: (Math.random() - 0.5) * 8,
+            y: (Math.random() - 0.5) * 8
+        };
         this.alpha = 1;
         this.color = color;
-        this.text = text;
     }
 
     draw() {
         ctx.save();
         ctx.globalAlpha = this.alpha;
-        if (this.text) {
-            ctx.font = '20px Arial';
-            ctx.fillText(this.text, this.x, this.y);
-        } else {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, 3, 0, Math.PI * 2, false);
-            ctx.fillStyle = this.color;
-            ctx.fill();
-        }
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 4, 0, Math.PI * 2, false);
+        ctx.fillStyle = this.color;
+        ctx.fill();
         ctx.restore();
     }
 
@@ -143,50 +144,26 @@ class Particle {
 // Game Loop
 function init() {
     score = 0;
-    wave = 1;
+    difficultyLevel = 1;
     lives = 3;
-    currentSpawnRate = SPAWN_RATE;
-    projectiles = [];
-    enemies = [];
+    spawnRate = 60;
+    chanclas = [];
     particles = [];
+
+    // Set initial player pos
+    player.x = canvas.width / 2;
+    player.y = canvas.height / 2;
+
     updateUI();
 }
 
-function spawnEnemy() {
-    const radius = 30;
-    const x = Math.random() * (canvas.width - radius * 2) + radius;
-    const y = -radius;
-    
-    // Wave increases speed
-    const speedMultiplier = 1 + (wave * 0.1);
-    const velocity = {
-        x: 0,
-        y: (Math.random() * 2 + 1) * speedMultiplier
-    };
-
-    enemies.push(new Enemy(x, y, velocity));
-}
-
-function createExplosion(x, y) {
-    // Text particle
-    particles.push(new Particle(x, y, {x:0, y:-1}, null, '💥'));
-    
-    // Dot particles
-    for (let i = 0; i < 8; i++) {
-        particles.push(new Particle(
-            x, y,
-            {
-                x: (Math.random() - 0.5) * 5,
-                y: (Math.random() - 0.5) * 5
-            },
-            `hsl(${Math.random() * 360}, 50%, 50%)`
-        ));
-    }
+function spawnChancla() {
+    chanclas.push(new Chancla());
 }
 
 function updateUI() {
     scoreEl.innerText = score;
-    waveEl.innerText = wave;
+    waveEl.innerText = difficultyLevel; // Reusing "Wave" UI for difficulty
     livesEl.innerText = lives;
 }
 
@@ -196,77 +173,75 @@ function endGame() {
     gameOverScreen.classList.add('active');
 }
 
+function createHitEffect(x, y) {
+    for (let i = 0; i < 10; i++) {
+        particles.push(new Particle(x, y, '#ff0055'));
+    }
+}
+
 function animate() {
     requestAnimationFrame(animate);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Player Base Position (Visual only)
-    ctx.font = '60px Arial';
+    // Draw Player
+    ctx.font = '50px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('👵', canvas.width / 2, canvas.height - 50);
+    // Change face based on danger proximity? Maybe later.
+    ctx.fillText('😨', player.x, player.y);
 
     if (!gameActive) return;
 
     frameCount++;
 
-    // Spawning
-    if (frameCount % Math.floor(currentSpawnRate) === 0) {
-        spawnEnemy();
+    // Spawning logic
+    if (frameCount % Math.floor(spawnRate) === 0) {
+        spawnChancla();
     }
 
-    // Wave progression
-    if (score > 0 && score % 1000 === 0) {
-        wave = Math.floor(score / 1000) + 1;
-        currentSpawnRate = Math.max(20, SPAWN_RATE - (wave * 5));
+    // Scoring & Difficulty
+    if (frameCount % 60 === 0) { // Every second
+        score += 10;
         updateUI();
+
+        // Increase difficulty every 10 seconds (600 frames)
+        if (score % 100 === 0) {
+            difficultyLevel++;
+            spawnRate = Math.max(10, 60 - (difficultyLevel * 2));
+            updateUI();
+        }
     }
 
-    // Update Projectiles
-    projectiles.forEach((p, pIndex) => {
-        p.update();
-        p.draw();
+    // Update Chanclas
+    chanclas.forEach((c, index) => {
+        c.update();
+        c.draw();
 
-        // Remove off screen
-        if (p.x + p.radius < 0 || p.x - p.radius > canvas.width || 
-            p.y + p.radius < 0 || p.y - p.radius > canvas.height) {
+        // Remove off screen (bounds check with buffer)
+        if (c.x < -100 || c.x > canvas.width + 100 ||
+            c.y < -100 || c.y > canvas.height + 100) {
             setTimeout(() => {
-                projectiles.splice(pIndex, 1);
+                chanclas.splice(index, 1);
             }, 0);
         }
-    });
 
-    // Update Enemies
-    enemies.forEach((e, eIndex) => {
-        e.update();
-        e.draw();
+        // Collision Detection
+        const dist = Math.hypot(player.x - c.x, player.y - c.y);
 
-        // Hit Detection
-        projectiles.forEach((p, pIndex) => {
-            const dist = Math.hypot(p.x - e.x, p.y - e.y);
-            if (dist - e.radius - p.radius < 1) {
-                // Collision
-                createExplosion(e.x, e.y);
-                setTimeout(() => {
-                    enemies.splice(eIndex, 1);
-                    projectiles.splice(pIndex, 1);
-                }, 0);
-                score += 100;
-                updateUI();
-            }
-        });
-
-        // Bottom Detection (Lost Life)
-        if (e.y - e.radius > canvas.height) {
+        // Hit box slightly smaller than emoji visual
+        if (dist - player.radius - c.radius < -10) {
+            createHitEffect(player.x, player.y);
             lives--;
             updateUI();
-            enemies.splice(eIndex, 1);
-            
-            // Visual feedback for damage
-            document.body.style.backgroundColor = '#300';
+
+            // Remove the hitting chancla
+            chanclas.splice(index, 1);
+
+            // Screen shake effect (simple via CSS or just visual flash)
+            document.body.style.backgroundColor = '#500';
             setTimeout(() => {
                 document.body.style.backgroundColor = '';
-            }, 100);
+            }, 50);
 
             if (lives <= 0) {
                 endGame();
