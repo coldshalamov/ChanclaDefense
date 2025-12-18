@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chancla Defense 🩴</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="ui-layer">
+        <div class="header">
+            <h1>CHANCLA DEFENSE</h1>
+            <p>Respect the La Chancla</p>
+        </div>
+        
+        <div class="stats-panel">
+            <div class="stat-box">
+                <span class="label">SCORE</span>
+                <span class="value" id="score">0</span>
+            </div>
+            <div class="stat-box">
+                <span class="label">WAVE</span>
+                <span class="value" id="wave">1</span>
+            </div>
+            <div class="stat-box">
+                <span class="label">LIVES</span>
+                <span class="value" id="lives">3</span>
+            </div>
+        </div>
+
+        <div id="start-screen" class="overlay active">
+            <div class="modal">
+                <h2>READY TO DEFEND?</h2>
+                <p>The Malcriados are coming. Show them some respect.</p>
+                <button id="start-btn">GRAB THE CHANCLA</button>
+            </div>
+        </div>
+
+        <div id="game-over-screen" class="overlay">
+            <div class="modal">
+                <h2>GAME OVER</h2>
+                <p>La Familia is disappointed.</p>
+                <div class="final-score">Score: <span id="final-score-val">0</span></div>
+                <button id="restart-btn">TRY AGAIN</button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script src="game.js"></script>
+</body>
+</html>
