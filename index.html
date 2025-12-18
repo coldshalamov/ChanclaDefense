@@ -250,7 +250,9 @@
                     "Oh my god, what the fuck is that?!"
                 ],
                 nearMiss: [
-                    "Ay Dios Mio!"
+                    "Ay Dios Mio!",
+                    "HOLY SHIT!",
+                    "YOU'RE CRAZY!"
                 ]
             };
 
@@ -259,6 +261,13 @@
                 if (!lines || !lines.length) return;
                 playerDialogueText = lines[Math.floor(Math.random() * lines.length)];
                 playerDialogueTimer = 2.5;
+
+                if (playerDialogueText === "YOU'RE CRAZY!") {
+                    setTimeout(() => {
+                        dialogueText = "I'll SHOW YOU CRAZY!";
+                        dialogueTimer = 3.0;
+                    }, 600);
+                }
             }
 
             function sayRandom(category) {
