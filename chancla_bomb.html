@@ -156,16 +156,17 @@
             const touchRight = document.querySelector('.touch-right');
             const body = document.body;
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
             let state = STATE.TITLE;
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false };
-            const isa = { x: canvas.width / 2, y: 70 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100 };
 
             let chanclas = [];
             let pets = [];
             let powerups = [];
             let floatTexts = [];
+            let specialProjectiles = [];
             let score = 0;
             let bestScore = 0;
             let spawnInterval = 1.2;
@@ -175,6 +176,9 @@
             const slowEffect = { timer: 0, factor: 0.62 };
             let timeElapsed = 0;
             let superEnabled = false;
+            let specialAttackBar = 0;
+            const maxSpecialAttack = 100;
+            let slapCooldown = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -182,7 +186,7 @@
             let playerDialogueText = '';
             const dialogueDuration = 3.3;
 
-            const keys = { left: false, right: false };
+            const keys = { left: false, right: false, slap: false };
             const touch = { left: false, right: false };
 
             const dialogue = {
@@ -239,6 +243,14 @@
                     "Rita Cat-Alina dice miau y te regala una vida. 🐱",
                     "La reina Rita canceló una chancla por ti, da las gracias.",
                     "Hasta la gata te cuida… yo solo te aviento chancla."
+                ],
+                win: [
+                    "Te amo, Papi. I only hit you because I love you."
+                ],
+                slapSuccess: [
+                    "¿Cómo te atreves a manotear mis chanclas?!",
+                    "Eso no es justo, gringo!",
+                    "¡Ay! Esa es mi chancla favorita!"
                 ]
             };
 
@@ -292,15 +304,21 @@
                 player.y = canvas.height - 70;
                 player.lives = 3;
                 player.shield = false;
+                isa.anger = isa.maxAnger;
+                isa.x = canvas.width / 2;
+                isa.y = 70;
                 chanclas = [];
                 pets = [];
                 powerups = [];
                 floatTexts = [];
+                specialProjectiles = [];
                 score = 0;
                 spawnInterval = 1.2;
                 baseSpeed = 140;
                 timeElapsed = 0;
                 superEnabled = false;
+                specialAttackBar = 0;
+                slapCooldown = 0;
                 slowEffect.timer = 0;
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -734,6 +752,87 @@
                     ctx.textAlign = 'center';
                     ctx.fillText('🍺 chill ' + slowEffect.timer.toFixed(1) + 's', canvas.width / 2, 22);
                 }
+                
+                // Draw special attack bar
+                const barWidth = 180;
+                const barHeight = 20;
+                const barX = canvas.width / 2 - barWidth / 2 - 20;
+                const barY = 40;
+                
+                // Background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                roundRect(ctx, barX, barY, barWidth, barHeight, 10);
+                ctx.fill();
+                
+                // Fill bar with gradient from blue to red
+                if (specialAttackBar > 0) {
+                    const progress = specialAttackBar / maxSpecialAttack;
+                    const fillWidth = barWidth * progress;
+                    
+                    const gradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
+                    gradient.addColorStop(0, '#4a90e2');
+                    gradient.addColorStop(0.5, progress > 0.5 ? '#9b4ae2' : '#4a90e2');
+                    gradient.addColorStop(1, progress > 0.7 ? '#e24a4a' : (progress > 0.5 ? '#9b4ae2' : '#4a90e2'));
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.save();
+                    ctx.beginPath();
+                    roundRect(ctx, barX, barY, fillWidth, barHeight, 10);
+                    ctx.clip();
+                    roundRect(ctx, barX, barY, fillWidth, barHeight, 10);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                
+                // Border
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                roundRect(ctx, barX, barY, barWidth, barHeight, 10);
+                ctx.stroke();
+                
+                // Eggplant emoji
+                ctx.font = '28px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText('🍆', barX + barWidth + 5, barY + barHeight - 2);
+                
+                // Draw Isa's anger bar
+                const angerBarWidth = 150;
+                const angerBarHeight = 15;
+                const angerBarX = canvas.width / 2 - angerBarWidth / 2;
+                const angerBarY = 8;
+                
+                // Background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                roundRect(ctx, angerBarX, angerBarY, angerBarWidth, angerBarHeight, 8);
+                ctx.fill();
+                
+                // Fill bar
+                if (isa.anger > 0) {
+                    const angerProgress = isa.anger / isa.maxAnger;
+                    const angerFillWidth = angerBarWidth * angerProgress;
+                    
+                    ctx.fillStyle = angerProgress > 0.5 ? '#e24a4a' : '#e2a04a';
+                    ctx.save();
+                    ctx.beginPath();
+                    roundRect(ctx, angerBarX, angerBarY, angerFillWidth, angerBarHeight, 8);
+                    ctx.clip();
+                    roundRect(ctx, angerBarX, angerBarY, angerFillWidth, angerBarHeight, 8);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                
+                // Border
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                roundRect(ctx, angerBarX, angerBarY, angerBarWidth, angerBarHeight, 8);
+                ctx.stroke();
+                
+                // Label
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("Isa's Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
+                
                 ctx.restore();
             }
 
@@ -836,15 +935,101 @@
                 }
             }
 
+            function trySlap() {
+                if (slapCooldown > 0) return;
+                
+                const slapRange = 80;
+                let slappedAny = false;
+                
+                for (let i = chanclas.length - 1; i >= 0; i--) {
+                    const c = chanclas[i];
+                    const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                    
+                    if (dist < slapRange) {
+                        // Slap the chancla away
+                        c.vx = (c.x - player.x) * 8;
+                        c.vy = -300;
+                        c.slapped = true;
+                        slappedAny = true;
+                        
+                        // Increase special attack bar
+                        specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 15);
+                        
+                        // Add float text
+                        addFloatText('SLAP! 👋', c.x, c.y);
+                        
+                        // Play slap sound (using a beep-like effect)
+                        playSound(600, 0.1);
+                        
+                        if (Math.random() < 0.3) sayRandom('slapSuccess');
+                    }
+                }
+                
+                if (slappedAny) {
+                    slapCooldown = 0.3;
+                }
+            }
+
+            function fireSpecialAttack() {
+                if (specialAttackBar >= maxSpecialAttack) {
+                    // Fire leg emoji at Isa
+                    specialProjectiles.push({
+                        x: player.x,
+                        y: player.y - 20,
+                        targetX: isa.x,
+                        targetY: isa.y,
+                        speed: 400
+                    });
+                    
+                    specialAttackBar = 0;
+                    
+                    // Play special attack sound
+                    playSound(800, 0.2);
+                    
+                    addFloatText('SPECIAL! 🦵', player.x, player.y - 30);
+                }
+            }
+
+            function playSound(frequency, duration) {
+                // Simple beep sound using Web Audio API
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    oscillator.frequency.value = frequency;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                    
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + duration);
+                } catch (e) {
+                    // Silent fail if audio not supported
+                }
+            }
+
             function updateChanclas(dt) {
                 const slowFactor = slowEffect.timer > 0 ? slowEffect.factor : 1;
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
                     c.x += c.vx * dt;
-                    c.y += c.vy * dt * slowFactor;
+                    c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
+                    
+                    // Remove slapped chanclas that fly off screen
+                    if (c.slapped && (c.x < -50 || c.x > canvas.width + 50 || c.y < -50)) {
+                        chanclas.splice(i, 1);
+                        continue;
+                    }
+                    
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
-                    if (rectsOverlap(player, c)) {
+                    
+                    if (!c.slapped && rectsOverlap(player, c)) {
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -985,6 +1170,48 @@
                 }
             }
 
+            function updateSpecialProjectiles(dt) {
+                for (let i = specialProjectiles.length - 1; i >= 0; i--) {
+                    const proj = specialProjectiles[i];
+                    
+                    // Move towards Isa
+                    const dx = proj.targetX - proj.x;
+                    const dy = proj.targetY - proj.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 10) {
+                        // Hit Isa!
+                        isa.anger = Math.max(0, isa.anger - 20);
+                        specialProjectiles.splice(i, 1);
+                        
+                        // Play hit sound
+                        playSound(1000, 0.15);
+                        
+                        addFloatText('OUCH! 💥', isa.x, isa.y);
+                        
+                        // Check for win
+                        if (isa.anger <= 0) {
+                            state = STATE.WIN;
+                            sayRandom('win');
+                        }
+                        continue;
+                    }
+                    
+                    proj.x += (dx / dist) * proj.speed * dt;
+                    proj.y += (dy / dist) * proj.speed * dt;
+                }
+            }
+
+            function drawSpecialProjectiles() {
+                specialProjectiles.forEach(proj => {
+                    ctx.save();
+                    ctx.font = '32px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🦵', proj.x, proj.y);
+                    ctx.restore();
+                });
+            }
+
             function endGame() {
                 state = STATE.GAMEOVER;
                 bestScore = Math.max(bestScore, score);
@@ -1022,7 +1249,10 @@
                 updateChanclas(dt);
                 updatePets(dt);
                 updatePowerups(dt);
+                updateSpecialProjectiles(dt);
+                
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
+                if (slapCooldown > 0) slapCooldown -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
@@ -1034,6 +1264,7 @@
                 drawIsa();
                 drawChanclasAll();
                 drawPowerups();
+                drawSpecialProjectiles();
                 drawPets();
                 drawPlayer();
                 drawPetsOverlay();
@@ -1047,14 +1278,67 @@
                 for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super');
             }
 
+            function drawWinScreen() {
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw Isa moving down and embracing
+                const winProgress = Math.min(1, (Date.now() % 3000) / 3000);
+                const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
+                drawIsaAvatar(ctx, isa.x, isaWinY, 78);
+                
+                // Speech bubble
+                if (winProgress > 0.7) {
+                    const bubbleWidth = 280;
+                    const bubbleX = canvas.width / 2 - bubbleWidth / 2;
+                    const bubbleY = isaWinY + 50;
+                    
+                    ctx.fillStyle = 'rgba(255, 192, 203, 0.95)';
+                    roundRect(ctx, bubbleX, bubbleY, bubbleWidth, 70, 12);
+                    ctx.fill();
+                    ctx.strokeStyle = '#ff69b4';
+                    ctx.lineWidth = 2;
+                    roundRect(ctx, bubbleX, bubbleY, bubbleWidth, 70, 12);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#333';
+                    ctx.font = '14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    wrapText(ctx, dialogueText || "Te amo, Papi. I only hit you because I love you", canvas.width / 2, bubbleY + 35, bubbleWidth - 14, 16);
+                }
+                
+                // Ending caption
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = '32px sans-serif';
+                ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
+                ctx.font = '20px sans-serif';
+                ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+                
+                // Play again button
+                ctx.fillStyle = '#ff9f1c';
+                roundRect(ctx, 110, 550, canvas.width - 220, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#222';
+                ctx.font = '20px sans-serif';
+                ctx.fillText('Play again', canvas.width / 2, 582);
+                
+                ctx.restore();
+            }
+
             let last = 0;
             function loop(ts) {
                 const now = ts / 1000;
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
-                update(dt);
+                if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
                 if (state === STATE.TITLE) drawTitleScreen();
-                else {
+                else if (state === STATE.WIN) {
+                    draw();
+                    drawWinScreen();
+                } else {
                     draw();
                     if (state === STATE.GAMEOVER) drawGameOver();
                 }
@@ -1073,18 +1357,33 @@
             canvas.addEventListener('click', (e) => {
                 if (state === STATE.TITLE) {
                     startGameFromTitle();
-                } else if (state === STATE.GAMEOVER) {
+                } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
                     resetGame();
                 }
             });
 
             canvas.addEventListener('touchstart', (e) => {
                 if (state === STATE.TITLE) { startGameFromTitle(); return; }
-                if (state === STATE.GAMEOVER) { resetGame(); return; }
-                const rect = canvas.getBoundingClientRect();
-                for (const touchPoint of e.changedTouches) {
+                if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+                
+                if (state === STATE.PLAYING) {
+                    const rect = canvas.getBoundingClientRect();
+                    const touchPoint = e.touches[0];
                     const x = touchPoint.clientX - rect.left;
-                    if (x < rect.width / 2) touch.left = true; else touch.right = true;
+                    const y = touchPoint.clientY - rect.top;
+                    const relativeY = y / rect.height;
+                    
+                    // If tapping in the upper area (not movement zones at bottom), trigger slap
+                    if (relativeY < 0.6) {
+                        if (specialAttackBar >= maxSpecialAttack) {
+                            fireSpecialAttack();
+                        } else {
+                            trySlap();
+                        }
+                    } else {
+                        // Movement controls for bottom area
+                        if (x < rect.width / 2) touch.left = true; else touch.right = true;
+                    }
                 }
             }, { passive: true });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
@@ -1092,6 +1391,19 @@
             function handleKey(e, isDown) {
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+                
+                // Slap key - spacebar
+                if (e.key === ' ' || e.key === 'Spacebar') {
+                    if (isDown && state === STATE.PLAYING) {
+                        if (specialAttackBar >= maxSpecialAttack) {
+                            fireSpecialAttack();
+                        } else {
+                            trySlap();
+                        }
+                    }
+                    e.preventDefault();
+                }
+                
                 if (isDown && e.key === 'Enter' && state !== STATE.PLAYING) {
                     resetGame();
                 }
@@ -1120,7 +1432,7 @@
 
             document.getElementById('mobile-controls').addEventListener('touchstart', () => {
                 if (state === STATE.TITLE) startGameFromTitle();
-                else if (state === STATE.GAMEOVER) resetGame();
+                else if (state === STATE.GAMEOVER || state === STATE.WIN) resetGame();
             }, { passive: true });
 
             function resize() {

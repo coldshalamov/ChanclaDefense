@@ -1365,10 +1365,25 @@
             canvas.addEventListener('touchstart', (e) => {
                 if (state === STATE.TITLE) { startGameFromTitle(); return; }
                 if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
-                const rect = canvas.getBoundingClientRect();
-                for (const touchPoint of e.changedTouches) {
+                
+                if (state === STATE.PLAYING) {
+                    const rect = canvas.getBoundingClientRect();
+                    const touchPoint = e.touches[0];
                     const x = touchPoint.clientX - rect.left;
-                    if (x < rect.width / 2) touch.left = true; else touch.right = true;
+                    const y = touchPoint.clientY - rect.top;
+                    const relativeY = y / rect.height;
+                    
+                    // If tapping in the upper area (not movement zones at bottom), trigger slap
+                    if (relativeY < 0.6) {
+                        if (specialAttackBar >= maxSpecialAttack) {
+                            fireSpecialAttack();
+                        } else {
+                            trySlap();
+                        }
+                    } else {
+                        // Movement controls for bottom area
+                        if (x < rect.width / 2) touch.left = true; else touch.right = true;
+                    }
                 }
             }, { passive: true });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
@@ -1418,25 +1433,6 @@
             document.getElementById('mobile-controls').addEventListener('touchstart', () => {
                 if (state === STATE.TITLE) startGameFromTitle();
                 else if (state === STATE.GAMEOVER || state === STATE.WIN) resetGame();
-            }, { passive: true });
-
-            // Add tap/double-tap for slap on mobile
-            canvas.addEventListener('touchstart', (e) => {
-                if (state === STATE.PLAYING) {
-                    const rect = canvas.getBoundingClientRect();
-                    const touch = e.touches[0];
-                    const y = touch.clientY - rect.top;
-                    const relativeY = y / rect.height;
-                    
-                    // If tapping in the middle area (not movement zones), trigger slap
-                    if (relativeY < 0.6) {
-                        if (specialAttackBar >= maxSpecialAttack) {
-                            fireSpecialAttack();
-                        } else {
-                            trySlap();
-                        }
-                    }
-                }
             }, { passive: true });
 
             function resize() {
