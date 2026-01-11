@@ -155,6 +155,7 @@
             const touchLeft = document.querySelector('.touch-left');
             const touchRight = document.querySelector('.touch-right');
             const body = document.body;
+            const wrapper = document.querySelector('.wrapper');
 
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover' };
             let state = STATE.TITLE;
@@ -175,6 +176,8 @@
             const slowEffect = { timer: 0, factor: 0.62 };
             let timeElapsed = 0;
             let superEnabled = false;
+            let shakeTimer = 0;
+            let shakeIntensity = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -287,6 +290,11 @@
                 dialogueTimer = dialogueDuration;
             }
 
+            function triggerShake(intensity, duration) {
+                shakeIntensity = intensity;
+                shakeTimer = duration;
+            }
+
             function resetGame() {
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
@@ -302,6 +310,8 @@
                 timeElapsed = 0;
                 superEnabled = false;
                 slowEffect.timer = 0;
+                shakeTimer = 0;
+                wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
                 state = STATE.PLAYING;
@@ -851,6 +861,7 @@
                             continue;
                         }
                         const dmg = c.type === 'super' ? 2 : 1;
+                        triggerShake(c.type === 'super' ? 15 : 8, 0.4);
                         player.lives -= dmg;
                         chanclas.splice(i, 1);
                         sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
@@ -1027,6 +1038,14 @@
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
                 if (Math.random() < 0.002) sayPlayer('idle');
+
+                if (shakeTimer > 0) {
+                    shakeTimer -= dt;
+                    const dx = (Math.random() - 0.5) * shakeIntensity * 2;
+                    const dy = (Math.random() - 0.5) * shakeIntensity * 2;
+                    wrapper.style.transform = `translate(${dx}px, ${dy}px)`;
+                    if (shakeTimer <= 0) wrapper.style.transform = 'none';
+                }
             }
 
             function draw() {
