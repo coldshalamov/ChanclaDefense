@@ -179,6 +179,7 @@
             let specialAttackBar = 0;
             const maxSpecialAttack = 100;
             let slapCooldown = 0;
+            let winAnimationStart = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -186,8 +187,21 @@
             let playerDialogueText = '';
             const dialogueDuration = 3.3;
 
-            const keys = { left: false, right: false, slap: false };
+            const keys = { left: false, right: false };
             const touch = { left: false, right: false };
+            
+            // Audio context for sound effects (reuse to avoid browser limits)
+            let audioContext = null;
+            function getAudioContext() {
+                if (!audioContext) {
+                    try {
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    } catch (e) {
+                        // Audio not supported
+                    }
+                }
+                return audioContext;
+            }
 
             const dialogue = {
                 start: [
@@ -319,6 +333,7 @@
                 superEnabled = false;
                 specialAttackBar = 0;
                 slapCooldown = 0;
+                winAnimationStart = 0;
                 slowEffect.timer = 0;
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -993,7 +1008,9 @@
             function playSound(frequency, duration) {
                 // Simple beep sound using Web Audio API
                 try {
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioCtx = getAudioContext();
+                    if (!audioCtx) return;
+                    
                     const oscillator = audioCtx.createOscillator();
                     const gainNode = audioCtx.createGain();
                     
@@ -1284,7 +1301,8 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
                 // Draw Isa moving down and embracing
-                const winProgress = Math.min(1, (Date.now() % 3000) / 3000);
+                if (winAnimationStart === 0) winAnimationStart = Date.now();
+                const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
                 const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
                 drawIsaAvatar(ctx, isa.x, isaWinY, 78);
                 
