@@ -212,6 +212,11 @@
                     "¡Ya sé que lo hiciste en la ducha sin grabarlo para mí!",
                     "¡Le voy a dar tu cuerpo a mis gatos, gringo!"
                 ],
+                hitBySpecial: [
+                    "Oh!",
+                    "Papi!",
+                    "OoOoOoH!"
+                ],
                 hitNormal: [
                     "¡Eso te pasa por andar dando like a otras, eh! 😈",
                     "Te dije, mi vida, la chancla siempre encuentra tu cara.",
@@ -272,6 +277,10 @@
             };
 
             const gringoLines = {
+                fireSpecial: [
+                    "I got something that will calm you down!",
+                    "Hora del jamón, cariño!"
+                ],
                 idle: [
                     "Woah, woah chill, alright? Chill!",
                     "Ok, I promise I won't say it again just calm down!",
@@ -816,9 +825,28 @@
                 ctx.stroke();
                 
                 // Eggplant emoji
+                const p = Math.min(1, specialAttackBar / maxSpecialAttack);
+                ctx.save();
+                const eggX = barX + barWidth + 20;
+                const eggY = barY + barHeight / 2;
+                ctx.translate(eggX, eggY);
+                // Rotate and scale based on progress
+                const eggRotation = p * (20 * Math.PI / 180);
+                ctx.rotate(eggRotation);
+                const eggScale = 1 + p * 0.4; // up to 1.4x bigger
+                ctx.scale(eggScale, eggScale);
+
+                // Glow if bar has some progress
+                if (p > 0) {
+                    ctx.shadowBlur = p * 15;
+                    ctx.shadowColor = `rgba(147, 51, 234, ${p})`; // Purple glow
+                }
+
                 ctx.font = '28px sans-serif';
-                ctx.textAlign = 'left';
-                ctx.fillText('🍆', barX + barWidth + 5, barY + barHeight - 2);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🍆', 0, 0);
+                ctx.restore();
                 
                 // Draw Isa's anger bar
                 const angerBarWidth = 150;
@@ -1012,6 +1040,7 @@
                     playSound(800, 0.2);
                     
                     addFloatText('SPECIAL! 🦵', player.x, player.y - 30);
+                    sayPlayer('fireSpecial');
                 }
             }
 
@@ -1236,7 +1265,10 @@
                         // Play hit sound
                         playSound(1000, 0.15);
                         
-                        addFloatText('OUCH! 💥', isa.x, isa.y);
+                        const hitWords = dialogue.hitBySpecial;
+                        const word = hitWords[Math.floor(Math.random() * hitWords.length)];
+                        addFloatText(word + ' 💥', isa.x, isa.y);
+                        sayRandom('hitBySpecial');
                         
                         // Check for win
                         if (isa.anger <= 0) {
@@ -1254,8 +1286,9 @@
             function drawSpecialProjectiles() {
                 specialProjectiles.forEach(proj => {
                     ctx.save();
-                    ctx.font = '32px sans-serif';
+                    ctx.font = '70px sans-serif';
                     ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
                     ctx.fillText('🦵', proj.x, proj.y);
                     ctx.restore();
                 });
