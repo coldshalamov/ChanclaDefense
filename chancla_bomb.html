@@ -144,7 +144,7 @@
             <div class="touch-visual touch-visual-left"><span>⬅️ Drag aquí</span></div>
             <div class="touch-visual touch-visual-right"><span>➡️ Drag aquí</span></div>
         </div>
-        <div class="mobile-hint">Toca izquierda/derecha o usa las flechas. 🩴💖🍺</div>
+        <div class="mobile-hint">Toca izquierda/derecha o usa las flechas. 👟💖🍺</div>
     </div>
     <script>
         (() => {
@@ -155,6 +155,7 @@
             const touchLeft = document.querySelector('.touch-left');
             const touchRight = document.querySelector('.touch-right');
             const body = document.body;
+            const wrapper = document.querySelector('.wrapper');
 
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover' };
             let state = STATE.TITLE;
@@ -175,6 +176,8 @@
             const slowEffect = { timer: 0, factor: 0.62 };
             let timeElapsed = 0;
             let superEnabled = false;
+            let shakeTimer = 0;
+            let shakeIntensity = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -287,6 +290,11 @@
                 dialogueTimer = dialogueDuration;
             }
 
+            function triggerShake(intensity, duration) {
+                shakeIntensity = intensity;
+                shakeTimer = duration;
+            }
+
             function resetGame() {
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
@@ -302,6 +310,8 @@
                 timeElapsed = 0;
                 superEnabled = false;
                 slowEffect.timer = 0;
+                shakeTimer = 0;
+                wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
                 state = STATE.PLAYING;
@@ -577,11 +587,83 @@
             function drawChancla(ctx, x, y, w, h, isSuper) {
                 ctx.save();
                 ctx.translate(x, y);
-                const emoji = isSuper ? '🩴💥' : '🩴💨';
-                ctx.font = `${Math.max(28, w * 1.4)}px 'Segoe UI Emoji','Apple Color Emoji', sans-serif`;
-                ctx.textAlign = 'center';
                 ctx.rotate(-0.22);
-                ctx.fillText(emoji, 0, h * 0.2);
+
+                const soleW = w;
+                const soleH = h;
+
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                roundRect(ctx, -soleW/2 + 2, -soleH/2 + 3, soleW, soleH, soleH/2);
+                ctx.fill();
+
+                // Sole
+                if (isSuper) {
+                     ctx.fillStyle = '#ff5252';
+                } else {
+                     ctx.fillStyle = '#d63384';
+                }
+
+                roundRect(ctx, -soleW/2, -soleH/2, soleW, soleH, soleH/2);
+                ctx.fill();
+
+                // Strap
+                ctx.strokeStyle = '#f8f9fa';
+                ctx.lineWidth = Math.max(2, w * 0.08);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+
+                const toeX = soleW * 0.35;
+                const toeY = 0;
+                const anchorX = -soleW * 0.15;
+                const anchorYTop = -soleH * 0.35;
+                const anchorYBot = soleH * 0.35;
+
+                ctx.moveTo(toeX, toeY);
+                ctx.lineTo(anchorX, anchorYTop);
+                ctx.moveTo(toeX, toeY);
+                ctx.lineTo(anchorX, anchorYBot);
+                ctx.stroke();
+
+                if (isSuper) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.beginPath();
+                    ctx.arc(toeX, toeY, w * 0.1, 0, Math.PI*2);
+                    ctx.fill();
+                }
+
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                if (isSuper) {
+                    // Draw impact shape instead of emoji
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    const cx = soleW/2 + 8;
+                    const cy = -8;
+                    const r = h * 0.4;
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const dist = i % 2 === 0 ? r : r * 0.5;
+                        ctx.lineTo(cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist);
+                    }
+                    ctx.fill();
+                } else {
+                    // Draw wind lines instead of emoji
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    const wx = soleW/2 + 4;
+                    const wy = 0;
+                    ctx.moveTo(wx, wy - 4);
+                    ctx.lineTo(wx + 10, wy - 4);
+                    ctx.moveTo(wx + 2, wy + 4);
+                    ctx.lineTo(wx + 12, wy + 4);
+                    ctx.stroke();
+                }
+
                 ctx.restore();
             }
 
@@ -851,6 +933,7 @@
                             continue;
                         }
                         const dmg = c.type === 'super' ? 2 : 1;
+                        triggerShake(c.type === 'super' ? 15 : 8, 0.4);
                         player.lives -= dmg;
                         chanclas.splice(i, 1);
                         sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
@@ -1027,6 +1110,14 @@
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
                 if (Math.random() < 0.002) sayPlayer('idle');
+
+                if (shakeTimer > 0) {
+                    shakeTimer -= dt;
+                    const dx = (Math.random() - 0.5) * shakeIntensity * 2;
+                    const dy = (Math.random() - 0.5) * shakeIntensity * 2;
+                    wrapper.style.transform = `translate(${dx}px, ${dy}px)`;
+                    if (shakeTimer <= 0) wrapper.style.transform = 'none';
+                }
             }
 
             function draw() {
