@@ -1048,9 +1048,30 @@
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     
                     // Remove slapped chanclas that fly off screen
-                    if (c.slapped && (c.x < -50 || c.x > canvas.width + 50 || c.y < -50)) {
-                        chanclas.splice(i, 1);
-                        continue;
+                    if (c.slapped) {
+                        // Check collision with Isa for slapped chanclas
+                        // Isa radius approx 40. c radius approx w/2.
+                        const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
+                        if (distToIsa < 40 + c.w/2) {
+                            // Hit Isa
+                            const damage = c.type === 'super' ? 15 : 8;
+                            isa.anger = Math.max(0, isa.anger - damage);
+                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 20);
+                            playSound(900, 0.1); // Higher pitch for success
+                            chanclas.splice(i, 1);
+
+                            // Check win
+                            if (isa.anger <= 0) {
+                               state = STATE.WIN;
+                               sayRandom('win');
+                            }
+                            continue;
+                        }
+
+                        if (c.x < -50 || c.x > canvas.width + 50 || c.y < -50) {
+                            chanclas.splice(i, 1);
+                            continue;
+                        }
                     }
                     
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
