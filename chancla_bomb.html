@@ -180,6 +180,7 @@
             let specialAttackBar = 0;
             const maxSpecialAttack = 100;
             let slapCooldown = 0;
+            const slapEffect = { timer: 0, duration: 0.15 };
             let winAnimationStart = 0;
             let shakeTimer = 0;
             let shakeIntensity = 0;
@@ -406,6 +407,27 @@
 
                 ctx.fillStyle = '#ffe066';
                 starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+            }
+
+            function drawSlapEffect() {
+                if (slapEffect.timer <= 0) return;
+
+                ctx.save();
+                ctx.translate(player.x, player.y - 40);
+
+                const p = slapEffect.timer / slapEffect.duration;
+                ctx.strokeStyle = 'rgba(255, 255, 255, ' + (p * 0.8) + ')';
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+
+                ctx.beginPath();
+                // Arc swipe animation
+                const startAngle = Math.PI * 1.2;
+                const endAngle = Math.PI * 1.8;
+                ctx.arc(0, 0, 50, startAngle, endAngle);
+                ctx.stroke();
+
+                ctx.restore();
             }
 
             function drawPlayer() {
@@ -904,7 +926,7 @@
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
-                ctx.fillText('Esquiva o manotea (Espacio) las chanclas. ¡Usa powerups!', canvas.width / 2, 360);
+                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
                 ctx.fillStyle = '#ff9f1c';
                 roundRect(ctx, 110, 380, canvas.width - 220, 46, 12);
                 ctx.fill();
@@ -991,6 +1013,8 @@
             function trySlap() {
                 if (slapCooldown > 0) return;
                 
+                slapEffect.timer = slapEffect.duration;
+
                 const slapRange = 80;
                 let slappedAny = false;
                 
@@ -1020,6 +1044,8 @@
                 
                 if (slappedAny) {
                     slapCooldown = 0.3;
+                } else {
+                    slapCooldown = 0.15;
                 }
             }
 
@@ -1335,6 +1361,7 @@
                 
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
                 if (slapCooldown > 0) slapCooldown -= dt;
+                if (slapEffect.timer > 0) slapEffect.timer -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
@@ -1356,6 +1383,7 @@
                 drawPowerups();
                 drawSpecialProjectiles();
                 drawPets();
+                drawSlapEffect();
                 drawPlayer();
                 drawPetsOverlay();
                 drawHUD();
