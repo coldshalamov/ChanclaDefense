@@ -161,7 +161,7 @@
             let state = STATE.TITLE;
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0 };
 
             let chanclas = [];
             let pets = [];
@@ -450,7 +450,13 @@
 
             function drawIsa() {
                 ctx.save();
-                drawIsaAvatar(ctx, isa.x, isa.y, 78);
+                let drawX = isa.x;
+                let drawY = isa.y;
+                if (isa.hitTimer > 0) {
+                    drawX += (Math.random() - 0.5) * 12;
+                    drawY += (Math.random() - 0.5) * 12;
+                }
+                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
                 ctx.restore();
             }
 
@@ -468,7 +474,7 @@
                 ctx.closePath();
             }
 
-            function drawIsaAvatar(ctx, x, y, size) {
+            function drawIsaAvatar(ctx, x, y, size, isHit) {
                 ctx.save();
                 ctx.translate(x, y);
                 const faceW = size * 0.72;
@@ -510,39 +516,67 @@
                 ctx.ellipse(faceW * 0.22, faceH * 0.1, faceW * 0.12, faceH * 0.08, 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Eyes with lashes
-                ctx.fillStyle = '#1d1411';
-                ctx.beginPath();
-                ctx.arc(-faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
-                ctx.arc(faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#1d1411';
-                ctx.lineWidth = 2.2;
-                const lash = (sx, dir) => {
+                // Eyes
+                if (isHit) {
+                    // X Eyes
+                    ctx.strokeStyle = '#1d1411';
+                    ctx.lineWidth = 3;
+                    const drawXEye = (centerX, centerY) => {
+                        const r = faceW * 0.09;
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - r, centerY - r);
+                        ctx.lineTo(centerX + r, centerY + r);
+                        ctx.moveTo(centerX + r, centerY - r);
+                        ctx.lineTo(centerX - r, centerY + r);
+                        ctx.stroke();
+                    };
+                    drawXEye(-faceW * 0.2, -faceH * 0.05);
+                    drawXEye(faceW * 0.2, -faceH * 0.05);
+                } else {
+                    // Normal eyes with lashes
+                    ctx.fillStyle = '#1d1411';
                     ctx.beginPath();
-                    ctx.moveTo(sx, -faceH * 0.15);
-                    ctx.quadraticCurveTo(sx + dir * 6, -faceH * 0.18, sx + dir * 12, -faceH * 0.16);
+                    ctx.arc(-faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.arc(faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#1d1411';
+                    ctx.lineWidth = 2.2;
+                    const lash = (sx, dir) => {
+                        ctx.beginPath();
+                        ctx.moveTo(sx, -faceH * 0.15);
+                        ctx.quadraticCurveTo(sx + dir * 6, -faceH * 0.18, sx + dir * 12, -faceH * 0.16);
+                        ctx.stroke();
+                    };
+                    lash(-faceW * 0.2, -1);
+                    lash(faceW * 0.2, 1);
+
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(-faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
+                    ctx.arc(faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Mouth
+                if (isHit) {
+                    // O mouth
+                    ctx.strokeStyle = '#d93c7a';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.ellipse(0, faceH * 0.2, faceW * 0.1, faceH * 0.12, 0, 0, Math.PI * 2);
                     ctx.stroke();
-                };
-                lash(-faceW * 0.2, -1);
-                lash(faceW * 0.2, 1);
-
-                ctx.fillStyle = '#fff';
-                ctx.beginPath();
-                ctx.arc(-faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
-                ctx.arc(faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Smile and lips
-                ctx.strokeStyle = '#d93c7a';
-                ctx.lineWidth = 2.4;
-                ctx.beginPath();
-                ctx.arc(0, faceH * 0.15, faceW * 0.2, Math.PI * 0.2, Math.PI * 0.8, false);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(-faceW * 0.12, faceH * 0.17);
-                ctx.quadraticCurveTo(0, faceH * 0.22, faceW * 0.12, faceH * 0.17);
-                ctx.stroke();
+                } else {
+                    // Smile and lips
+                    ctx.strokeStyle = '#d93c7a';
+                    ctx.lineWidth = 2.4;
+                    ctx.beginPath();
+                    ctx.arc(0, faceH * 0.15, faceW * 0.2, Math.PI * 0.2, Math.PI * 0.8, false);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-faceW * 0.12, faceH * 0.17);
+                    ctx.quadraticCurveTo(0, faceH * 0.22, faceW * 0.12, faceH * 0.17);
+                    ctx.stroke();
+                }
 
                 // Earrings
                 ctx.fillStyle = '#ffef9f';
@@ -1111,6 +1145,7 @@
                             // Hit Isa
                             const damage = c.type === 'super' ? 15 : 8;
                             isa.anger = Math.max(0, isa.anger - damage);
+                            isa.hitTimer = 0.5;
                             addFloatText('REFLECTED! ↩️', isa.x, isa.y + 20);
                             playSound(900, 0.1); // Higher pitch for success
                             chanclas.splice(i, 1);
@@ -1286,6 +1321,7 @@
                     if (dist < 10) {
                         // Hit Isa!
                         isa.anger = Math.max(0, isa.anger - 20);
+                        isa.hitTimer = 0.7;
                         specialProjectiles.splice(i, 1);
                         
                         // Play hit sound
@@ -1362,6 +1398,7 @@
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
                 if (slapCooldown > 0) slapCooldown -= dt;
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
+                if (isa.hitTimer > 0) isa.hitTimer -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
