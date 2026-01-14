@@ -886,15 +886,25 @@
                 const eggX = barX + barWidth + 20;
                 const eggY = barY + barHeight / 2;
                 ctx.translate(eggX, eggY);
-                // Rotate and scale based on progress
+
+                let eggScale = 1 + p * 0.4; // up to 1.4x bigger
+                let glowIntensity = p * 15;
+
+                // Pulsing effect when ready
+                if (p >= 1) {
+                    const pulse = Math.sin(timeElapsed * 12); // Pulse speed
+                    eggScale += pulse * 0.15;
+                    glowIntensity += pulse * 8 + 8; // Pulsing glow
+                }
+
+                // Rotate based on progress
                 const eggRotation = p * (20 * Math.PI / 180);
                 ctx.rotate(eggRotation);
-                const eggScale = 1 + p * 0.4; // up to 1.4x bigger
                 ctx.scale(eggScale, eggScale);
 
                 // Glow if bar has some progress
                 if (p > 0) {
-                    ctx.shadowBlur = p * 15;
+                    ctx.shadowBlur = Math.max(0, glowIntensity);
                     ctx.shadowColor = `rgba(147, 51, 234, ${p})`; // Purple glow
                 }
 
@@ -903,6 +913,23 @@
                 ctx.textBaseline = 'middle';
                 ctx.fillText('🍆', 0, 0);
                 ctx.restore();
+
+                // "READY!" text
+                if (p >= 1) {
+                    ctx.save();
+                    ctx.translate(eggX, eggY + 28);
+                    const textPulse = Math.sin(timeElapsed * 12);
+                    const scale = 1 + textPulse * 0.1;
+                    ctx.scale(scale, scale);
+
+                    ctx.fillStyle = '#ff79c6';
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = '#000';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText('READY!', 0, 0);
+                    ctx.restore();
+                }
                 
                 // Draw Isa's anger bar
                 const angerBarWidth = 150;
