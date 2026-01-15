@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chancla Bomb: Isa vs. Su Gringo Para Siempre</title>
+    <!-- Force high-quality emoji font for consistent looks across PC and iPhone -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-top: #0d1b2a;
@@ -156,10 +158,6 @@
             const touchRight = document.querySelector('.touch-right');
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
-
-            // Load sandal sprite image for cross-platform consistency
-            const sandalImage = new Image();
-            sandalImage.src = 'sandal_sprite.png';
 
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
             let state = STATE.TITLE;
@@ -783,26 +781,14 @@
             function drawChancla(ctx, x, y, w, h, isSuper) {
                 ctx.save();
                 ctx.translate(x, y);
-                ctx.rotate(-0.22);
+                // Use the thong sandal emoji for the classic "Chancla" look
+                const emoji = isSuper ? '🩴💥' : '🩴💨';
 
-                // Draw sandal image (always attempt - browser will draw when loaded)
-                const size = Math.max(32, w * 1.4);
-                try {
-                    ctx.drawImage(sandalImage, -size / 2, -size / 2, size, size);
-                } catch (e) {
-                    // Fallback: draw a simple sandal shape if image fails
-                    ctx.fillStyle = '#f4a460';
-                    ctx.fillRect(-size / 2, -size / 4, size, size / 2);
-                    ctx.fillStyle = '#8b4513';
-                    ctx.fillRect(-size / 2, -size / 8, size, size / 8);
-                }
-
-                // Draw motion effect
-                ctx.font = `${size * 0.8}px sans-serif`;
+                // Prioritize Noto Color Emoji and system emoji fonts
+                ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
-                const motionEmoji = isSuper ? '💥' : '💨';
-                ctx.fillText(motionEmoji, size * 0.3, h * 0.2);
-
+                ctx.rotate(-0.25);
+                ctx.fillText(emoji, 0, h * 0.2);
                 ctx.restore();
             }
 
