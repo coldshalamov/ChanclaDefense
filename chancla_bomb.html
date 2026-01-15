@@ -785,10 +785,16 @@
                 ctx.translate(x, y);
                 ctx.rotate(-0.22);
 
-                // Draw sandal image
+                // Draw sandal image (always attempt - browser will draw when loaded)
                 const size = Math.max(32, w * 1.4);
-                if (sandalImage.complete) {
+                try {
                     ctx.drawImage(sandalImage, -size / 2, -size / 2, size, size);
+                } catch (e) {
+                    // Fallback: draw a simple sandal shape if image fails
+                    ctx.fillStyle = '#f4a460';
+                    ctx.fillRect(-size / 2, -size / 4, size, size / 2);
+                    ctx.fillStyle = '#8b4513';
+                    ctx.fillRect(-size / 2, -size / 8, size, size / 8);
                 }
 
                 // Draw motion effect
