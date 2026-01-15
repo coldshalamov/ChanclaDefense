@@ -169,6 +169,7 @@
             let floatTexts = [];
             let rosePetals = [];
             let specialProjectiles = [];
+            let impacts = [];
             let score = 0;
             let bestScore = 0;
             let spawnInterval = 1.2;
@@ -346,6 +347,7 @@
                 floatTexts = [];
                 rosePetals = [];
                 specialProjectiles = [];
+                impacts = [];
                 score = 0;
                 spawnInterval = 1.2;
                 baseSpeed = 140;
@@ -425,6 +427,50 @@
                     ctx.bezierCurveTo(-5, 15, -10, 10, -10, 5);
                     ctx.bezierCurveTo(-10, 0, -5, -5, 0, 0);
                     ctx.fill();
+                    ctx.restore();
+                });
+            }
+
+            function spawnImpact(x, y) {
+                impacts.push({ x, y, timer: 0.25, maxTime: 0.25, rotation: Math.random() * Math.PI });
+            }
+
+            function updateImpacts(dt) {
+                for (let i = impacts.length - 1; i >= 0; i--) {
+                    const imp = impacts[i];
+                    imp.timer -= dt;
+                    if (imp.timer <= 0) impacts.splice(i, 1);
+                }
+            }
+
+            function drawImpacts() {
+                impacts.forEach(imp => {
+                    ctx.save();
+                    ctx.translate(imp.x, imp.y);
+                    ctx.rotate(imp.rotation);
+                    const p = imp.timer / imp.maxTime;
+                    const scale = 0.5 + (1 - p) * 1.5; // Expand quickly
+                    ctx.scale(scale, scale);
+                    ctx.globalAlpha = p;
+
+                    // Draw a jagged hit shape (starburst)
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    const spikes = 8;
+                    const outerRadius = 30;
+                    const innerRadius = 12;
+                    for (let i = 0; i < spikes * 2; i++) {
+                        const r = (i % 2 === 0) ? outerRadius : innerRadius;
+                        const a = (Math.PI * i) / spikes;
+                        ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#ffb347'; // Orange-ish outline
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
                     ctx.restore();
                 });
             }
@@ -1143,6 +1189,7 @@
                         
                         // Add float text
                         addFloatText('SLAP! 👋', c.x, c.y);
+                        spawnImpact(c.x, c.y);
                         
                         // Play slap sound (using a beep-like effect)
                         playSound(600, 0.1);
@@ -1469,6 +1516,7 @@
                 updatePets(dt);
                 updatePowerups(dt);
                 updateSpecialProjectiles(dt);
+                updateImpacts(dt);
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -1522,6 +1570,7 @@
                 drawPets();
                 drawRosePetals();
                 drawSlapEffect();
+                drawImpacts();
                 drawPlayer();
                 drawPetsOverlay();
                 drawHUD();
