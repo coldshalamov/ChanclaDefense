@@ -169,7 +169,6 @@
             let floatTexts = [];
             let rosePetals = [];
             let specialProjectiles = [];
-            let impacts = [];
             let score = 0;
             let bestScore = 0;
             let spawnInterval = 1.2;
@@ -186,6 +185,7 @@
             let winAnimationStart = 0;
             let shakeTimer = 0;
             let shakeIntensity = 0;
+            let impacts = [];
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -1260,6 +1260,31 @@
                     
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
+                        // Check for chain reaction with other chanclas
+                        for (let j = 0; j < chanclas.length; j++) {
+                            if (i === j) continue;
+                            const other = chanclas[j];
+                            if (!other.slapped) {
+                                const distToOther = Math.sqrt(Math.pow(c.x - other.x, 2) + Math.pow(c.y - other.y, 2));
+                                if (distToOther < (c.w + other.w) / 2) {
+                                    // Chain reaction!
+                                    other.slapped = true;
+                                    // Push away from the hitting chancla, plus some transferred momentum
+                                    let pushX = (other.x - c.x);
+                                    // Ensure some horizontal movement if perfectly aligned
+                                    if (Math.abs(pushX) < 1) pushX = (Math.random() - 0.5) * 10;
+
+                                    other.vx = pushX * 8 + c.vx * 0.3;
+                                    other.vy = -300 + (Math.random() - 0.5) * 100;
+
+                                    addFloatText('CHAIN! ⚡', other.x, other.y);
+                                    spawnImpact(other.x, other.y);
+                                    playSound(700, 0.1);
+                                    score += 5; // Bonus score for chaotic skill
+                                }
+                            }
+                        }
+
                         // Check collision with Isa for slapped chanclas
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
