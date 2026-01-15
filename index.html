@@ -157,6 +157,10 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
+            // Load sandal sprite image for cross-platform consistency
+            const sandalImage = new Image();
+            sandalImage.src = 'sandal_sprite.png';
+
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
             let state = STATE.TITLE;
 
@@ -195,7 +199,7 @@
 
             const keys = { left: false, right: false };
             const touch = { left: false, right: false };
-            
+
             // Audio context for sound effects (reuse to avoid browser limits)
             let audioContext = null;
             function getAudioContext() {
@@ -779,11 +783,26 @@
             function drawChancla(ctx, x, y, w, h, isSuper) {
                 ctx.save();
                 ctx.translate(x, y);
-                const emoji = isSuper ? '🩴💥' : '🩴💨';
-                ctx.font = `${Math.max(28, w * 1.4)}px 'Segoe UI Emoji','Apple Color Emoji', sans-serif`;
-                ctx.textAlign = 'center';
                 ctx.rotate(-0.22);
-                ctx.fillText(emoji, 0, h * 0.2);
+
+                // Draw sandal image (always attempt - browser will draw when loaded)
+                const size = Math.max(32, w * 1.4);
+                try {
+                    ctx.drawImage(sandalImage, -size / 2, -size / 2, size, size);
+                } catch (e) {
+                    // Fallback: draw a simple sandal shape if image fails
+                    ctx.fillStyle = '#f4a460';
+                    ctx.fillRect(-size / 2, -size / 4, size, size / 2);
+                    ctx.fillStyle = '#8b4513';
+                    ctx.fillRect(-size / 2, -size / 8, size, size / 8);
+                }
+
+                // Draw motion effect
+                ctx.font = `${size * 0.8}px sans-serif`;
+                ctx.textAlign = 'center';
+                const motionEmoji = isSuper ? '💥' : '💨';
+                ctx.fillText(motionEmoji, size * 0.3, h * 0.2);
+
                 ctx.restore();
             }
 
@@ -936,28 +955,28 @@
                     ctx.textAlign = 'center';
                     ctx.fillText('🍺 chill ' + slowEffect.timer.toFixed(1) + 's', canvas.width / 2, 22);
                 }
-                
+
                 // Draw special attack bar
                 const barWidth = 180;
                 const barHeight = 20;
                 const barX = canvas.width / 2 - barWidth / 2 - 20;
                 const barY = 40;
-                
+
                 // Background
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
                 roundRect(ctx, barX, barY, barWidth, barHeight, 10);
                 ctx.fill();
-                
+
                 // Fill bar with gradient from blue to red
                 if (specialAttackBar > 0) {
                     const progress = specialAttackBar / maxSpecialAttack;
                     const fillWidth = barWidth * progress;
-                    
+
                     const gradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
                     gradient.addColorStop(0, '#4a90e2');
                     gradient.addColorStop(0.5, progress > 0.5 ? '#9b4ae2' : '#4a90e2');
                     gradient.addColorStop(1, progress > 0.7 ? '#e24a4a' : (progress > 0.5 ? '#9b4ae2' : '#4a90e2'));
-                    
+
                     ctx.fillStyle = gradient;
                     ctx.save();
                     ctx.beginPath();
@@ -967,13 +986,13 @@
                     ctx.fill();
                     ctx.restore();
                 }
-                
+
                 // Border
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
                 roundRect(ctx, barX, barY, barWidth, barHeight, 10);
                 ctx.stroke();
-                
+
                 // Eggplant emoji
                 const p = Math.min(1, specialAttackBar / maxSpecialAttack);
                 ctx.save();
@@ -1024,23 +1043,23 @@
                     ctx.fillText('READY!', 0, 0);
                     ctx.restore();
                 }
-                
+
                 // Draw Isa's anger bar
                 const angerBarWidth = 150;
                 const angerBarHeight = 15;
                 const angerBarX = canvas.width / 2 - angerBarWidth / 2;
                 const angerBarY = 8;
-                
+
                 // Background
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
                 roundRect(ctx, angerBarX, angerBarY, angerBarWidth, angerBarHeight, 8);
                 ctx.fill();
-                
+
                 // Fill bar
                 if (isa.anger > 0) {
                     const angerProgress = isa.anger / isa.maxAnger;
                     const angerFillWidth = angerBarWidth * angerProgress;
-                    
+
                     ctx.fillStyle = angerProgress > 0.5 ? '#e24a4a' : '#e2a04a';
                     ctx.save();
                     ctx.beginPath();
@@ -1050,19 +1069,19 @@
                     ctx.fill();
                     ctx.restore();
                 }
-                
+
                 // Border
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 1.5;
                 roundRect(ctx, angerBarX, angerBarY, angerBarWidth, angerBarHeight, 8);
                 ctx.stroke();
-                
+
                 // Label
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText("Isa's Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
-                
+
                 ctx.restore();
             }
 
@@ -1167,37 +1186,37 @@
 
             function trySlap() {
                 if (slapCooldown > 0) return;
-                
+
                 slapEffect.timer = slapEffect.duration;
 
                 const slapRange = 80;
                 let slappedAny = false;
-                
+
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
                     const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
-                    
+
                     if (dist < slapRange) {
                         // Slap the chancla away
                         c.vx = (c.x - player.x) * 8;
                         c.vy = -300;
                         c.slapped = true;
                         slappedAny = true;
-                        
+
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 15);
-                        
+
                         // Add float text
                         addFloatText('SLAP! 👋', c.x, c.y);
                         spawnImpact(c.x, c.y);
-                        
+
                         // Play slap sound (using a beep-like effect)
                         playSound(600, 0.1);
-                        
+
                         if (Math.random() < 0.3) sayRandom('slapSuccess');
                     }
                 }
-                
+
                 if (slappedAny) {
                     slapCooldown = 0.3;
                 } else {
@@ -1215,12 +1234,12 @@
                         targetY: isa.y,
                         speed: 400
                     });
-                    
+
                     specialAttackBar = 0;
-                    
+
                     // Play special attack sound
                     playSound(800, 0.2);
-                    
+
                     addFloatText('SPECIAL! 🦵', player.x, player.y - 30);
                     sayPlayer('fireSpecial');
                 }
@@ -1231,19 +1250,19 @@
                 try {
                     const audioCtx = getAudioContext();
                     if (!audioCtx) return;
-                    
+
                     const oscillator = audioCtx.createOscillator();
                     const gainNode = audioCtx.createGain();
-                    
+
                     oscillator.connect(gainNode);
                     gainNode.connect(audioCtx.destination);
-                    
+
                     oscillator.frequency.value = frequency;
                     oscillator.type = 'sine';
-                    
+
                     gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
                     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-                    
+
                     oscillator.start(audioCtx.currentTime);
                     oscillator.stop(audioCtx.currentTime + duration);
                 } catch (e) {
@@ -1257,7 +1276,7 @@
                     const c = chanclas[i];
                     c.x += c.vx * dt;
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
-                    
+
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
                         // Check for chain reaction with other chanclas
@@ -1288,7 +1307,7 @@
                         // Check collision with Isa for slapped chanclas
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
-                        if (distToIsa < 40 + c.w/2) {
+                        if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
                             const damage = c.type === 'super' ? 15 : 8;
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -1299,8 +1318,8 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                               state = STATE.WIN;
-                               sayRandom('win');
+                                state = STATE.WIN;
+                                sayRandom('win');
                             }
                             continue;
                         }
@@ -1310,10 +1329,10 @@
                             continue;
                         }
                     }
-                    
+
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
-                    
+
                     if (!c.slapped && rectsOverlap(player, c)) {
                         if (player.shield) {
                             player.shield = false;
@@ -1459,26 +1478,26 @@
             function updateSpecialProjectiles(dt) {
                 for (let i = specialProjectiles.length - 1; i >= 0; i--) {
                     const proj = specialProjectiles[i];
-                    
+
                     // Move towards Isa
                     const dx = proj.targetX - proj.x;
                     const dy = proj.targetY - proj.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-                    
+
                     if (dist < 10) {
                         // Hit Isa!
                         isa.anger = Math.max(0, isa.anger - 20);
                         isa.hitTimer = 0.7;
                         specialProjectiles.splice(i, 1);
-                        
+
                         // Play hit sound
                         playSound(1000, 0.15);
-                        
+
                         const hitWords = dialogue.hitBySpecial;
                         const word = hitWords[Math.floor(Math.random() * hitWords.length)];
                         addFloatText(word + ' 💥', isa.x, isa.y);
                         sayRandom('hitBySpecial');
-                        
+
                         // Check for win
                         if (isa.anger <= 0) {
                             state = STATE.WIN;
@@ -1486,7 +1505,7 @@
                         }
                         continue;
                     }
-                    
+
                     proj.x += (dx / dist) * proj.speed * dt;
                     proj.y += (dy / dist) * proj.speed * dt;
                 }
@@ -1567,7 +1586,7 @@
                         });
                     }
                 }
-                
+
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
                 if (slapCooldown > 0) slapCooldown -= dt;
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
@@ -1612,19 +1631,19 @@
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.6)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
+
                 // Draw Isa moving down and embracing
                 if (winAnimationStart === 0) winAnimationStart = Date.now();
                 const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
                 const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
                 drawIsaAvatar(ctx, isa.x, isaWinY, 78);
-                
+
                 // Speech bubble
                 if (winProgress > 0.7) {
                     const bubbleWidth = 280;
                     const bubbleX = canvas.width / 2 - bubbleWidth / 2;
                     const bubbleY = isaWinY + 50;
-                    
+
                     ctx.fillStyle = 'rgba(255, 192, 203, 0.95)';
                     roundRect(ctx, bubbleX, bubbleY, bubbleWidth, 70, 12);
                     ctx.fill();
@@ -1632,14 +1651,14 @@
                     ctx.lineWidth = 2;
                     roundRect(ctx, bubbleX, bubbleY, bubbleWidth, 70, 12);
                     ctx.stroke();
-                    
+
                     ctx.fillStyle = '#333';
                     ctx.font = '14px sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     wrapText(ctx, dialogueText || "Te amo, Papi. I only hit you because I love you", canvas.width / 2, bubbleY + 35, bubbleWidth - 14, 16);
                 }
-                
+
                 // Ending caption
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
@@ -1647,7 +1666,7 @@
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
                 ctx.font = '20px sans-serif';
                 ctx.fillText("You've survived another day...", canvas.width / 2, 240);
-                
+
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';
                 roundRect(ctx, 110, 550, canvas.width - 220, 50, 12);
@@ -1655,7 +1674,7 @@
                 ctx.fillStyle = '#222';
                 ctx.font = '20px sans-serif';
                 ctx.fillText('Play again', canvas.width / 2, 582);
-                
+
                 ctx.restore();
             }
 
@@ -1696,14 +1715,14 @@
             canvas.addEventListener('touchstart', (e) => {
                 if (state === STATE.TITLE) { startGameFromTitle(); return; }
                 if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
-                
+
                 if (state === STATE.PLAYING) {
                     const rect = canvas.getBoundingClientRect();
                     const touchPoint = e.touches[0];
                     const x = touchPoint.clientX - rect.left;
                     const y = touchPoint.clientY - rect.top;
                     const relativeY = y / rect.height;
-                    
+
                     // If tapping in the upper area (not movement zones at bottom), trigger slap
                     if (relativeY < 0.6) {
                         if (specialAttackBar >= maxSpecialAttack) {
@@ -1722,7 +1741,7 @@
             function handleKey(e, isDown) {
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
-                
+
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
                     if (isDown && state === STATE.PLAYING) {
@@ -1734,7 +1753,7 @@
                     }
                     e.preventDefault();
                 }
-                
+
                 if (isDown && e.key === 'Enter' && state !== STATE.PLAYING) {
                     resetGame();
                 }
