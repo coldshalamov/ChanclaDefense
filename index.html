@@ -433,8 +433,8 @@
                 });
             }
 
-            function spawnImpact(x, y) {
-                impacts.push({ x, y, timer: 0.25, maxTime: 0.25, rotation: Math.random() * Math.PI });
+            function spawnImpact(x, y, isBig = false) {
+                impacts.push({ x, y, timer: 0.25, maxTime: 0.25, rotation: Math.random() * Math.PI, isBig });
             }
 
             function updateImpacts(dt) {
@@ -451,12 +451,12 @@
                     ctx.translate(imp.x, imp.y);
                     ctx.rotate(imp.rotation);
                     const p = imp.timer / imp.maxTime;
-                    const scale = 0.5 + (1 - p) * 1.5; // Expand quickly
+                    const scale = (0.5 + (1 - p) * 1.5) * (imp.isBig ? 1.4 : 1); // Expand quickly
                     ctx.scale(scale, scale);
                     ctx.globalAlpha = p;
 
                     // Draw a jagged hit shape (starburst)
-                    ctx.fillStyle = '#fff';
+                    ctx.fillStyle = imp.isBig ? '#fffce0' : '#fff';
                     ctx.beginPath();
                     const spikes = 8;
                     const outerRadius = 30;
@@ -469,7 +469,7 @@
                     ctx.closePath();
                     ctx.fill();
 
-                    ctx.strokeStyle = '#ffb347'; // Orange-ish outline
+                    ctx.strokeStyle = imp.isBig ? '#00e5ff' : '#ffb347'; // Cyan for perfect, Orange normal
                     ctx.lineWidth = 3;
                     ctx.stroke();
 
@@ -1177,6 +1177,7 @@
                 slapEffect.timer = slapEffect.duration;
 
                 const slapRange = 80;
+                const perfectRange = 50;
                 let slappedAny = false;
 
                 for (let i = chanclas.length - 1; i >= 0; i--) {
@@ -1185,21 +1186,29 @@
 
                     if (dist < slapRange) {
                         // Slap the chancla away
-                        c.vx = (c.x - player.x) * 8;
-                        c.vy = -300;
+                        const isPerfect = dist < perfectRange;
+
+                        c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
+                        c.vy = isPerfect ? -550 : -300;
                         c.slapped = true;
-                        c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 10);
+                        c.isPerfect = isPerfect;
+                        c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
                         slappedAny = true;
 
                         // Increase special attack bar
-                        specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 15);
+                        specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
 
                         // Add float text
-                        addFloatText('SLAP! 👋', c.x, c.y);
-                        spawnImpact(c.x, c.y);
-
-                        // Play slap sound (using a beep-like effect)
-                        playSound(600, 0.1);
+                        if (isPerfect) {
+                            addFloatText('PERFECT! ✨', c.x, c.y - 10);
+                            spawnImpact(c.x, c.y, true);
+                            playSound(850, 0.15);
+                            triggerShake(6, 0.2);
+                        } else {
+                            addFloatText('SLAP! 👋', c.x, c.y);
+                            spawnImpact(c.x, c.y);
+                            playSound(600, 0.1);
+                        }
 
                         if (Math.random() < 0.3) sayRandom('slapSuccess');
                     }
@@ -1298,10 +1307,17 @@
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
-                            const damage = c.type === 'super' ? 15 : 8;
+                            let damage = c.type === 'super' ? 15 : 8;
+                            if (c.isPerfect) damage += 7;
+
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
-                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 20);
+
+                            if (c.isPerfect) {
+                                addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
+                            }
+                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+
                             playSound(900, 0.1); // Higher pitch for success
                             chanclas.splice(i, 1);
 
