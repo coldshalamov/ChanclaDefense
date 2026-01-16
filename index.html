@@ -778,7 +778,7 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper) {
+            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
                 // Use the thong sandal emoji for the classic "Chancla" look
@@ -787,7 +787,7 @@
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
-                ctx.rotate(-0.25);
+                ctx.rotate(rotation);
                 ctx.fillText(emoji, 0, h * 0.2);
                 ctx.restore();
             }
@@ -1125,7 +1125,8 @@
                 const y = isa.y + 40;
                 const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
                 const vx = (Math.random() - 0.5) * 60;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal' });
+                const rotSpeed = (Math.random() - 0.5) * 5;
+                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1187,6 +1188,7 @@
                         c.vx = (c.x - player.x) * 8;
                         c.vy = -300;
                         c.slapped = true;
+                        c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 10);
                         slappedAny = true;
 
                         // Increase special attack bar
@@ -1262,6 +1264,7 @@
                     const c = chanclas[i];
                     c.x += c.vx * dt;
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
+                    c.rotation += c.rotSpeed * dt;
 
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
@@ -1610,7 +1613,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super');
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
             }
 
             function drawWinScreen() {
