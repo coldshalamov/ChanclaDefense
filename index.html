@@ -188,6 +188,7 @@
             let shakeTimer = 0;
             let shakeIntensity = 0;
             let impacts = [];
+            let chainEffects = [];
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -360,6 +361,7 @@
                 winAnimationStart = 0;
                 slowEffect.timer = 0;
                 shakeTimer = 0;
+                chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -471,6 +473,63 @@
 
                     ctx.strokeStyle = imp.isBig ? '#00e5ff' : '#ffb347'; // Cyan for perfect, Orange normal
                     ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    ctx.restore();
+                });
+            }
+
+            function spawnChainEffect(x1, y1, x2, y2) {
+                chainEffects.push({ x1, y1, x2, y2, timer: 0.2, maxTime: 0.2 });
+            }
+
+            function updateChainEffects(dt) {
+                for (let i = chainEffects.length - 1; i >= 0; i--) {
+                    chainEffects[i].timer -= dt;
+                    if (chainEffects[i].timer <= 0) chainEffects.splice(i, 1);
+                }
+            }
+
+            function drawChainEffects() {
+                chainEffects.forEach(eff => {
+                    ctx.save();
+                    const p = eff.timer / eff.maxTime;
+                    ctx.globalAlpha = p;
+                    // Cyan electricity glow
+                    ctx.shadowColor = '#00e5ff';
+                    ctx.shadowBlur = 10;
+                    ctx.strokeStyle = '#00e5ff';
+                    ctx.lineWidth = 3;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+
+                    const segments = 6;
+                    ctx.beginPath();
+                    ctx.moveTo(eff.x1, eff.y1);
+
+                    const dx = (eff.x2 - eff.x1) / segments;
+                    const dy = (eff.y2 - eff.y1) / segments;
+
+                    // Vector for jitter direction (perpendicular)
+                    const len = Math.sqrt(dx * dx + dy * dy);
+                    const nx = -dy / (len || 1);
+                    const ny = dx / (len || 1);
+
+                    for (let i = 1; i < segments; i++) {
+                        // More jitter in the middle, less at ends
+                        const midFactor = 1 - Math.abs(i - segments / 2) / (segments / 2);
+                        const jitter = (Math.random() - 0.5) * 40 * midFactor;
+                        const tx = eff.x1 + dx * i + nx * jitter;
+                        const ty = eff.y1 + dy * i + ny * jitter;
+                        ctx.lineTo(tx, ty);
+                    }
+                    ctx.lineTo(eff.x2, eff.y2);
+                    ctx.stroke();
+
+                    // White hot core
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1.5;
+                    ctx.shadowBlur = 0;
                     ctx.stroke();
 
                     ctx.restore();
@@ -1296,6 +1355,7 @@
 
                                     addFloatText('CHAIN! ⚡', other.x, other.y);
                                     spawnImpact(other.x, other.y);
+                                    spawnChainEffect(c.x, c.y, other.x, other.y);
                                     playSound(700, 0.1);
                                     score += 5; // Bonus score for chaotic skill
                                 }
@@ -1566,6 +1626,7 @@
                 updatePowerups(dt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
+                updateChainEffects(dt);
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -1619,6 +1680,7 @@
                 drawPets();
                 drawRosePetals();
                 drawSlapEffect();
+                drawChainEffects();
                 drawImpacts();
                 drawPlayer();
                 drawPetsOverlay();
