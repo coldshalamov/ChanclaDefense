@@ -162,7 +162,7 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
             let state = STATE.TITLE;
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
@@ -349,6 +349,7 @@
                 player.y = canvas.height - 70;
                 player.lives = 3;
                 player.shield = false;
+                player.hitTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -574,7 +575,13 @@
                 ctx.font = '14px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('GRINGO', x, y - h / 2 - 10);
-                drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack);
+
+                // Determine expression
+                let expression = 'normal';
+                if (player.hitTimer > 0) expression = 'hit';
+                else if (slapEffect.timer > 0) expression = 'slap';
+
+                drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
                 if (player.shield) {
                     ctx.strokeStyle = '#9bfffa';
                     ctx.lineWidth = 3;
@@ -745,9 +752,15 @@
                 ctx.restore();
             }
 
-            function drawPlayerAvatar(ctx, x, y, size, hasRose) {
+            function drawPlayerAvatar(ctx, x, y, size, hasRose, expression = 'normal') {
                 ctx.save();
                 ctx.translate(x, y);
+
+                // Add shake/rotate for hit
+                if (expression === 'hit') {
+                    ctx.rotate((Math.random() - 0.5) * 0.25);
+                }
+
                 const headW = size * 1.1;
                 const headH = size * 0.9;
                 const skin = '#f3d9bf';
@@ -781,16 +794,52 @@
                 ctx.stroke();
 
                 // Eyes
-                ctx.fillStyle = '#2a1b12';
-                ctx.beginPath();
-                ctx.arc(-headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
-                ctx.arc(headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#fff';
-                ctx.beginPath();
-                ctx.arc(-headW * 0.19, -headH * 0.05, headW * 0.025, 0, Math.PI * 2);
-                ctx.arc(headW * 0.21, -headH * 0.05, headW * 0.025, 0, Math.PI * 2);
-                ctx.fill();
+                if (expression === 'hit') {
+                    // Wincing/Shut eyes
+                    ctx.strokeStyle = '#2a1b12';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    // Left eye (shut > <)
+                    ctx.moveTo(-headW * 0.25, -headH * 0.06);
+                    ctx.lineTo(-headW * 0.15, -headH * 0.02);
+                    ctx.moveTo(-headW * 0.15, -headH * 0.06);
+                    ctx.lineTo(-headW * 0.25, -headH * 0.02);
+
+                    // Right eye
+                    ctx.moveTo(headW * 0.15, -headH * 0.06);
+                    ctx.lineTo(headW * 0.25, -headH * 0.02);
+                    ctx.moveTo(headW * 0.25, -headH * 0.06);
+                    ctx.lineTo(headW * 0.15, -headH * 0.02);
+                    ctx.stroke();
+                } else if (expression === 'slap') {
+                    // Focused eyes (slightly squinted or angry brows)
+                    ctx.fillStyle = '#2a1b12';
+                    ctx.beginPath();
+                    ctx.ellipse(-headW * 0.2, -headH * 0.03, headW * 0.055, headH * 0.04, 0, 0, Math.PI * 2);
+                    ctx.ellipse(headW * 0.2, -headH * 0.03, headW * 0.055, headH * 0.04, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Eyebrows
+                    ctx.strokeStyle = '#2f1d12';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-headW * 0.28, -headH * 0.12);
+                    ctx.lineTo(-headW * 0.12, -headH * 0.08);
+                    ctx.moveTo(headW * 0.28, -headH * 0.12);
+                    ctx.lineTo(headW * 0.12, -headH * 0.08);
+                    ctx.stroke();
+                } else {
+                    // Normal eyes
+                    ctx.fillStyle = '#2a1b12';
+                    ctx.beginPath();
+                    ctx.arc(-headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
+                    ctx.arc(headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(-headW * 0.19, -headH * 0.05, headW * 0.025, 0, Math.PI * 2);
+                    ctx.arc(headW * 0.21, -headH * 0.05, headW * 0.025, 0, Math.PI * 2);
+                    ctx.fill();
+                }
 
                 // Beard fade
                 ctx.fillStyle = beard;
@@ -809,11 +858,32 @@
                 ctx.quadraticCurveTo(headW * 0.05, headH * 0.16, headW * 0.16, headH * 0.1);
                 ctx.fill();
 
-                // Smile
-                ctx.beginPath();
-                ctx.moveTo(-headW * 0.1, headH * 0.22);
-                ctx.quadraticCurveTo(0, headH * 0.3, headW * 0.1, headH * 0.22);
-                ctx.stroke();
+                // Mouth/Expression
+                if (expression === 'hit') {
+                    // Grimace / Wavy mouth
+                    ctx.strokeStyle = '#2f1d12'; // Dark brown
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-headW * 0.12, headH * 0.24);
+                    ctx.lineTo(-headW * 0.04, headH * 0.20);
+                    ctx.lineTo(headW * 0.04, headH * 0.24);
+                    ctx.lineTo(headW * 0.12, headH * 0.20);
+                    ctx.stroke();
+                } else if (expression === 'slap') {
+                    // Open mouth yelling
+                    ctx.fillStyle = '#4a2c22'; // Darker inside mouth
+                    ctx.beginPath();
+                    ctx.ellipse(0, headH * 0.24, headW * 0.12, headH * 0.08, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Smile
+                    ctx.strokeStyle = '#1e130c'; // Ensure color is set
+                    ctx.lineWidth = 1.6; // Ensure width is set
+                    ctx.beginPath();
+                    ctx.moveTo(-headW * 0.1, headH * 0.22);
+                    ctx.quadraticCurveTo(0, headH * 0.3, headW * 0.1, headH * 0.22);
+                    ctx.stroke();
+                }
 
                 // Rose in mouth (Tango style)
                 if (hasRose) {
@@ -1430,6 +1500,7 @@
                         const dmg = c.type === 'super' ? 2 : 1;
                         triggerShake(c.type === 'super' ? 15 : 8, 0.4);
                         player.lives -= dmg;
+                        player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
                         sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
                         sayPlayer('hit');
@@ -1705,6 +1776,7 @@
                 if (slapCooldown > 0) slapCooldown -= dt;
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
+                if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
