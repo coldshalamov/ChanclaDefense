@@ -187,6 +187,7 @@
             let winAnimationStart = 0;
             let shakeTimer = 0;
             let shakeIntensity = 0;
+            let hitStop = 0;
             let impacts = [];
             let chainEffects = [];
 
@@ -369,6 +370,7 @@
                 winAnimationStart = 0;
                 slowEffect.timer = 0;
                 shakeTimer = 0;
+                hitStop = 0;
                 chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
@@ -1282,6 +1284,7 @@
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.15);
                             triggerShake(6, 0.2);
+                            hitStop = 0.15;
                         } else {
                             addFloatText('SLAP! 👋', c.x, c.y);
                             spawnImpact(c.x, c.y);
@@ -1394,6 +1397,7 @@
 
                             if (c.isPerfect) {
                                 addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
+                                hitStop = 0.1;
                             }
                             addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
 
@@ -1625,6 +1629,20 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+
+                if (shakeTimer > 0) {
+                    shakeTimer -= dt;
+                    const dx = (Math.random() - 0.5) * shakeIntensity * 2;
+                    const dy = (Math.random() - 0.5) * shakeIntensity * 2;
+                    wrapper.style.transform = `translate(${dx}px, ${dy}px)`;
+                    if (shakeTimer <= 0) wrapper.style.transform = 'none';
+                }
+
+                if (hitStop > 0) {
+                    hitStop -= dt;
+                    return;
+                }
+
                 timeElapsed += dt;
                 spawnTimer += dt;
                 if (timeElapsed > 12) {
@@ -1692,14 +1710,6 @@
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
                 if (Math.random() < 0.002) sayPlayer('idle');
-
-                if (shakeTimer > 0) {
-                    shakeTimer -= dt;
-                    const dx = (Math.random() - 0.5) * shakeIntensity * 2;
-                    const dy = (Math.random() - 0.5) * shakeIntensity * 2;
-                    wrapper.style.transform = `translate(${dx}px, ${dy}px)`;
-                    if (shakeTimer <= 0) wrapper.style.transform = 'none';
-                }
             }
 
             function draw() {
