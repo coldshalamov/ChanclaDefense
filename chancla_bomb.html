@@ -1072,6 +1072,25 @@
                 lines.forEach((l, i) => context.fillText(l.trim(), x, y + i * lineHeight - (lines.length - 1) * lineHeight / 2));
             }
 
+            function drawLowHealthVignette() {
+                if (player.lives > 1) return;
+
+                ctx.save();
+                const pulse = (Math.sin(timeElapsed * 8) + 1) / 2;
+                const alpha = 0.05 + pulse * 0.25; // Oscillates between 0.05 and 0.3
+
+                const gradient = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, canvas.width * 0.3,
+                    canvas.width / 2, canvas.height / 2, canvas.height * 0.8
+                );
+                gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
+                gradient.addColorStop(1, `rgba(220, 20, 60, ${alpha})`);
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
+
             function drawHUD() {
                 ctx.save();
                 ctx.fillStyle = '#fff';
@@ -1797,6 +1816,7 @@
                 drawImpacts();
                 drawPlayer();
                 drawPetsOverlay();
+                drawLowHealthVignette();
                 drawHUD();
                 drawFloatTexts();
                 drawDialogue();
