@@ -190,6 +190,7 @@
             let hitStop = 0;
             let impacts = [];
             let chainEffects = [];
+            let comboCount = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -362,6 +363,7 @@
                 specialProjectiles = [];
                 impacts = [];
                 score = 0;
+                comboCount = 0;
                 spawnInterval = 1.2;
                 baseSpeed = 140;
                 timeElapsed = 0;
@@ -378,6 +380,15 @@
                 playerDialogueTimer = 0;
                 state = STATE.PLAYING;
                 setDirectionsVisible(false);
+            }
+
+            function getComboPhrase(c) {
+                if (c >= 25) return "LEGEND! 👑";
+                if (c >= 15) return "IMPOSSIBLE! 🤯";
+                if (c >= 10) return "DIOS MIO! 😱";
+                if (c >= 6) return "FUEGO! 🔥";
+                if (c >= 3) return "SPICY! 🌶️";
+                return "";
             }
 
             const cityShapes = [];
@@ -1363,19 +1374,24 @@
                         c.isPerfect = isPerfect;
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
                         slappedAny = true;
+                        comboCount++;
+                        score += comboCount;
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
 
+                        const comboPhrase = getComboPhrase(comboCount);
+                        const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
+
                         // Add float text
                         if (isPerfect) {
-                            addFloatText('PERFECT! ✨', c.x, c.y - 10);
+                            addFloatText('PERFECT!' + comboText, c.x, c.y - 10);
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.15);
                             triggerShake(6, 0.2);
                             hitStop = 0.15;
                         } else {
-                            addFloatText('SLAP! 👋', c.x, c.y);
+                            addFloatText('SLAP!' + comboText, c.x, c.y);
                             spawnImpact(c.x, c.y);
                             playSound(600, 0.1);
                         }
@@ -1388,6 +1404,7 @@
                     slapCooldown = 0.3;
                 } else {
                     slapCooldown = 0.15;
+                    comboCount = 0;
                 }
             }
 
@@ -1464,11 +1481,13 @@
                                     other.vx = pushX * 8 + c.vx * 0.3;
                                     other.vy = -300 + (Math.random() - 0.5) * 100;
 
-                                    addFloatText('CHAIN! ⚡', other.x, other.y);
+                                    comboCount++;
+                                    const comboPhrase = getComboPhrase(comboCount);
+                                    addFloatText(`CHAIN! x${comboCount} ${comboPhrase}`, other.x, other.y);
                                     spawnImpact(other.x, other.y);
                                     spawnChainEffect(c.x, c.y, other.x, other.y);
                                     playSound(700, 0.1);
-                                    score += 5; // Bonus score for chaotic skill
+                                    score += 5 + comboCount; // Bonus score for chaotic skill
                                 }
                             }
                         }
@@ -1517,6 +1536,7 @@
                             continue;
                         }
                         const dmg = c.type === 'super' ? 2 : 1;
+                        comboCount = 0;
                         triggerShake(c.type === 'super' ? 15 : 8, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
