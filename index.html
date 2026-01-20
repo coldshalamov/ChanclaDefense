@@ -191,6 +191,7 @@
             let impacts = [];
             let chainEffects = [];
             let comboCount = 0;
+            const flash = { timer: 0, maxTime: 0, color: '#fff' };
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -345,6 +346,12 @@
                 shakeTimer = duration;
             }
 
+            function triggerFlash(duration, color = '#fff') {
+                flash.timer = duration;
+                flash.maxTime = duration;
+                flash.color = color;
+            }
+
             function resetGame() {
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
@@ -374,6 +381,7 @@
                 slowEffect.timer = 0;
                 shakeTimer = 0;
                 hitStop = 0;
+                flash.timer = 0;
                 chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
@@ -437,6 +445,16 @@
 
                 ctx.fillStyle = '#ffe066';
                 starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+            }
+
+            function drawFlash() {
+                if (flash.timer <= 0) return;
+                const alpha = (flash.timer / flash.maxTime) * 0.45;
+                ctx.save();
+                ctx.fillStyle = flash.color;
+                ctx.globalAlpha = alpha;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
             }
 
             function drawRosePetals() {
@@ -1389,6 +1407,7 @@
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.15);
                             triggerShake(6, 0.2);
+                            triggerFlash(0.15, '#fff');
                             hitStop = 0.15;
                         } else {
                             addFloatText('SLAP!' + comboText, c.x, c.y);
@@ -1748,6 +1767,10 @@
                     if (shakeTimer <= 0) wrapper.style.transform = 'none';
                 }
 
+                if (flash.timer > 0) {
+                    flash.timer -= dt;
+                }
+
                 if (hitStop > 0) {
                     hitStop -= dt;
                     return;
@@ -1837,6 +1860,7 @@
                 drawPlayer();
                 drawPetsOverlay();
                 drawLowHealthVignette();
+                drawFlash();
                 drawHUD();
                 drawFloatTexts();
                 drawDialogue();
