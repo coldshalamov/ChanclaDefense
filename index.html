@@ -1389,6 +1389,7 @@
                 if (slapCooldown > 0) return;
 
                 slapEffect.timer = slapEffect.duration;
+                slapEffect.type = 'miss';
 
                 const slapRange = 80;
                 const perfectRange = 50;
@@ -1401,6 +1402,10 @@
                     if (dist < slapRange) {
                         // Slap the chancla away
                         const isPerfect = dist < perfectRange;
+
+                        // Upgrade visual effect
+                        if (isPerfect) slapEffect.type = 'perfect';
+                        else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
 
                         c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
                         c.vy = isPerfect ? -550 : -300;
