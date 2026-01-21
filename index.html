@@ -625,6 +625,7 @@
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
                 else if (slapEffect.timer > 0) expression = 'slap';
+                else if (slowEffect.timer > 0) expression = 'chill';
 
                 drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
                 if (player.shield) {
@@ -804,6 +805,8 @@
                 // Add shake/rotate for hit
                 if (expression === 'hit') {
                     ctx.rotate((Math.random() - 0.5) * 0.25);
+                } else if (expression === 'chill') {
+                    ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
                 }
 
                 const headW = size * 1.1;
@@ -829,17 +832,44 @@
                 // Glasses frame
                 ctx.strokeStyle = '#1e130c';
                 ctx.lineWidth = 2.4;
+
+                // Left lens
                 roundRect(ctx, -headW * 0.32, -headH * 0.1, headW * 0.24, headH * 0.18, 6);
+                if (expression === 'chill') {
+                    ctx.fillStyle = '#111';
+                    ctx.fill();
+                }
                 ctx.stroke();
+
+                // Right lens
                 roundRect(ctx, headW * 0.08, -headH * 0.1, headW * 0.24, headH * 0.18, 6);
+                if (expression === 'chill') {
+                    ctx.fillStyle = '#111';
+                    ctx.fill();
+                }
                 ctx.stroke();
+
                 ctx.beginPath();
                 ctx.moveTo(-headW * 0.08, -headH * 0.02);
                 ctx.lineTo(headW * 0.08, -headH * 0.02);
                 ctx.stroke();
 
                 // Eyes
-                if (expression === 'hit') {
+                if (expression === 'chill') {
+                    // Reflection on sunglasses
+                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                    ctx.beginPath();
+                    ctx.moveTo(-headW * 0.28, -headH * 0.08);
+                    ctx.lineTo(-headW * 0.18, -headH * 0.08);
+                    ctx.lineTo(-headW * 0.28, 0);
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(headW * 0.12, -headH * 0.08);
+                    ctx.lineTo(headW * 0.22, -headH * 0.08);
+                    ctx.lineTo(headW * 0.12, 0);
+                    ctx.fill();
+                } else if (expression === 'hit') {
                     // Wincing/Shut eyes
                     ctx.strokeStyle = '#2a1b12';
                     ctx.lineWidth = 2.5;
@@ -920,6 +950,14 @@
                     ctx.beginPath();
                     ctx.ellipse(0, headH * 0.24, headW * 0.12, headH * 0.08, 0, 0, Math.PI * 2);
                     ctx.fill();
+                } else if (expression === 'chill') {
+                    // Cool smirk
+                    ctx.strokeStyle = '#1e130c';
+                    ctx.lineWidth = 1.6;
+                    ctx.beginPath();
+                    ctx.moveTo(-headW * 0.1, headH * 0.24);
+                    ctx.quadraticCurveTo(0, headH * 0.26, headW * 0.12, headH * 0.22);
+                    ctx.stroke();
                 } else {
                     // Smile
                     ctx.strokeStyle = '#1e130c'; // Ensure color is set
