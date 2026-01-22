@@ -296,9 +296,7 @@
                 fireSpecial: [
                     "I got something that will calm you down!",
                     "Hora del jamón, cariño!",
-                    "Flores para mi reina!",
-                    "Baby, I'm sorry!",
-                    "For you, mi amor!"
+            "Baby, I'm sorry!"
                 ],
                 idle: [
                     "Woah, woah chill, alright? Chill!",
@@ -1529,7 +1527,7 @@
                     // Play special attack sound
                     playSound(800, 0.2);
 
-                    addFloatText('SPECIAL! 💐', player.x, player.y - 30);
+                    addFloatText('SPECIAL! 🦵', player.x, player.y - 30);
                     sayPlayer('fireSpecial');
                 }
             }
@@ -1811,7 +1809,7 @@
                             vy: 50, // slowly fall
                             rotation: Math.random() * Math.PI * 2,
                             rotSpeed: (Math.random() - 0.5) * 2,
-                            emoji: Math.random() < 0.7 ? '💖' : '✨',
+                            emoji: Math.random() < 0.7 ? '💦' : '✨',
                             size: 16
                         });
                     }
@@ -1830,7 +1828,7 @@
                         addFloatText(word + ' ❤️', isa.x, isa.y);
                         sayRandom('hitBySpecial');
 
-                        // Spawn Heart Explosion
+                        // Spawn Impact Explosion
                         for (let k = 0; k < 15; k++) {
                             const angle = (Math.PI * 2 * k) / 15;
                             const speed = 150 + Math.random() * 150;
@@ -1841,7 +1839,7 @@
                                 vy: Math.sin(angle) * speed,
                                 rotation: Math.random() * Math.PI * 2,
                                 rotSpeed: (Math.random() - 0.5) * 10,
-                                emoji: Math.random() < 0.5 ? '❤️' : '💕',
+                                emoji: Math.random() < 0.5 ? '✨' : '💨',
                                 size: 24
                             });
                         }
@@ -1867,7 +1865,7 @@
                     ctx.font = '70px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText('💐', 0, 0);
+                    ctx.fillText('🦵', 0, 0);
                     ctx.restore();
                 });
             }
