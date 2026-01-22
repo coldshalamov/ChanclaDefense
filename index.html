@@ -599,8 +599,21 @@
                 ctx.translate(player.x, player.y - 40);
 
                 const p = slapEffect.timer / slapEffect.duration;
-                ctx.strokeStyle = 'rgba(255, 255, 255, ' + (p * 0.8) + ')';
-                ctx.lineWidth = 4;
+                let color = '255, 255, 255';
+                let width = 4;
+
+                if (slapEffect.type === 'hit') {
+                    color = '255, 179, 71'; // #ffb347 orange
+                    width = 6;
+                } else if (slapEffect.type === 'perfect') {
+                    color = '0, 229, 255'; // #00e5ff cyan
+                    width = 8;
+                    ctx.shadowColor = '#00e5ff';
+                    ctx.shadowBlur = 10;
+                }
+
+                ctx.strokeStyle = 'rgba(' + color + ', ' + (p * 0.8) + ')';
+                ctx.lineWidth = width;
                 ctx.lineCap = 'round';
 
                 ctx.beginPath();
