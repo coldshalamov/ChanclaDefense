@@ -192,6 +192,7 @@
             let chainEffects = [];
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
+            let specialReadyTriggered = false;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -383,6 +384,7 @@
                 shakeTimer = 0;
                 hitStop = 0;
                 flash.timer = 0;
+                specialReadyTriggered = false;
                 chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
@@ -1478,6 +1480,24 @@
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
 
+                        if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
+                            specialReadyTriggered = true;
+                            // HUD egg icon approx location
+                            const eggX = 290;
+                            const eggY = 50;
+                            spawnImpact(eggX, eggY, true);
+                            for (let k = 0; k < 8; k++) {
+                                rosePetals.push({
+                                    x: eggX, y: eggY,
+                                    vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200,
+                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+                                    emoji: '✨', size: 20
+                                });
+                            }
+                            playSound(1200, 0.25);
+                            triggerShake(5, 0.2);
+                        }
+
                         const comboPhrase = getComboPhrase(comboCount);
                         const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
 
@@ -1523,6 +1543,7 @@
                     });
 
                     specialAttackBar = 0;
+                    specialReadyTriggered = false;
 
                     // Play special attack sound
                     playSound(800, 0.2);
