@@ -608,9 +608,11 @@
                 ctx.save();
                 ctx.translate(player.x, player.y - 40);
 
-                const p = slapEffect.timer / slapEffect.duration;
+                const p = 1 - (slapEffect.timer / slapEffect.duration);
+                const dir = slapEffect.swipeDir || 1;
                 let color = '255, 255, 255';
                 let width = 4;
+                const alpha = Math.max(0, 1.0 - Math.pow(p, 3));
 
                 if (slapEffect.type === 'hit') {
                     color = '255, 179, 71'; // #ffb347 orange
@@ -622,16 +624,31 @@
                     ctx.shadowBlur = 10;
                 }
 
-                ctx.strokeStyle = 'rgba(' + color + ', ' + (p * 0.8) + ')';
+                ctx.strokeStyle = 'rgba(' + color + ', ' + alpha + ')';
                 ctx.lineWidth = width;
                 ctx.lineCap = 'round';
 
+                const baseAngle = 1.5 * Math.PI;
+                const sweep = 0.7 * Math.PI;
+                const centerAngle = baseAngle + (p - 0.5) * sweep * dir;
+                const arcWidth = 0.25 * Math.PI;
+
                 ctx.beginPath();
-                // Arc swipe animation
-                const startAngle = Math.PI * 1.2;
-                const endAngle = Math.PI * 1.8;
-                ctx.arc(0, 0, 50, startAngle, endAngle);
+                ctx.arc(0, 0, 55, centerAngle - arcWidth / 2, centerAngle + arcWidth / 2);
                 ctx.stroke();
+
+                // Draw Hand
+                const handAngle = dir === 1 ? centerAngle + arcWidth / 2 : centerAngle - arcWidth / 2;
+                const handX = Math.cos(handAngle) * 55;
+                const handY = Math.sin(handAngle) * 55;
+
+                ctx.translate(handX, handY);
+                ctx.rotate(handAngle + Math.PI / 2);
+                ctx.font = '24px "Noto Color Emoji", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.fillText('✋', 0, 0);
 
                 ctx.restore();
             }
@@ -1451,6 +1468,7 @@
 
                 slapEffect.timer = slapEffect.duration;
                 slapEffect.type = 'miss';
+                slapEffect.swipeDir = Math.random() < 0.5 ? 1 : -1;
 
                 const slapRange = 80;
                 const perfectRange = 50;
