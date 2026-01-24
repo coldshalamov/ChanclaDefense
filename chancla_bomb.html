@@ -847,6 +847,21 @@
                     ctx.rotate((Math.random() - 0.5) * 0.25);
                 } else if (expression === 'chill') {
                     ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
+                } else if (expression === 'dead') {
+                    ctx.rotate(Math.PI / 20); // Slight tilt
+                }
+
+                // Draw Halo if dead
+                if (expression === 'dead') {
+                    ctx.save();
+                    ctx.strokeStyle = '#ffd700'; // Gold
+                    ctx.lineWidth = 4;
+                    ctx.shadowColor = '#ffd700';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.ellipse(0, -size * 0.7, size * 0.35, size * 0.1, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
                 }
 
                 const headW = size * 1.1;
@@ -926,6 +941,21 @@
                     ctx.moveTo(headW * 0.25, -headH * 0.06);
                     ctx.lineTo(headW * 0.15, -headH * 0.02);
                     ctx.stroke();
+                } else if (expression === 'dead') {
+                    // X Eyes
+                    ctx.strokeStyle = '#2a1b12';
+                    ctx.lineWidth = 2.5;
+                    const drawXEye = (cx, cy) => {
+                        const r = headW * 0.08;
+                        ctx.beginPath();
+                        ctx.moveTo(cx - r, cy - r);
+                        ctx.lineTo(cx + r, cy + r);
+                        ctx.moveTo(cx + r, cy - r);
+                        ctx.lineTo(cx - r, cy + r);
+                        ctx.stroke();
+                    };
+                    drawXEye(-headW * 0.2, -headH * 0.04);
+                    drawXEye(headW * 0.2, -headH * 0.04);
                 } else if (expression === 'slap') {
                     // Focused eyes (slightly squinted or angry brows)
                     ctx.fillStyle = '#2a1b12';
@@ -983,6 +1013,17 @@
                     ctx.lineTo(-headW * 0.04, headH * 0.20);
                     ctx.lineTo(headW * 0.04, headH * 0.24);
                     ctx.lineTo(headW * 0.12, headH * 0.20);
+                    ctx.stroke();
+                } else if (expression === 'dead') {
+                    // Dead tongue out
+                    ctx.fillStyle = '#e57373';
+                    ctx.strokeStyle = '#2f1d12';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(-headW * 0.08, headH * 0.22);
+                    ctx.quadraticCurveTo(headW * 0.05, headH * 0.35, headW * 0.15, headH * 0.25);
+                    ctx.quadraticCurveTo(headW * 0.1, headH * 0.22, -headW * 0.08, headH * 0.22);
+                    ctx.fill();
                     ctx.stroke();
                 } else if (expression === 'slap') {
                     // Open mouth yelling
@@ -1385,22 +1426,30 @@
 
             function drawGameOver() {
                 ctx.save();
-                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillStyle = 'rgba(0,0,0,0.75)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw Dead Player
+                drawPlayerAvatar(ctx, canvas.width / 2, canvas.height / 2 - 80, 80, false, 'dead');
+
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
-                ctx.font = '28px sans-serif';
-                ctx.fillText('Isa ganó', canvas.width / 2, 240);
-                ctx.font = '18px sans-serif';
-                ctx.fillText('Score: ' + score + ' | Mejores: ' + bestScore, canvas.width / 2, 275);
-                ctx.font = '16px sans-serif';
-                ctx.fillText(dialogueText || 'Fue un honor, supongo.', canvas.width / 2, 305);
+                ctx.font = '32px sans-serif';
+                ctx.fillText('Isa ganó', canvas.width / 2, canvas.height / 2 + 10);
+
+                ctx.font = '20px sans-serif';
+                ctx.fillText('Score: ' + score + ' | Best: ' + bestScore, canvas.width / 2, canvas.height / 2 + 45);
+
+                ctx.fillStyle = '#dcdcdc';
+                ctx.font = 'italic 16px sans-serif';
+                ctx.fillText(dialogueText || 'Fue un honor, supongo.', canvas.width / 2, canvas.height / 2 + 75);
+
                 ctx.fillStyle = '#ff9f1c';
-                roundRect(ctx, 110, 330, canvas.width - 220, 50, 12);
+                roundRect(ctx, 110, canvas.height / 2 + 110, canvas.width - 220, 50, 12);
                 ctx.fill();
                 ctx.fillStyle = '#222';
-                ctx.font = '20px sans-serif';
-                ctx.fillText('Play again', canvas.width / 2, 362);
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText('Play Again', canvas.width / 2, canvas.height / 2 + 142);
                 ctx.restore();
             }
 
