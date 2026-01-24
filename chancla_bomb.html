@@ -606,7 +606,7 @@
                 if (slapEffect.timer <= 0) return;
 
                 ctx.save();
-                ctx.translate(player.x, player.y - 40);
+                ctx.translate(player.x, player.y - 15);
 
                 const p = 1 - (slapEffect.timer / slapEffect.duration);
                 const dir = slapEffect.swipeDir || 1;
@@ -634,17 +634,17 @@
                 const arcWidth = 0.25 * Math.PI;
 
                 ctx.beginPath();
-                ctx.arc(0, 0, 55, centerAngle - arcWidth / 2, centerAngle + arcWidth / 2);
+                ctx.arc(0, 0, 75, centerAngle - arcWidth / 2, centerAngle + arcWidth / 2);
                 ctx.stroke();
 
                 // Draw Hand
                 const handAngle = dir === 1 ? centerAngle + arcWidth / 2 : centerAngle - arcWidth / 2;
-                const handX = Math.cos(handAngle) * 55;
-                const handY = Math.sin(handAngle) * 55;
+                const handX = Math.cos(handAngle) * 75;
+                const handY = Math.sin(handAngle) * 75;
 
                 ctx.translate(handX, handY);
                 ctx.rotate(handAngle + Math.PI / 2);
-                ctx.font = '24px "Noto Color Emoji", sans-serif';
+                ctx.font = '30px "Noto Color Emoji", sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
@@ -2022,10 +2022,10 @@
                 drawSpecialProjectiles();
                 drawPets();
                 drawRosePetals();
-                drawSlapEffect();
                 drawChainEffects();
                 drawImpacts();
                 drawPlayer();
+                drawSlapEffect();
                 drawPetsOverlay();
                 drawLowHealthVignette();
                 drawFlash();
