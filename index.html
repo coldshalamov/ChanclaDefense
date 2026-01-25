@@ -1592,6 +1592,17 @@
                 } else {
                     slapCooldown = 0.15;
                     comboCount = 0;
+                    playWhoosh();
+                    rosePetals.push({
+                        x: player.x + (Math.random() - 0.5) * 20,
+                        y: player.y - 40,
+                        vx: (Math.random() - 0.5) * 50,
+                        vy: -50,
+                        rotation: Math.random() * Math.PI * 2,
+                        rotSpeed: (Math.random() - 0.5) * 5,
+                        emoji: '💨',
+                        size: 24
+                    });
                 }
             }
 
@@ -1618,6 +1629,31 @@
                     addFloatText('SPECIAL! 🦵', player.x, player.y - 30);
                     sayPlayer('fireSpecial');
                 }
+            }
+
+            function playWhoosh() {
+                try {
+                    const audioCtx = getAudioContext();
+                    if (!audioCtx) return;
+
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    // Frequency sweep for whoosh
+                    const now = audioCtx.currentTime;
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+
+                    // Volume envelope
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } catch (e) {}
             }
 
             function playSound(frequency, duration) {
