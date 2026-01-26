@@ -666,6 +666,7 @@
                 if (player.hitTimer > 0) expression = 'hit';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
+                else if (comboCount >= 5) expression = 'cocky';
 
                 drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
                 if (player.shield) {
@@ -847,6 +848,8 @@
                     ctx.rotate((Math.random() - 0.5) * 0.25);
                 } else if (expression === 'chill') {
                     ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
+                } else if (expression === 'cocky') {
+                    ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
                 } else if (expression === 'dead') {
                     ctx.rotate(Math.PI / 20); // Slight tilt
                 }
@@ -972,6 +975,25 @@
                     ctx.moveTo(headW * 0.28, -headH * 0.12);
                     ctx.lineTo(headW * 0.12, -headH * 0.08);
                     ctx.stroke();
+                } else if (expression === 'cocky') {
+                    // Confident eyes with eyebrow raise
+                    ctx.fillStyle = '#2a1b12';
+                    // Eyes
+                    ctx.beginPath();
+                    ctx.arc(-headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
+                    ctx.arc(headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Eyebrows (One high, one low)
+                    ctx.strokeStyle = '#2f1d12';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    // Left (Raised)
+                    ctx.moveTo(-headW * 0.28, -headH * 0.15);
+                    ctx.quadraticCurveTo(-headW * 0.2, -headH * 0.20, -headW * 0.12, -headH * 0.15);
+                    // Right (Lower/Furrowed)
+                    ctx.moveTo(headW * 0.12, -headH * 0.08);
+                    ctx.quadraticCurveTo(headW * 0.2, -headH * 0.06, headW * 0.28, -headH * 0.08);
+                    ctx.stroke();
                 } else {
                     // Normal eyes
                     ctx.fillStyle = '#2a1b12';
@@ -1039,6 +1061,15 @@
                     ctx.moveTo(-headW * 0.1, headH * 0.24);
                     ctx.quadraticCurveTo(0, headH * 0.26, headW * 0.12, headH * 0.22);
                     ctx.stroke();
+                } else if (expression === 'cocky') {
+                    // Confident smirk
+                    ctx.strokeStyle = '#1e130c';
+                    ctx.lineWidth = 1.6;
+                    ctx.beginPath();
+                    // Asymmetrical smile
+                    ctx.moveTo(-headW * 0.1, headH * 0.24);
+                    ctx.quadraticCurveTo(0, headH * 0.28, headW * 0.12, headH * 0.20);
+                    ctx.stroke();
                 } else {
                     // Smile
                     ctx.strokeStyle = '#1e130c'; // Ensure color is set
@@ -1084,6 +1115,15 @@
                 ctx.moveTo(-headW * 0.18, headH / 2);
                 ctx.quadraticCurveTo(0, headH * 0.46, headW * 0.18, headH / 2);
                 ctx.stroke();
+
+                // Sparkle for cocky
+                if (expression === 'cocky') {
+                    ctx.font = '20px "Noto Color Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('✨', headW * 0.6, -headH * 0.4);
+                }
+
                 ctx.restore();
             }
 
