@@ -1087,9 +1087,22 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
+            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang) {
                 ctx.save();
                 ctx.translate(x, y);
+
+                if (isBoomerang) {
+                    ctx.save();
+                    const iconSize = Math.max(30, w * 1.4);
+                    ctx.font = `${iconSize}px 'Noto Color Emoji', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.globalAlpha = 0.8;
+                    // Draw the return icon
+                    ctx.fillText('↩️', 0, 0);
+                    ctx.restore();
+                }
+
                 // Use the thong sandal emoji for the classic "Chancla" look
                 const emoji = isSuper ? '🩴💥' : '🩴💨';
 
