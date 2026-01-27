@@ -1681,6 +1681,30 @@
 
                     addFloatText('SPECIAL! 🦵', player.x, player.y - 30);
                     sayPlayer('fireSpecial');
+
+                    // Defensive Burst: Reflect nearby chanclas
+                    let burstHit = false;
+                    const burstRange = 250;
+                    for (const c of chanclas) {
+                        const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                        if (dist < burstRange) {
+                            c.vx = (c.x - player.x) * 10;
+                            c.vy = -600; // Strong upward reflection
+                            c.slapped = true;
+                            c.isPerfect = true; // Critical damage
+                            c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * 35;
+                            spawnImpact(c.x, c.y, true);
+                            addFloatText('BURST!', c.x, c.y);
+                            burstHit = true;
+                        }
+                    }
+
+                    if (burstHit) {
+                        playSound(600, 0.3);
+                        triggerShake(8, 0.3);
+                    }
+                    // Visual shockwave at player
+                    spawnImpact(player.x, player.y - 40, true);
                 }
             }
 
