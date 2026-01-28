@@ -1143,6 +1143,12 @@
                     ctx.restore();
                 }
 
+                // Add drop shadow for depth
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetX = 4;
+                ctx.shadowOffsetY = 4;
+
                 // Use the thong sandal emoji for the classic "Chancla" look
                 const emoji = isSuper ? '🩴💥' : '🩴💨';
 
