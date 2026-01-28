@@ -284,6 +284,12 @@
                     "Eso no es justo, gringo!",
                     "¡Ay! Esa es mi chancla favorita!"
                 ],
+                comboBreaker: [
+                    "¡Te sentías muy salsa, eh?",
+                    "Iba bien... hasta que llegué yo. 😏",
+                    "¿Te pusiste nervioso, papi?",
+                    "Rompiendo tu combo y tu corazón. 💔"
+                ],
                 chisme: [
                     "Wait! Maria just posted!",
                     "Omg, hold on, I need to reply to this.",
@@ -1816,12 +1822,19 @@
                             continue;
                         }
                         const dmg = c.type === 'super' ? 2 : 1;
+                        const wasHighCombo = comboCount >= 5;
                         comboCount = 0;
                         triggerShake(c.type === 'super' ? 15 : 8, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
-                        sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
+
+                        if (wasHighCombo) {
+                            sayRandom('comboBreaker');
+                        } else {
+                            sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
+                        }
+
                         sayPlayer('hit');
                         if (player.lives === 1) sayRandom('lowHealth');
                         if (player.lives <= 0) {
