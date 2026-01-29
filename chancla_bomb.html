@@ -1956,6 +1956,15 @@
                 return Math.abs(a.x - b.x) < (a.w / 2 + b.w / 2) && Math.abs(a.y - b.y) < (a.h / 2 + b.h / 2);
             }
 
+            function updateFloatTexts(dt) {
+                for (let i = floatTexts.length - 1; i >= 0; i--) {
+                    const f = floatTexts[i];
+                    f.y -= 18 * dt;
+                    f.time -= dt;
+                    if (f.time <= 0) floatTexts.splice(i, 1);
+                }
+            }
+
             function updatePowerups(dt) {
                 for (let i = powerups.length - 1; i >= 0; i--) {
                     const p = powerups[i];
@@ -1968,12 +1977,6 @@
                     if (p.y > canvas.height + p.h) {
                         powerups.splice(i, 1);
                     }
-                }
-                for (let i = floatTexts.length - 1; i >= 0; i--) {
-                    const f = floatTexts[i];
-                    f.y -= 18 * dt;
-                    f.time -= dt;
-                    if (f.time <= 0) floatTexts.splice(i, 1);
                 }
             }
 
@@ -2081,6 +2084,32 @@
                     flash.timer -= dt;
                 }
 
+                // Visual effects continue during Hit Stop
+                updateImpacts(dt);
+                updateChainEffects(dt);
+                updateFloatTexts(dt);
+                if (slapEffect.timer > 0) slapEffect.timer -= dt;
+
+                // Update rose petals
+                for (let i = rosePetals.length - 1; i >= 0; i--) {
+                    const p = rosePetals[i];
+
+                    if (p.vx !== undefined) {
+                        p.x += p.vx * dt;
+                        p.y += p.vy * dt;
+                        p.vx *= 0.95; // Drag
+                        p.vy += 200 * dt; // Gravity
+                    } else {
+                        p.y += p.vy * dt;
+                        p.x += Math.sin(timeElapsed * 2 + p.offset) * 20 * dt;
+                    }
+
+                    p.rotation += p.rotSpeed * dt;
+                    if (p.y > canvas.height + 20) {
+                        rosePetals.splice(i, 1);
+                    }
+                }
+
                 if (hitStop > 0) {
                     hitStop -= dt;
                     return;
@@ -2116,28 +2145,6 @@
                 updatePets(dt);
                 updatePowerups(dt);
                 updateSpecialProjectiles(dt);
-                updateImpacts(dt);
-                updateChainEffects(dt);
-
-                // Update rose petals
-                for (let i = rosePetals.length - 1; i >= 0; i--) {
-                    const p = rosePetals[i];
-
-                    if (p.vx !== undefined) {
-                        p.x += p.vx * dt;
-                        p.y += p.vy * dt;
-                        p.vx *= 0.95; // Drag
-                        p.vy += 200 * dt; // Gravity
-                    } else {
-                        p.y += p.vy * dt;
-                        p.x += Math.sin(timeElapsed * 2 + p.offset) * 20 * dt;
-                    }
-
-                    p.rotation += p.rotSpeed * dt;
-                    if (p.y > canvas.height + 20) {
-                        rosePetals.splice(i, 1);
-                    }
-                }
 
                 // Spawn rose petals if special is ready
                 if (specialAttackBar >= maxSpecialAttack) {
@@ -2155,7 +2162,6 @@
 
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
                 if (slapCooldown > 0) slapCooldown -= dt;
-                if (slapEffect.timer > 0) slapEffect.timer -= dt;
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
