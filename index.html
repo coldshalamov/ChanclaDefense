@@ -1127,9 +1127,21 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang) {
+            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang, isFire) {
                 ctx.save();
                 ctx.translate(x, y);
+
+                if (isFire) {
+                    ctx.save();
+                    const fireScale = 1.0 + Math.sin(Date.now() / 100) * 0.1;
+                    ctx.scale(fireScale, fireScale);
+                    const fireSize = Math.max(36, w * 1.6);
+                    ctx.font = `${fireSize}px 'Noto Color Emoji', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🔥', 0, 0);
+                    ctx.restore();
+                }
 
                 if (isBoomerang) {
                     ctx.save();
@@ -1595,6 +1607,12 @@
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
                         slappedAny = true;
                         comboCount++;
+
+                        // Fuego Chancla Logic
+                        if (comboCount >= 6) {
+                            c.isFire = true;
+                        }
+
                         score += comboCount;
 
                         // Increase special attack bar
@@ -1742,6 +1760,18 @@
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     c.rotation += c.rotSpeed * dt;
 
+                    if (c.isFire && Math.random() < 0.35) {
+                        rosePetals.push({
+                            x: c.x, y: c.y,
+                            vx: (Math.random() - 0.5) * 50,
+                            vy: (Math.random() - 0.5) * 50,
+                            emoji: '🔥',
+                            size: 16,
+                            rotation: Math.random() * 6,
+                            rotSpeed: 2
+                        });
+                    }
+
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
                         // Check for chain reaction with other chanclas
@@ -1779,6 +1809,7 @@
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : 8;
                             if (c.isPerfect) damage += 7;
+                            if (c.isFire) damage += 10;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
@@ -2187,7 +2218,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang, c.isFire);
             }
 
             function drawWinScreen() {
