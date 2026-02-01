@@ -170,6 +170,7 @@
             let powerups = [];
             let floatTexts = [];
             let rosePetals = [];
+            let fireParticles = [];
             let specialProjectiles = [];
             let score = 0;
             let bestScore = 0;
@@ -369,6 +370,7 @@
                 powerups = [];
                 floatTexts = [];
                 rosePetals = [];
+                fireParticles = [];
                 specialProjectiles = [];
                 impacts = [];
                 score = 0;
@@ -481,6 +483,52 @@
                         ctx.bezierCurveTo(-10, 0, -5, -5, 0, 0);
                         ctx.fill();
                     }
+                    ctx.restore();
+                });
+            }
+
+            function spawnFireParticle(x, y) {
+                const life = 0.6 + Math.random() * 0.4;
+                fireParticles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 20,
+                    vy: -80 - Math.random() * 80,
+                    life: life,
+                    maxLife: life,
+                    size: 10 + Math.random() * 15
+                });
+            }
+
+            function updateFireParticles(dt) {
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.life -= dt;
+                    p.size -= 10 * dt;
+                    if (p.life <= 0 || p.size <= 0) {
+                        fireParticles.splice(i, 1);
+                    }
+                }
+            }
+
+            function drawFireParticles() {
+                fireParticles.forEach(p => {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    const alpha = Math.max(0, p.life / p.maxLife);
+                    ctx.globalAlpha = alpha;
+
+                    // Gradient color from yellow to red
+                    const progress = 1 - (p.life / p.maxLife);
+                    let color = `rgba(255, 200, 0, ${alpha})`; // Yellow
+                    if (progress > 0.3) color = `rgba(255, 140, 0, ${alpha})`; // Orange
+                    if (progress > 0.6) color = `rgba(255, 69, 0, ${alpha})`; // Red
+
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, Math.max(0, p.size), 0, Math.PI * 2);
+                    ctx.fill();
                     ctx.restore();
                 });
             }
@@ -2118,6 +2166,13 @@
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
+                updateFireParticles(dt);
+
+                if (comboCount >= 6) {
+                    if (Math.random() < 0.4) {
+                        spawnFireParticle(player.x + (Math.random() - 0.5) * 40, player.y + 10);
+                    }
+                }
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -2175,6 +2230,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawFireParticles();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
