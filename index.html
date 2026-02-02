@@ -191,6 +191,7 @@
             let impacts = [];
             let chainEffects = [];
             let comboCount = 0;
+            let fireParticles = [];
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
 
@@ -371,6 +372,7 @@
                 rosePetals = [];
                 specialProjectiles = [];
                 impacts = [];
+                fireParticles = [];
                 score = 0;
                 comboCount = 0;
                 spawnInterval = 1.2;
@@ -458,6 +460,22 @@
                 ctx.globalAlpha = alpha;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.restore();
+            }
+
+            function drawFireParticles() {
+                fireParticles.forEach(p => {
+                    ctx.save();
+                    ctx.globalAlpha = p.life;
+                    // Color transition: Yellow -> Orange -> Red
+                    if (p.life > 0.6) ctx.fillStyle = '#fff700';
+                    else if (p.life > 0.3) ctx.fillStyle = '#ff7f00';
+                    else ctx.fillStyle = '#ff0000';
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
             }
 
             function drawRosePetals() {
@@ -2119,6 +2137,33 @@
                 updateImpacts(dt);
                 updateChainEffects(dt);
 
+                // Update fire particles
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.y += p.vy * dt;
+                    p.x += Math.sin(timeElapsed * 10 + p.offset) * 10 * dt; // Wiggle
+                    p.life -= dt * 1.5;
+                    p.size -= dt * 5;
+                    if (p.life <= 0 || p.size <= 0) {
+                        fireParticles.splice(i, 1);
+                    }
+                }
+
+                // Spawn fire if combo is high
+                if (comboCount >= 6) {
+                    const spawnCount = comboCount >= 15 ? 3 : 2;
+                    for (let i = 0; i < spawnCount; i++) {
+                        fireParticles.push({
+                            x: player.x + (Math.random() - 0.5) * player.w,
+                            y: player.y,
+                            vy: -100 - Math.random() * 100,
+                            life: 0.5 + Math.random() * 0.5,
+                            size: 5 + Math.random() * 8,
+                            offset: Math.random() * 10
+                        });
+                    }
+                }
+
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
                     const p = rosePetals[i];
@@ -2175,6 +2220,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawFireParticles();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
