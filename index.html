@@ -501,8 +501,8 @@
                 }
             }
 
-            function spawnImpact(x, y, isBig = false) {
-                impacts.push({ x, y, timer: 0.25, maxTime: 0.25, rotation: Math.random() * Math.PI, isBig });
+            function spawnImpact(x, y, isBig = false, color = null) {
+                impacts.push({ x, y, timer: 0.25, maxTime: 0.25, rotation: Math.random() * Math.PI, isBig, color });
             }
 
             function updateImpacts(dt) {
@@ -537,7 +537,7 @@
                     ctx.closePath();
                     ctx.fill();
 
-                    ctx.strokeStyle = imp.isBig ? '#00e5ff' : '#ffb347'; // Cyan for perfect, Orange normal
+                    ctx.strokeStyle = imp.color ? imp.color : (imp.isBig ? '#00e5ff' : '#ffb347'); // Custom color or default
                     ctx.lineWidth = 3;
                     ctx.stroke();
 
@@ -1818,6 +1818,7 @@
                         const dmg = c.type === 'super' ? 2 : 1;
                         comboCount = 0;
                         triggerShake(c.type === 'super' ? 15 : 8, 0.4);
+                        spawnImpact(player.x, player.y, c.type === 'super', '#ff3333');
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
