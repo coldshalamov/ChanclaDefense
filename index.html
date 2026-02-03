@@ -162,8 +162,8 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
             let state = STATE.TITLE;
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, loveTimer: 0 };
 
             let chanclas = [];
             let pets = [];
@@ -360,10 +360,12 @@
                 player.lives = 3;
                 player.shield = false;
                 player.hitTimer = 0;
+                player.loveTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.loveTimer = 0;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -664,6 +666,7 @@
                 // Determine expression
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
+                else if (player.loveTimer > 0) expression = 'love';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
@@ -683,11 +686,15 @@
                 ctx.save();
                 let drawX = isa.x;
                 let drawY = isa.y;
+                let expression = 'normal';
                 if (isa.hitTimer > 0) {
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
+                    expression = 'hit';
+                } else if (isa.loveTimer > 0) {
+                    expression = 'love';
                 }
-                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
+                drawIsaAvatar(ctx, drawX, drawY, 78, expression);
 
                 if (isa.chismeTimer > 0) {
                     // Draw phone near Isa
@@ -711,7 +718,7 @@
                 ctx.closePath();
             }
 
-            function drawIsaAvatar(ctx, x, y, size, isHit) {
+            function drawIsaAvatar(ctx, x, y, size, expression = 'normal') {
                 ctx.save();
                 ctx.translate(x, y);
                 const faceW = size * 0.72;
@@ -754,7 +761,7 @@
                 ctx.fill();
 
                 // Eyes
-                if (isHit) {
+                if (expression === 'hit') {
                     // X Eyes
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 3;
@@ -769,6 +776,23 @@
                     };
                     drawXEye(-faceW * 0.2, -faceH * 0.05);
                     drawXEye(faceW * 0.2, -faceH * 0.05);
+                } else if (expression === 'love') {
+                     // Heart eyes
+                     const drawHeartEye = (cx, cy) => {
+                        ctx.save();
+                        ctx.translate(cx, cy);
+                        const scale = faceW * 0.007;
+                        ctx.scale(scale, scale);
+                        ctx.fillStyle = '#d93c7a'; // Darker pink
+                        ctx.beginPath();
+                        ctx.moveTo(0, 6);
+                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
+                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
+                        ctx.fill();
+                        ctx.restore();
+                    };
+                    drawHeartEye(-faceW * 0.2, -faceH * 0.05);
+                    drawHeartEye(faceW * 0.2, -faceH * 0.05);
                 } else {
                     // Normal eyes with lashes
                     ctx.fillStyle = '#1d1411';
@@ -795,13 +819,23 @@
                 }
 
                 // Mouth
-                if (isHit) {
+                if (expression === 'hit') {
                     // O mouth
                     ctx.strokeStyle = '#d93c7a';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.ellipse(0, faceH * 0.2, faceW * 0.1, faceH * 0.12, 0, 0, Math.PI * 2);
                     ctx.stroke();
+                } else if (expression === 'love') {
+                    // Kissy mouth
+                    ctx.fillStyle = '#d93c7a';
+                    ctx.beginPath();
+                    ctx.arc(0, faceH * 0.22, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#e86c9e'; // Highlight
+                    ctx.beginPath();
+                    ctx.arc(-2, faceH * 0.20, faceW * 0.03, 0, Math.PI * 2);
+                    ctx.fill();
                 } else {
                     // Smile and lips
                     ctx.strokeStyle = '#d93c7a';
@@ -850,6 +884,8 @@
                     ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
                 } else if (expression === 'cocky') {
                     ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
+                } else if (expression === 'love') {
+                    ctx.rotate(Math.sin(timeElapsed * 5) * 0.05); // Happy sway
                 } else if (expression === 'dead') {
                     ctx.rotate(Math.PI / 20); // Slight tilt
                 }
@@ -994,6 +1030,23 @@
                     ctx.moveTo(headW * 0.12, -headH * 0.08);
                     ctx.quadraticCurveTo(headW * 0.2, -headH * 0.06, headW * 0.28, -headH * 0.08);
                     ctx.stroke();
+                } else if (expression === 'love') {
+                    // Heart eyes
+                    const drawHeartEye = (cx, cy) => {
+                        ctx.save();
+                        ctx.translate(cx, cy);
+                        const scale = headW * 0.006;
+                        ctx.scale(scale, scale);
+                        ctx.fillStyle = '#ff4d6d';
+                        ctx.beginPath();
+                        ctx.moveTo(0, 6);
+                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
+                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
+                        ctx.fill();
+                        ctx.restore();
+                    };
+                    drawHeartEye(-headW * 0.2, -headH * 0.04);
+                    drawHeartEye(headW * 0.2, -headH * 0.04);
                 } else {
                     // Normal eyes
                     ctx.fillStyle = '#2a1b12';
@@ -1069,6 +1122,13 @@
                     // Asymmetrical smile
                     ctx.moveTo(-headW * 0.1, headH * 0.24);
                     ctx.quadraticCurveTo(0, headH * 0.28, headW * 0.12, headH * 0.20);
+                    ctx.stroke();
+                } else if (expression === 'love') {
+                    // Big Smile
+                    ctx.strokeStyle = '#1e130c';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, headH * 0.20, headW * 0.15, 0, Math.PI, false);
                     ctx.stroke();
                 } else {
                     // Smile
@@ -1287,6 +1347,25 @@
                 }
                 lines.push(line);
                 lines.forEach((l, i) => context.fillText(l.trim(), x, y + i * lineHeight - (lines.length - 1) * lineHeight / 2));
+            }
+
+            function drawChillVignette() {
+                if (slowEffect.timer <= 0) return;
+
+                ctx.save();
+                const pulse = (Math.sin(timeElapsed * 3) + 1) / 2;
+                const alpha = 0.05 + pulse * 0.15;
+
+                const gradient = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, canvas.width * 0.4,
+                    canvas.width / 2, canvas.height / 2, canvas.height * 0.9
+                );
+                gradient.addColorStop(0, 'rgba(242, 201, 76, 0)');
+                gradient.addColorStop(1, `rgba(242, 201, 76, ${alpha})`);
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
             }
 
             function drawLowHealthVignette() {
@@ -1547,6 +1626,8 @@
 
             function applyPowerup(p) {
                 if (p.kind === 'heart') {
+                    player.loveTimer = 2.0;
+                    isa.loveTimer = 2.0;
                     if (player.lives < player.maxLives) {
                         player.lives++;
                         addFloatText('I love you! +1 ❤️', p.x, p.y);
@@ -2159,6 +2240,8 @@
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
+                if (player.loveTimer > 0) player.loveTimer -= dt;
+                if (isa.loveTimer > 0) isa.loveTimer -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
@@ -2178,6 +2261,7 @@
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
+                drawChillVignette();
                 drawLowHealthVignette();
                 drawFlash();
                 drawHUD();
@@ -2199,7 +2283,7 @@
                 if (winAnimationStart === 0) winAnimationStart = Date.now();
                 const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
                 const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
-                drawIsaAvatar(ctx, isa.x, isaWinY, 78);
+                drawIsaAvatar(ctx, isa.x, isaWinY, 78, 'love');
 
                 // Speech bubble
                 if (winProgress > 0.7) {
