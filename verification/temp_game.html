@@ -192,6 +192,22 @@
             let impacts = [];
             let chainEffects = [];
             let comboCount = 0;
+            window.setCombo = (c) => { comboCount = c; };
+            window.spawnFire = () => {
+                // Force spawn a bunch
+                for(let i=0; i<20; i++) {
+                    fireParticles.push({
+                            x: player.x + (Math.random() - 0.5) * player.w * 0.7,
+                            y: player.y + player.h / 2,
+                            vx: (Math.random() - 0.5) * 30,
+                            vy: -80 - Math.random() * 120,
+                            radius: 6 + Math.random() * 6,
+                            color: Math.random() < 0.3 ? '#ffff00' : (Math.random() < 0.6 ? '#ff9900' : '#ff3300'),
+                            life: 1.0
+                        });
+                }
+            };
+
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
 
