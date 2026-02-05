@@ -2143,6 +2143,33 @@
                     flash.timer -= dt;
                 }
 
+                updateImpacts(dt);
+                updateChainEffects(dt);
+
+                // Update rose petals (visuals always update)
+                for (let i = rosePetals.length - 1; i >= 0; i--) {
+                    const p = rosePetals[i];
+
+                    if (p.vx !== undefined) {
+                        p.x += p.vx * dt;
+                        p.y += p.vy * dt;
+                        p.vx *= 0.95; // Drag
+                        p.vy += 200 * dt; // Gravity
+                    } else {
+                        p.y += p.vy * dt;
+                        p.x += Math.sin(timeElapsed * 2 + p.offset) * 20 * dt;
+                    }
+
+                    p.rotation += p.rotSpeed * dt;
+                    if (p.y > canvas.height + 20) {
+                        rosePetals.splice(i, 1);
+                    }
+                }
+
+                if (slapEffect.timer > 0) slapEffect.timer -= dt;
+                if (dialogueTimer > 0) dialogueTimer -= dt;
+                if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
+
                 if (hitStop > 0) {
                     hitStop -= dt;
                     return;
@@ -2178,28 +2205,6 @@
                 updatePets(dt);
                 updatePowerups(dt);
                 updateSpecialProjectiles(dt);
-                updateImpacts(dt);
-                updateChainEffects(dt);
-
-                // Update rose petals
-                for (let i = rosePetals.length - 1; i >= 0; i--) {
-                    const p = rosePetals[i];
-
-                    if (p.vx !== undefined) {
-                        p.x += p.vx * dt;
-                        p.y += p.vy * dt;
-                        p.vx *= 0.95; // Drag
-                        p.vy += 200 * dt; // Gravity
-                    } else {
-                        p.y += p.vy * dt;
-                        p.x += Math.sin(timeElapsed * 2 + p.offset) * 20 * dt;
-                    }
-
-                    p.rotation += p.rotSpeed * dt;
-                    if (p.y > canvas.height + 20) {
-                        rosePetals.splice(i, 1);
-                    }
-                }
 
                 // Spawn rose petals if special is ready
                 if (specialAttackBar >= maxSpecialAttack) {
@@ -2217,15 +2222,13 @@
 
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
                 if (slapCooldown > 0) slapCooldown -= dt;
-                if (slapEffect.timer > 0) slapEffect.timer -= dt;
+
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
                 if (player.loveTimer > 0) player.loveTimer -= dt;
                 if (isa.loveTimer > 0) isa.loveTimer -= dt;
 
-                if (dialogueTimer > 0) dialogueTimer -= dt;
-                if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
                 if (Math.random() < 0.002) sayPlayer('idle');
             }
 
