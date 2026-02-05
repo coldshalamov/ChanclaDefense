@@ -170,6 +170,7 @@
             let powerups = [];
             let floatTexts = [];
             let rosePetals = [];
+            let fireParticles = [];
             let specialProjectiles = [];
             let score = 0;
             let bestScore = 0;
@@ -371,6 +372,7 @@
                 powerups = [];
                 floatTexts = [];
                 rosePetals = [];
+                fireParticles = [];
                 specialProjectiles = [];
                 impacts = [];
                 score = 0;
@@ -460,6 +462,46 @@
                 ctx.globalAlpha = alpha;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.restore();
+            }
+
+            function drawFireParticles() {
+                fireParticles.forEach(p => {
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+
+            function updateFireParticles(dt) {
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.y -= p.speed * dt;
+                    p.x += Math.sin(p.y * 0.05) * 20 * dt; // Wavy rise
+                    p.size -= 10 * dt;
+                    p.alpha -= 0.5 * dt;
+                    if (p.size <= 0 || p.alpha <= 0) {
+                        fireParticles.splice(i, 1);
+                    }
+                }
+            }
+
+            function spawnFireParticle(x, y) {
+                const size = 10 + Math.random() * 15;
+                // Colors: Yellow to Red
+                const colors = ['#ffcc00', '#ff9900', '#ff6600', '#ff3300'];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                fireParticles.push({
+                    x: x + (Math.random() - 0.5) * 40,
+                    y: y + (Math.random() - 0.5) * 10,
+                    speed: 80 + Math.random() * 80,
+                    size: size,
+                    alpha: 0.8 + Math.random() * 0.2,
+                    color: color
+                });
             }
 
             function drawRosePetals() {
@@ -1187,9 +1229,20 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang) {
+            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang, isFire) {
                 ctx.save();
                 ctx.translate(x, y);
+
+                if (isFire) {
+                    ctx.save();
+                    const scale = 1.2 + Math.sin(Date.now() / 80) * 0.15;
+                    ctx.scale(scale, scale);
+                    ctx.font = `${Math.max(40, w * 1.8)}px 'Noto Color Emoji', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🔥', 0, 0);
+                    ctx.restore();
+                }
 
                 if (isBoomerang) {
                     ctx.save();
@@ -1657,6 +1710,7 @@
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
                         slappedAny = true;
                         comboCount++;
+                        if (comboCount >= 6) c.isFire = true;
                         score += comboCount;
 
                         // Increase special attack bar
@@ -1804,6 +1858,10 @@
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     c.rotation += c.rotSpeed * dt;
 
+                    if (c.isFire && Math.random() < 0.4) {
+                        spawnFireParticle(c.x, c.y);
+                    }
+
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
                         // Check for chain reaction with other chanclas
@@ -1841,6 +1899,7 @@
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : 8;
                             if (c.isPerfect) damage += 7;
+                            if (c.isFire) damage += 10;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
@@ -2180,6 +2239,12 @@
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
+                updateFireParticles(dt);
+
+                // Spawn fire aura if combo is high (Fuego Mode)
+                if (comboCount >= 6 && Math.random() < 0.4) {
+                    spawnFireParticle(player.x, player.y - player.h / 2);
+                }
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -2237,6 +2302,7 @@
                 drawSpecialProjectiles();
                 drawPets();
                 drawRosePetals();
+                drawFireParticles();
                 drawChainEffects();
                 drawImpacts();
                 drawPlayer();
@@ -2251,7 +2317,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang, c.isFire);
             }
 
             function drawWinScreen() {
