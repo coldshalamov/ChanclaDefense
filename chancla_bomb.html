@@ -172,7 +172,7 @@
             let rosePetals = [];
             let specialProjectiles = [];
             let score = 0;
-            let bestScore = 0;
+            let bestScore = parseInt(localStorage.getItem('chanclaBombHighScore')) || 0;
             let spawnInterval = 1.2;
             let minSpawnInterval = 0.45;
             let spawnTimer = 0;
@@ -1528,6 +1528,13 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+
+                if (bestScore > 0) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = 'bold 20px sans-serif';
+                    ctx.fillText('🏆 Best: ' + bestScore, canvas.width / 2, 460);
+                }
+
                 ctx.fillStyle = '#ff9f1c';
                 roundRect(ctx, 110, 380, canvas.width - 220, 46, 12);
                 ctx.fill();
@@ -2125,6 +2132,7 @@
             function endGame() {
                 state = STATE.GAMEOVER;
                 bestScore = Math.max(bestScore, score);
+                localStorage.setItem('chanclaBombHighScore', bestScore);
                 sayRandom('gameOver');
             }
 
