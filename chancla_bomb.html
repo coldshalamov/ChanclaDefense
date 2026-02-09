@@ -1800,9 +1800,29 @@
                 const slowFactor = slowEffect.timer > 0 ? slowEffect.factor : 1;
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
-                    c.x += c.vx * dt;
+                    c.x += c.vx * dt * (c.slapped ? 1 : slowFactor);
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     c.rotation += c.rotSpeed * dt;
+
+                    // Precision Dodge (Graze) Mechanic
+                    if (!c.slapped && !c.grazed) {
+                        const grazeMargin = 30;
+                        // Check if close enough to graze but not hitting
+                        if (Math.abs(player.x - c.x) < (player.w / 2 + c.w / 2 + grazeMargin) &&
+                            Math.abs(player.y - c.y) < (player.h / 2 + c.h / 2 + grazeMargin)) {
+
+                            // Ensure it's not a direct hit
+                            if (!rectsOverlap(player, c)) {
+                                c.grazed = true;
+                                if (slowEffect.timer <= 0) slowEffect.timer = 0.6; // Brief Matrix-style slow mo
+                                score += 15;
+                                addFloatText('DODGE! +15', player.x, player.y - 50);
+                                triggerFlash(0.08, 'rgba(255, 255, 255, 0.25)');
+                                playSound(1500, 0.08);
+                                if (Math.random() < 0.4) sayPlayer('nearMiss');
+                            }
+                        }
+                    }
 
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
