@@ -162,8 +162,8 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
             let state = STATE.TITLE;
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, loveTimer: 0, suegraActive: false };
 
             let chanclas = [];
             let pets = [];
@@ -290,6 +290,14 @@
                     "Pause! Chisme alert!",
                     "¿Qué hizo la Karen ahora?",
                     "¡No me digas! ¿En serio?"
+                ],
+                suegra: [
+                    "¡Enderezate!",
+                    "¿Y el anillo pa' cuando?",
+                    "Esa camisa no te queda.",
+                    "¡Te estoy viendo!",
+                    "A ver si trabajas más, eh?",
+                    "¡Ni creas que no te vi!"
                 ]
             };
 
@@ -360,10 +368,13 @@
                 player.lives = 3;
                 player.shield = false;
                 player.hitTimer = 0;
+                player.loveTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.loveTimer = 0;
+                isa.suegraActive = false;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -664,6 +675,7 @@
                 // Determine expression
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
+                else if (player.loveTimer > 0) expression = 'love';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
@@ -683,17 +695,219 @@
                 ctx.save();
                 let drawX = isa.x;
                 let drawY = isa.y;
+                let expression = 'normal';
                 if (isa.hitTimer > 0) {
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
+                    expression = 'hit';
+                } else if (isa.loveTimer > 0) {
+                    expression = 'love';
                 }
-                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
+
+                if (isa.suegraActive) {
+                    drawSuegraAvatar(ctx, drawX, drawY, 78, expression);
+                } else {
+                    drawIsaAvatar(ctx, drawX, drawY, 78, expression);
+                }
 
                 if (isa.chismeTimer > 0) {
                     // Draw phone near Isa
                     ctx.font = '30px sans-serif';
                     ctx.fillText('📱', drawX + 30, drawY + 20);
                 }
+                ctx.restore();
+            }
+
+            function drawSuegraAvatar(ctx, x, y, size, expression = 'normal') {
+                ctx.save();
+                ctx.translate(x, y);
+                const faceW = size * 0.72;
+                const faceH = size * 0.82;
+                const hairColor = '#888888'; // Grey hair
+                const skin = '#e7b28f'; // Same skin
+
+                // Hair bun (larger/different shape)
+                ctx.fillStyle = hairColor;
+                ctx.beginPath();
+                ctx.ellipse(0, -faceH / 2 - 14, faceW * 0.38, faceH * 0.20, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Hair base
+                ctx.beginPath();
+                ctx.moveTo(-faceW / 2 - 10, -faceH / 2 + 10);
+                ctx.quadraticCurveTo(-faceW / 2 - 20, -faceH / 2 - 10, 0, -faceH / 2 - 20);
+                ctx.quadraticCurveTo(faceW / 2 + 20, -faceH / 2 - 10, faceW / 2 + 10, -faceH / 2 + 10);
+                ctx.lineTo(faceW / 2 + 6, faceH / 2 - 14);
+                ctx.quadraticCurveTo(0, faceH / 2 + 20, -faceW / 2 - 6, faceH / 2 - 14);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = skin;
+                ctx.beginPath();
+                ctx.moveTo(-faceW / 2, -faceH / 2 + 6);
+                ctx.quadraticCurveTo(-faceW * 0.55, -faceH * 0.05, -faceW * 0.28, faceH * 0.3);
+                ctx.quadraticCurveTo(0, faceH * 0.52, faceW * 0.28, faceH * 0.3);
+                ctx.quadraticCurveTo(faceW * 0.55, -faceH * 0.05, faceW / 2, -faceH / 2 + 6);
+                ctx.closePath();
+                ctx.fill();
+
+                // Wrinkles (subtle lines)
+                ctx.strokeStyle = '#cd9b7a';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                // Forehead
+                ctx.moveTo(-faceW * 0.15, -faceH * 0.35);
+                ctx.quadraticCurveTo(0, -faceH * 0.32, faceW * 0.15, -faceH * 0.35);
+                // Cheeks
+                ctx.moveTo(-faceW * 0.35, 0);
+                ctx.quadraticCurveTo(-faceW * 0.25, faceH * 0.1, -faceW * 0.3, faceH * 0.2);
+                ctx.moveTo(faceW * 0.35, 0);
+                ctx.quadraticCurveTo(faceW * 0.25, faceH * 0.1, faceW * 0.3, faceH * 0.2);
+                ctx.stroke();
+
+
+                // Cheeks (less pink)
+                ctx.fillStyle = 'rgba(255,126,171,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(-faceW * 0.22, faceH * 0.1, faceW * 0.12, faceH * 0.08, 0, 0, Math.PI * 2);
+                ctx.ellipse(faceW * 0.22, faceH * 0.1, faceW * 0.12, faceH * 0.08, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eyes
+                if (expression === 'hit') {
+                     // X Eyes
+                     ctx.strokeStyle = '#1d1411';
+                     ctx.lineWidth = 3;
+                     const drawXEye = (centerX, centerY) => {
+                         const r = faceW * 0.09;
+                         ctx.beginPath();
+                         ctx.moveTo(centerX - r, centerY - r);
+                         ctx.lineTo(centerX + r, centerY + r);
+                         ctx.moveTo(centerX + r, centerY - r);
+                         ctx.lineTo(centerX - r, centerY + r);
+                         ctx.stroke();
+                     };
+                     drawXEye(-faceW * 0.2, -faceH * 0.05);
+                     drawXEye(faceW * 0.2, -faceH * 0.05);
+                } else if (expression === 'love') {
+                      // Heart eyes
+                      const drawHeartEye = (cx, cy) => {
+                         ctx.save();
+                         ctx.translate(cx, cy);
+                         const scale = faceW * 0.007;
+                         ctx.scale(scale, scale);
+                         ctx.fillStyle = '#d93c7a';
+                         ctx.beginPath();
+                         ctx.moveTo(0, 6);
+                         ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
+                         ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
+                         ctx.fill();
+                         ctx.restore();
+                     };
+                     drawHeartEye(-faceW * 0.2, -faceH * 0.05);
+                     drawHeartEye(faceW * 0.2, -faceH * 0.05);
+                } else {
+                    // Normal eyes - slightly more closed/judging
+                    ctx.fillStyle = '#1d1411';
+                    ctx.beginPath();
+                    // Almond shape
+                    ctx.ellipse(-faceW * 0.2, -faceH * 0.05, faceW * 0.09, faceH * 0.05, 0, 0, Math.PI * 2);
+                    ctx.ellipse(faceW * 0.2, -faceH * 0.05, faceW * 0.09, faceH * 0.05, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Eyebrows (Stern)
+                    ctx.strokeStyle = '#555'; // Grey brows
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    // Left
+                    ctx.moveTo(-faceW * 0.32, -faceH * 0.18);
+                    ctx.lineTo(-faceW * 0.1, -faceH * 0.12);
+                    // Right
+                    ctx.moveTo(faceW * 0.32, -faceH * 0.18);
+                    ctx.lineTo(faceW * 0.1, -faceH * 0.12);
+                    ctx.stroke();
+                }
+
+                // Glasses (Reading glasses - half moon, lower)
+                if (expression !== 'hit') {
+                    ctx.strokeStyle = '#d4af37'; // Gold frames
+                    ctx.lineWidth = 2;
+                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+
+                    const glassY = 0;
+                    // Left lens
+                    ctx.beginPath();
+                    ctx.arc(-faceW * 0.2, glassY, faceW * 0.11, 0, Math.PI, false); // Half circle
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Right lens
+                    ctx.beginPath();
+                    ctx.arc(faceW * 0.2, glassY, faceW * 0.11, 0, Math.PI, false);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Bridge
+                    ctx.beginPath();
+                    ctx.moveTo(-faceW * 0.09, glassY);
+                    ctx.quadraticCurveTo(0, glassY - 5, faceW * 0.09, glassY);
+                    ctx.stroke();
+                }
+
+                // Mouth
+                if (expression === 'hit') {
+                    // O mouth
+                    ctx.strokeStyle = '#d93c7a';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.ellipse(0, faceH * 0.2, faceW * 0.1, faceH * 0.12, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (expression === 'love') {
+                    // Kissy mouth
+                    ctx.fillStyle = '#d93c7a';
+                    ctx.beginPath();
+                    ctx.arc(0, faceH * 0.22, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Stern line
+                    ctx.strokeStyle = '#d93c7a';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-faceW * 0.1, faceH * 0.2);
+                    ctx.lineTo(faceW * 0.1, faceH * 0.2);
+                    ctx.stroke();
+                    // Slight frown corners
+                    ctx.beginPath();
+                    ctx.moveTo(-faceW * 0.1, faceH * 0.2);
+                    ctx.lineTo(-faceW * 0.12, faceH * 0.22);
+                    ctx.moveTo(faceW * 0.1, faceH * 0.2);
+                    ctx.lineTo(faceW * 0.12, faceH * 0.22);
+                    ctx.stroke();
+                }
+
+                // Earrings (Gold drops)
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.ellipse(-faceW / 2 + 6, faceH * 0.18, faceW * 0.03, faceH * 0.08, 0, 0, Math.PI * 2);
+                ctx.ellipse(faceW / 2 - 6, faceH * 0.18, faceW * 0.03, faceH * 0.08, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Headband label (SUEGRA)
+                const labelW = faceW * 0.85;
+                const labelH = 20;
+                ctx.fillStyle = '#6a0dad'; // Purple
+                roundRect(ctx, -labelW / 2, -faceH / 2 - labelH - 2, labelW, labelH, 10);
+                ctx.fill();
+                ctx.strokeStyle = '#4b0082';
+                ctx.lineWidth = 1.4;
+                ctx.stroke();
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('SUEGRA', 0, -faceH / 2 - 6);
                 ctx.restore();
             }
 
@@ -711,7 +925,7 @@
                 ctx.closePath();
             }
 
-            function drawIsaAvatar(ctx, x, y, size, isHit) {
+            function drawIsaAvatar(ctx, x, y, size, expression = 'normal') {
                 ctx.save();
                 ctx.translate(x, y);
                 const faceW = size * 0.72;
@@ -754,7 +968,7 @@
                 ctx.fill();
 
                 // Eyes
-                if (isHit) {
+                if (expression === 'hit') {
                     // X Eyes
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 3;
@@ -769,6 +983,23 @@
                     };
                     drawXEye(-faceW * 0.2, -faceH * 0.05);
                     drawXEye(faceW * 0.2, -faceH * 0.05);
+                } else if (expression === 'love') {
+                     // Heart eyes
+                     const drawHeartEye = (cx, cy) => {
+                        ctx.save();
+                        ctx.translate(cx, cy);
+                        const scale = faceW * 0.007;
+                        ctx.scale(scale, scale);
+                        ctx.fillStyle = '#d93c7a'; // Darker pink
+                        ctx.beginPath();
+                        ctx.moveTo(0, 6);
+                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
+                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
+                        ctx.fill();
+                        ctx.restore();
+                    };
+                    drawHeartEye(-faceW * 0.2, -faceH * 0.05);
+                    drawHeartEye(faceW * 0.2, -faceH * 0.05);
                 } else {
                     // Normal eyes with lashes
                     ctx.fillStyle = '#1d1411';
@@ -795,13 +1026,23 @@
                 }
 
                 // Mouth
-                if (isHit) {
+                if (expression === 'hit') {
                     // O mouth
                     ctx.strokeStyle = '#d93c7a';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.ellipse(0, faceH * 0.2, faceW * 0.1, faceH * 0.12, 0, 0, Math.PI * 2);
                     ctx.stroke();
+                } else if (expression === 'love') {
+                    // Kissy mouth
+                    ctx.fillStyle = '#d93c7a';
+                    ctx.beginPath();
+                    ctx.arc(0, faceH * 0.22, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#e86c9e'; // Highlight
+                    ctx.beginPath();
+                    ctx.arc(-2, faceH * 0.20, faceW * 0.03, 0, Math.PI * 2);
+                    ctx.fill();
                 } else {
                     // Smile and lips
                     ctx.strokeStyle = '#d93c7a';
@@ -850,6 +1091,8 @@
                     ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
                 } else if (expression === 'cocky') {
                     ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
+                } else if (expression === 'love') {
+                    ctx.rotate(Math.sin(timeElapsed * 5) * 0.05); // Happy sway
                 } else if (expression === 'dead') {
                     ctx.rotate(Math.PI / 20); // Slight tilt
                 }
@@ -994,6 +1237,23 @@
                     ctx.moveTo(headW * 0.12, -headH * 0.08);
                     ctx.quadraticCurveTo(headW * 0.2, -headH * 0.06, headW * 0.28, -headH * 0.08);
                     ctx.stroke();
+                } else if (expression === 'love') {
+                    // Heart eyes
+                    const drawHeartEye = (cx, cy) => {
+                        ctx.save();
+                        ctx.translate(cx, cy);
+                        const scale = headW * 0.006;
+                        ctx.scale(scale, scale);
+                        ctx.fillStyle = '#ff4d6d';
+                        ctx.beginPath();
+                        ctx.moveTo(0, 6);
+                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
+                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
+                        ctx.fill();
+                        ctx.restore();
+                    };
+                    drawHeartEye(-headW * 0.2, -headH * 0.04);
+                    drawHeartEye(headW * 0.2, -headH * 0.04);
                 } else {
                     // Normal eyes
                     ctx.fillStyle = '#2a1b12';
@@ -1069,6 +1329,13 @@
                     // Asymmetrical smile
                     ctx.moveTo(-headW * 0.1, headH * 0.24);
                     ctx.quadraticCurveTo(0, headH * 0.28, headW * 0.12, headH * 0.20);
+                    ctx.stroke();
+                } else if (expression === 'love') {
+                    // Big Smile
+                    ctx.strokeStyle = '#1e130c';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, headH * 0.20, headW * 0.15, 0, Math.PI, false);
                     ctx.stroke();
                 } else {
                     // Smile
@@ -1507,12 +1774,22 @@
             }
 
             function spawnChancla() {
-                const isSuper = superEnabled && Math.random() < 0.18;
+                let isSuper = superEnabled && Math.random() < 0.18;
+
+                // Suegra Difficulty Boost
+                if (isa.suegraActive) {
+                    if (Math.random() < 0.35) isSuper = true;
+                    spawnInterval = Math.max(minSpawnInterval * 0.8, spawnInterval - 0.05);
+                }
+
                 const w = isSuper ? 46 : 32;
                 const h = isSuper ? 26 : 18;
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+
+                let vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+                if (isa.suegraActive) vy *= 1.25;
+
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
                 chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
@@ -1547,6 +1824,8 @@
 
             function applyPowerup(p) {
                 if (p.kind === 'heart') {
+                    player.loveTimer = 2.0;
+                    isa.loveTimer = 2.0;
                     if (player.lives < player.maxLives) {
                         player.lives++;
                         addFloatText('I love you! +1 ❤️', p.x, p.y);
@@ -2093,6 +2372,16 @@
                     baseSpeed += dt * 5;
                 }
                 if (timeElapsed > 18) superEnabled = true;
+                // Trigger Suegra Mode
+                if (score >= 30 && !isa.suegraActive) {
+                    isa.suegraActive = true;
+                    triggerFlash(1.0, '#fff');
+                    triggerShake(10, 0.5);
+                    addFloatText("¡LA SUEGRA!", isa.x, isa.y + 50);
+                    playSound(200, 0.5);
+                    sayRandom('suegra');
+                }
+
                 if (spawnTimer >= spawnInterval && isa.chismeTimer <= 0) {
                     spawnChancla();
                     spawnTimer = 0;
@@ -2159,6 +2448,8 @@
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
+                if (player.loveTimer > 0) player.loveTimer -= dt;
+                if (isa.loveTimer > 0) isa.loveTimer -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
@@ -2199,7 +2490,7 @@
                 if (winAnimationStart === 0) winAnimationStart = Date.now();
                 const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
                 const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
-                drawIsaAvatar(ctx, isa.x, isaWinY, 78);
+                drawIsaAvatar(ctx, isa.x, isaWinY, 78, 'love');
 
                 // Speech bubble
                 if (winProgress > 0.7) {
