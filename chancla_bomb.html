@@ -1445,13 +1445,13 @@
                 // Glow if bar has some progress
                 if (p > 0) {
                     ctx.shadowBlur = Math.max(0, glowIntensity);
-                    ctx.shadowColor = `rgba(147, 51, 234, ${p})`; // Purple glow
+                    ctx.shadowColor = `rgba(226, 74, 74, ${p})`; // Red glow
                 }
 
                 ctx.font = '28px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('🍆', 0, 0);
+                ctx.fillText('🍖', 0, 0);
                 ctx.restore();
 
                 // "READY!" text
@@ -1741,7 +1741,7 @@
                     // Play special attack sound
                     playSound(800, 0.2);
 
-                    addFloatText('SPECIAL! 🦵', player.x, player.y - 30);
+                    addFloatText('SPECIAL! 🍖', player.x, player.y - 30);
                     sayPlayer('fireSpecial');
                 }
             }
@@ -2117,7 +2117,7 @@
                     ctx.font = '70px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText('🦵', 0, 0);
+                    ctx.fillText('🍖', 0, 0);
                     ctx.restore();
                 });
             }
