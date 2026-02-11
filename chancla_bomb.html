@@ -159,7 +159,7 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
             let state = STATE.TITLE;
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0 };
@@ -173,6 +173,46 @@
             let specialProjectiles = [];
             let score = 0;
             let bestScore = 0;
+            let chanclaCoins = 0;
+            let upgrades = {
+                extraLife: { level: 0, max: 3, cost: 500, name: "Extra Vida ❤️" },
+                beerDuration: { level: 0, max: 5, cost: 300, name: "Fiesta Eterna 🍺" },
+                phoneDuration: { level: 0, max: 5, cost: 300, name: "Chisme Largo 📱" },
+                magnet: { level: 0, max: 1, cost: 1000, name: "Magneto 🧲" }
+            };
+
+            function saveData() {
+                try {
+                    const data = {
+                        bestScore,
+                        chanclaCoins,
+                        upgrades
+                    };
+                    localStorage.setItem('chancla_save', JSON.stringify(data));
+                } catch (e) {}
+            }
+
+            function loadData() {
+                try {
+                    const saved = localStorage.getItem('chancla_save');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        if (data.bestScore !== undefined) bestScore = data.bestScore;
+                        if (data.chanclaCoins !== undefined) chanclaCoins = data.chanclaCoins;
+                        if (data.upgrades) {
+                            // Merge upgrades to avoid overwriting new fields if we add them later
+                            for (let key in upgrades) {
+                                if (data.upgrades[key]) {
+                                    upgrades[key].level = data.upgrades[key].level;
+                                    upgrades[key].cost = data.upgrades[key].cost;
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
+            loadData();
+
             let spawnInterval = 1.2;
             let minSpawnInterval = 0.45;
             let spawnTimer = 0;
@@ -357,7 +397,7 @@
             function resetGame() {
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
-                player.lives = 3;
+                player.lives = 3 + (upgrades.extraLife ? upgrades.extraLife.level : 0);
                 player.shield = false;
                 player.hitTimer = 0;
                 player.loveTimer = 0;
@@ -1512,13 +1552,120 @@
                 ctx.restore();
             }
 
+            function drawShop() {
+                drawBackground();
+                ctx.save();
+
+                // Darken background
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Header
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 30px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('La Tienda', canvas.width / 2, 60);
+
+                // Coins
+                ctx.font = '20px "Noto Color Emoji", sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#ffb347';
+                ctx.fillText('🩴 ' + chanclaCoins, canvas.width - 20, 60);
+
+                // Draw Upgrades
+                let y = 110;
+                const itemKeys = Object.keys(upgrades);
+
+                for (let i = 0; i < itemKeys.length; i++) {
+                    const key = itemKeys[i];
+                    const item = upgrades[key];
+                    const isMaxed = item.level >= item.max;
+                    const canAfford = chanclaCoins >= item.cost;
+
+                    // Box
+                    ctx.fillStyle = '#1f4068';
+                    roundRect(ctx, 20, y, 360, 100, 12);
+                    ctx.fill();
+                    ctx.strokeStyle = '#6dd3ff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Icon & Name
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '22px "Noto Color Emoji", sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(item.name, 40, y + 40);
+
+                    // Level Dots
+                    ctx.fillStyle = '#888';
+                    for (let l = 0; l < item.max; l++) {
+                        ctx.beginPath();
+                        ctx.arc(45 + l * 25, y + 75, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    // Filled dots
+                    ctx.fillStyle = '#00e5ff';
+                    for (let l = 0; l < item.level; l++) {
+                        ctx.beginPath();
+                        ctx.arc(45 + l * 25, y + 75, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // Button
+                    const btnX = 260;
+                    const btnY = y + 25;
+                    const btnW = 100;
+                    const btnH = 50;
+
+                    if (isMaxed) {
+                        ctx.fillStyle = '#555';
+                    } else if (canAfford) {
+                        ctx.fillStyle = '#28a745'; // Green
+                    } else {
+                        ctx.fillStyle = '#dc3545'; // Red
+                    }
+                    roundRect(ctx, btnX, btnY, btnW, btnH, 8);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+                    if (isMaxed) {
+                        ctx.fillText('MAX', btnX + btnW / 2, btnY + 30);
+                    } else {
+                        ctx.fillText(item.cost, btnX + btnW / 2, btnY + 30);
+                    }
+
+                    y += 120;
+                }
+
+                // Back Button
+                const backY = 620;
+                ctx.fillStyle = '#ff79c6';
+                roundRect(ctx, 100, backY, 200, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Volver / Back', canvas.width / 2, backY + 32);
+
+                ctx.restore();
+            }
+
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
                 drawPlayer();
                 ctx.save();
+
+                // Draw Coins
+                ctx.fillStyle = '#fff';
+                ctx.font = '16px "Noto Color Emoji", sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText('🩴 ' + chanclaCoins, canvas.width - 20, 40);
+
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                roundRect(ctx, 30, 260, canvas.width - 60, 200, 16);
+                roundRect(ctx, 30, 260, canvas.width - 60, 260, 16);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
@@ -1528,12 +1675,23 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+
+                // Play Button
                 ctx.fillStyle = '#ff9f1c';
                 roundRect(ctx, 110, 380, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+
+                // Shop Button
+                ctx.fillStyle = '#9b4ae2';
+                roundRect(ctx, 110, 440, canvas.width - 220, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px sans-serif';
+                ctx.fillText('La Tienda / Shop', canvas.width / 2, 470);
+
                 ctx.restore();
             }
 
@@ -1617,11 +1775,11 @@
                     }
                 }
                 if (p.kind === 'beer') {
-                    slowEffect.timer = 4.5;
+                    slowEffect.timer = 4.5 + (upgrades.beerDuration ? upgrades.beerDuration.level * 0.5 : 0);
                     addFloatText('Cerveza chill 🍺', p.x, p.y);
                 }
                 if (p.kind === 'phone') {
-                    isa.chismeTimer = 3.5;
+                    isa.chismeTimer = 3.5 + (upgrades.phoneDuration ? upgrades.phoneDuration.level * 0.5 : 0);
                     addFloatText('¡Chisme Time! 📱', p.x, p.y);
                     sayRandom('chisme');
                 }
@@ -2019,9 +2177,24 @@
             }
 
             function updatePowerups(dt) {
+                const magnetLevel = upgrades.magnet ? upgrades.magnet.level : 0;
                 for (let i = powerups.length - 1; i >= 0; i--) {
                     const p = powerups[i];
-                    p.y += p.vy * dt;
+
+                    if (magnetLevel > 0) {
+                        const dx = player.x - p.x;
+                        const dy = (player.y - 20) - p.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 300) {
+                            p.x += (dx / dist) * 200 * dt;
+                            p.y += (dy / dist) * 200 * dt;
+                        } else {
+                            p.y += p.vy * dt;
+                        }
+                    } else {
+                        p.y += p.vy * dt;
+                    }
+
                     if (rectsOverlap(player, p)) {
                         applyPowerup(p);
                         powerups.splice(i, 1);
@@ -2125,6 +2298,8 @@
             function endGame() {
                 state = STATE.GAMEOVER;
                 bestScore = Math.max(bestScore, score);
+                chanclaCoins += score;
+                saveData();
                 sayRandom('gameOver');
             }
 
@@ -2311,7 +2486,9 @@
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
+
                 if (state === STATE.TITLE) drawTitleScreen();
+                else if (state === STATE.SHOP) drawShop();
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
@@ -2327,21 +2504,65 @@
                 resetGame();
             }
 
-            function setDirectionsVisible(show) {
+            function setDirectionsVisible(show, forceDisableInput) {
                 body.classList.toggle('hide-directions', !show);
+                // If show=true (Title), input disabled. If show=false (Game), input enabled.
+                // forceDisableInput allows disabling input even if show=false (Shop).
+                const enableInput = !show && !forceDisableInput;
+                const zones = document.querySelectorAll('.touch-zone');
+                zones.forEach(z => z.style.pointerEvents = enableInput ? 'auto' : 'none');
             }
 
             canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
+
                 if (state === STATE.TITLE) {
-                    startGameFromTitle();
+                    if (x > 110 && x < 290 && y > 440 && y < 486) {
+                        state = STATE.SHOP;
+                        setDirectionsVisible(false, true); // Hide text, keep input disabled
+                    } else {
+                        startGameFromTitle();
+                    }
+                } else if (state === STATE.SHOP) {
+                    // Back button: 100, 620, 200, 50
+                    if (x > 100 && x < 300 && y > 620 && y < 670) {
+                        state = STATE.TITLE;
+                        setDirectionsVisible(true); // Show text, disable input
+                        return;
+                    }
+
+                    // Upgrades
+                    let itemY = 110;
+                    const itemKeys = Object.keys(upgrades);
+                    for (let i = 0; i < itemKeys.length; i++) {
+                        const key = itemKeys[i];
+                        const item = upgrades[key];
+                        if (x > 20 && x < 380 && y > itemY && y < itemY + 100) {
+                            if (item.level < item.max && chanclaCoins >= item.cost) {
+                                chanclaCoins -= item.cost;
+                                item.level++;
+                                item.cost = Math.ceil(item.cost * 1.5 / 10) * 10; // Increase cost 1.5x rounded to 10
+                                saveData();
+                                playSound(1000, 0.1);
+                            } else if (chanclaCoins < item.cost && item.level < item.max) {
+                                playSound(200, 0.2); // Error sound
+                            }
+                        }
+                        itemY += 120;
+                    }
                 } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
                     resetGame();
                 }
             });
 
             canvas.addEventListener('touchstart', (e) => {
-                if (state === STATE.TITLE) { startGameFromTitle(); return; }
-                if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+                // Menu interactions are handled by 'click' to avoid double-firing (ghost clicks)
+                // and to ensure consistent behavior with the shop logic.
+                if (state !== STATE.PLAYING) return;
 
                 if (state === STATE.PLAYING) {
                     const rect = canvas.getBoundingClientRect();
