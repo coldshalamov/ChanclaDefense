@@ -159,11 +159,11 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
             let state = STATE.TITLE;
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, loveTimer: 0 };
 
             let chanclas = [];
             let pets = [];
@@ -173,6 +173,46 @@
             let specialProjectiles = [];
             let score = 0;
             let bestScore = 0;
+            let chanclaCoins = 0;
+            let upgrades = {
+                extraLife: { level: 0, max: 3, cost: 500, name: "Extra Vida ❤️" },
+                beerDuration: { level: 0, max: 5, cost: 300, name: "Fiesta Eterna 🍺" },
+                phoneDuration: { level: 0, max: 5, cost: 300, name: "Chisme Largo 📱" },
+                magnet: { level: 0, max: 1, cost: 1000, name: "Magneto 🧲" }
+            };
+
+            function saveData() {
+                try {
+                    const data = {
+                        bestScore,
+                        chanclaCoins,
+                        upgrades
+                    };
+                    localStorage.setItem('chancla_save', JSON.stringify(data));
+                } catch (e) {}
+            }
+
+            function loadData() {
+                try {
+                    const saved = localStorage.getItem('chancla_save');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        if (data.bestScore !== undefined) bestScore = data.bestScore;
+                        if (data.chanclaCoins !== undefined) chanclaCoins = data.chanclaCoins;
+                        if (data.upgrades) {
+                            // Merge upgrades to avoid overwriting new fields if we add them later
+                            for (let key in upgrades) {
+                                if (data.upgrades[key]) {
+                                    upgrades[key].level = data.upgrades[key].level;
+                                    upgrades[key].cost = data.upgrades[key].cost;
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
+            loadData();
+
             let spawnInterval = 1.2;
             let minSpawnInterval = 0.45;
             let spawnTimer = 0;
@@ -357,13 +397,15 @@
             function resetGame() {
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
-                player.lives = 3;
+                player.lives = 3 + (upgrades.extraLife ? upgrades.extraLife.level : 0);
                 player.shield = false;
                 player.hitTimer = 0;
+                player.loveTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.loveTimer = 0;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -664,6 +706,7 @@
                 // Determine expression
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
+                else if (player.loveTimer > 0) expression = 'love';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
@@ -683,11 +726,15 @@
                 ctx.save();
                 let drawX = isa.x;
                 let drawY = isa.y;
+                let expression = 'normal';
                 if (isa.hitTimer > 0) {
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
+                    expression = 'hit';
+                } else if (isa.loveTimer > 0) {
+                    expression = 'love';
                 }
-                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
+                drawIsaAvatar(ctx, drawX, drawY, 78, expression);
 
                 if (isa.chismeTimer > 0) {
                     // Draw phone near Isa
@@ -711,7 +758,7 @@
                 ctx.closePath();
             }
 
-            function drawIsaAvatar(ctx, x, y, size, isHit) {
+            function drawIsaAvatar(ctx, x, y, size, expression = 'normal') {
                 ctx.save();
                 ctx.translate(x, y);
                 const faceW = size * 0.72;
@@ -754,7 +801,7 @@
                 ctx.fill();
 
                 // Eyes
-                if (isHit) {
+                if (expression === 'hit') {
                     // X Eyes
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 3;
@@ -769,6 +816,23 @@
                     };
                     drawXEye(-faceW * 0.2, -faceH * 0.05);
                     drawXEye(faceW * 0.2, -faceH * 0.05);
+                } else if (expression === 'love') {
+                     // Heart eyes
+                     const drawHeartEye = (cx, cy) => {
+                        ctx.save();
+                        ctx.translate(cx, cy);
+                        const scale = faceW * 0.007;
+                        ctx.scale(scale, scale);
+                        ctx.fillStyle = '#d93c7a'; // Darker pink
+                        ctx.beginPath();
+                        ctx.moveTo(0, 6);
+                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
+                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
+                        ctx.fill();
+                        ctx.restore();
+                    };
+                    drawHeartEye(-faceW * 0.2, -faceH * 0.05);
+                    drawHeartEye(faceW * 0.2, -faceH * 0.05);
                 } else {
                     // Normal eyes with lashes
                     ctx.fillStyle = '#1d1411';
@@ -795,13 +859,23 @@
                 }
 
                 // Mouth
-                if (isHit) {
+                if (expression === 'hit') {
                     // O mouth
                     ctx.strokeStyle = '#d93c7a';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.ellipse(0, faceH * 0.2, faceW * 0.1, faceH * 0.12, 0, 0, Math.PI * 2);
                     ctx.stroke();
+                } else if (expression === 'love') {
+                    // Kissy mouth
+                    ctx.fillStyle = '#d93c7a';
+                    ctx.beginPath();
+                    ctx.arc(0, faceH * 0.22, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#e86c9e'; // Highlight
+                    ctx.beginPath();
+                    ctx.arc(-2, faceH * 0.20, faceW * 0.03, 0, Math.PI * 2);
+                    ctx.fill();
                 } else {
                     // Smile and lips
                     ctx.strokeStyle = '#d93c7a';
@@ -850,6 +924,8 @@
                     ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
                 } else if (expression === 'cocky') {
                     ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
+                } else if (expression === 'love') {
+                    ctx.rotate(Math.sin(timeElapsed * 5) * 0.05); // Happy sway
                 } else if (expression === 'dead') {
                     ctx.rotate(Math.PI / 20); // Slight tilt
                 }
@@ -994,6 +1070,23 @@
                     ctx.moveTo(headW * 0.12, -headH * 0.08);
                     ctx.quadraticCurveTo(headW * 0.2, -headH * 0.06, headW * 0.28, -headH * 0.08);
                     ctx.stroke();
+                } else if (expression === 'love') {
+                    // Heart eyes
+                    const drawHeartEye = (cx, cy) => {
+                        ctx.save();
+                        ctx.translate(cx, cy);
+                        const scale = headW * 0.006;
+                        ctx.scale(scale, scale);
+                        ctx.fillStyle = '#ff4d6d';
+                        ctx.beginPath();
+                        ctx.moveTo(0, 6);
+                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
+                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
+                        ctx.fill();
+                        ctx.restore();
+                    };
+                    drawHeartEye(-headW * 0.2, -headH * 0.04);
+                    drawHeartEye(headW * 0.2, -headH * 0.04);
                 } else {
                     // Normal eyes
                     ctx.fillStyle = '#2a1b12';
@@ -1069,6 +1162,13 @@
                     // Asymmetrical smile
                     ctx.moveTo(-headW * 0.1, headH * 0.24);
                     ctx.quadraticCurveTo(0, headH * 0.28, headW * 0.12, headH * 0.20);
+                    ctx.stroke();
+                } else if (expression === 'love') {
+                    // Big Smile
+                    ctx.strokeStyle = '#1e130c';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, headH * 0.20, headW * 0.15, 0, Math.PI, false);
                     ctx.stroke();
                 } else {
                     // Smile
@@ -1457,8 +1557,15 @@
                 drawIsa();
                 drawPlayer();
                 ctx.save();
+
+                // Draw Coins
+                ctx.fillStyle = '#fff';
+                ctx.font = '16px "Noto Color Emoji", sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText('🩴 ' + chanclaCoins, canvas.width - 20, 40);
+
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                roundRect(ctx, 30, 260, canvas.width - 60, 200, 16);
+                roundRect(ctx, 30, 260, canvas.width - 60, 260, 16);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
@@ -1468,12 +1575,23 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+
+                // Play Button
                 ctx.fillStyle = '#ff9f1c';
                 roundRect(ctx, 110, 380, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+
+                // Shop Button
+                ctx.fillStyle = '#9b4ae2';
+                roundRect(ctx, 110, 440, canvas.width - 220, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px sans-serif';
+                ctx.fillText('La Tienda / Shop', canvas.width / 2, 470);
+
                 ctx.restore();
             }
 
@@ -1547,6 +1665,8 @@
 
             function applyPowerup(p) {
                 if (p.kind === 'heart') {
+                    player.loveTimer = 2.0;
+                    isa.loveTimer = 2.0;
                     if (player.lives < player.maxLives) {
                         player.lives++;
                         addFloatText('I love you! +1 ❤️', p.x, p.y);
@@ -1555,11 +1675,11 @@
                     }
                 }
                 if (p.kind === 'beer') {
-                    slowEffect.timer = 4.5;
+                    slowEffect.timer = 4.5 + (upgrades.beerDuration ? upgrades.beerDuration.level * 0.5 : 0);
                     addFloatText('Cerveza chill 🍺', p.x, p.y);
                 }
                 if (p.kind === 'phone') {
-                    isa.chismeTimer = 3.5;
+                    isa.chismeTimer = 3.5 + (upgrades.phoneDuration ? upgrades.phoneDuration.level * 0.5 : 0);
                     addFloatText('¡Chisme Time! 📱', p.x, p.y);
                     sayRandom('chisme');
                 }
@@ -1957,9 +2077,24 @@
             }
 
             function updatePowerups(dt) {
+                const magnetLevel = upgrades.magnet ? upgrades.magnet.level : 0;
                 for (let i = powerups.length - 1; i >= 0; i--) {
                     const p = powerups[i];
-                    p.y += p.vy * dt;
+
+                    if (magnetLevel > 0) {
+                        const dx = player.x - p.x;
+                        const dy = (player.y - 20) - p.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 300) {
+                            p.x += (dx / dist) * 200 * dt;
+                            p.y += (dy / dist) * 200 * dt;
+                        } else {
+                            p.y += p.vy * dt;
+                        }
+                    } else {
+                        p.y += p.vy * dt;
+                    }
+
                     if (rectsOverlap(player, p)) {
                         applyPowerup(p);
                         powerups.splice(i, 1);
@@ -2063,6 +2198,8 @@
             function endGame() {
                 state = STATE.GAMEOVER;
                 bestScore = Math.max(bestScore, score);
+                chanclaCoins += score;
+                saveData();
                 sayRandom('gameOver');
             }
 
@@ -2159,6 +2296,8 @@
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
+                if (player.loveTimer > 0) player.loveTimer -= dt;
+                if (isa.loveTimer > 0) isa.loveTimer -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
@@ -2199,7 +2338,7 @@
                 if (winAnimationStart === 0) winAnimationStart = Date.now();
                 const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
                 const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
-                drawIsaAvatar(ctx, isa.x, isaWinY, 78);
+                drawIsaAvatar(ctx, isa.x, isaWinY, 78, 'love');
 
                 // Speech bubble
                 if (winProgress > 0.7) {
@@ -2247,7 +2386,9 @@
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
+
                 if (state === STATE.TITLE) drawTitleScreen();
+                else if (state === STATE.SHOP) drawShop();
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
@@ -2263,21 +2404,65 @@
                 resetGame();
             }
 
-            function setDirectionsVisible(show) {
+            function setDirectionsVisible(show, forceDisableInput) {
                 body.classList.toggle('hide-directions', !show);
+                // If show=true (Title), input disabled. If show=false (Game), input enabled.
+                // forceDisableInput allows disabling input even if show=false (Shop).
+                const enableInput = !show && !forceDisableInput;
+                const zones = document.querySelectorAll('.touch-zone');
+                zones.forEach(z => z.style.pointerEvents = enableInput ? 'auto' : 'none');
             }
 
             canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
+
                 if (state === STATE.TITLE) {
-                    startGameFromTitle();
+                    if (x > 110 && x < 290 && y > 440 && y < 486) {
+                        state = STATE.SHOP;
+                        setDirectionsVisible(false, true); // Hide text, keep input disabled
+                    } else {
+                        startGameFromTitle();
+                    }
+                } else if (state === STATE.SHOP) {
+                    // Back button: 100, 620, 200, 50
+                    if (x > 100 && x < 300 && y > 620 && y < 670) {
+                        state = STATE.TITLE;
+                        setDirectionsVisible(true); // Show text, disable input
+                        return;
+                    }
+
+                    // Upgrades
+                    let itemY = 110;
+                    const itemKeys = Object.keys(upgrades);
+                    for (let i = 0; i < itemKeys.length; i++) {
+                        const key = itemKeys[i];
+                        const item = upgrades[key];
+                        if (x > 20 && x < 380 && y > itemY && y < itemY + 100) {
+                            if (item.level < item.max && chanclaCoins >= item.cost) {
+                                chanclaCoins -= item.cost;
+                                item.level++;
+                                item.cost = Math.ceil(item.cost * 1.5 / 10) * 10; // Increase cost 1.5x rounded to 10
+                                saveData();
+                                playSound(1000, 0.1);
+                            } else if (chanclaCoins < item.cost && item.level < item.max) {
+                                playSound(200, 0.2); // Error sound
+                            }
+                        }
+                        itemY += 120;
+                    }
                 } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
                     resetGame();
                 }
             });
 
             canvas.addEventListener('touchstart', (e) => {
-                if (state === STATE.TITLE) { startGameFromTitle(); return; }
-                if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+                // Menu interactions are handled by 'click' to avoid double-firing (ghost clicks)
+                // and to ensure consistent behavior with the shop logic.
+                if (state !== STATE.PLAYING) return;
 
                 if (state === STATE.PLAYING) {
                     const rect = canvas.getBoundingClientRect();
