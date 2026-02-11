@@ -162,7 +162,7 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
             let state = STATE.TITLE;
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0, chiliTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, loveTimer: 0 };
 
             let chanclas = [];
@@ -361,6 +361,7 @@
                 player.shield = false;
                 player.hitTimer = 0;
                 player.loveTimer = 0;
+                player.chiliTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -667,9 +668,25 @@
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
                 else if (player.loveTimer > 0) expression = 'love';
+                else if (player.chiliTimer > 0) expression = 'slap';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
+
+                if (player.chiliTimer > 0) {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    const pulse = 1 + Math.sin(timeElapsed * 15) * 0.1;
+                    ctx.scale(pulse, pulse);
+                    const grad = ctx.createRadialGradient(0, 0, w * 0.3, 0, 0, w * 0.8);
+                    grad.addColorStop(0, 'rgba(255, 69, 0, 0.8)');
+                    grad.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, w * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
 
                 drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
                 if (player.shield) {
@@ -1382,6 +1399,12 @@
                     ctx.textAlign = 'center';
                     ctx.fillText('🍺 chill ' + slowEffect.timer.toFixed(1) + 's', canvas.width / 2, 22);
                 }
+                if (player.chiliTimer > 0) {
+                    ctx.fillStyle = '#ff4500';
+                    ctx.font = 'bold 15px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText('🌶️ SPICY ' + player.chiliTimer.toFixed(1) + 's', 12, 45);
+                }
 
                 // Draw special attack bar
                 const barWidth = 180;
@@ -1624,6 +1647,11 @@
                     isa.chismeTimer = 3.5;
                     addFloatText('¡Chisme Time! 📱', p.x, p.y);
                     sayRandom('chisme');
+                }
+                if (p.kind === 'chili') {
+                    player.chiliTimer = 5.0;
+                    addFloatText('¡MUY PICANTE! 🌶️', p.x, p.y);
+                    playSound(1500, 0.5);
                 }
             }
 
@@ -1872,6 +1900,23 @@
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
                     if (!c.slapped && rectsOverlap(player, c)) {
+                        if (player.chiliTimer > 0) {
+                            chanclas.splice(i, 1);
+                            spawnImpact(c.x, c.y, true);
+                            addFloatText('SPLAT! 🔥', c.x, c.y);
+                            score += 10;
+                            playSound(400, 0.1);
+                            for (let k = 0; k < 5; k++) {
+                                rosePetals.push({
+                                    x: c.x, y: c.y,
+                                    vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200,
+                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+                                    emoji: '🔥', size: 24
+                                });
+                            }
+                            continue;
+                        }
+
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -1922,7 +1967,8 @@
                     if (p.kind === 'owen') {
                         p.x += p.vx * dt;
                         if (!p.dropped && Math.random() < 0.12 * dt) {
-                            const type = Math.random() < 0.3 ? 'phone' : 'beer';
+                            const rand = Math.random();
+                            const type = rand < 0.35 ? 'phone' : (rand < 0.7 ? 'beer' : 'chili');
                             spawnPowerup(type, p.x, p.y - 10);
                             p.dropped = true;
                         }
@@ -1997,6 +2043,15 @@
                         ctx.fillStyle = '#fff';
                         ctx.font = '20px sans-serif';
                         ctx.fillText('📱', 0, 8);
+                    } else if (p.kind === 'chili') {
+                        ctx.fillStyle = '#ff4500';
+                        roundRect(ctx, -14, -20, 28, 44, 4);
+                        ctx.fill();
+                        ctx.fillStyle = '#ff6347';
+                        roundRect(ctx, -12, -18, 24, 40, 2);
+                        ctx.fill();
+                        ctx.font = '24px sans-serif';
+                        ctx.fillText('🌶️', 0, 10);
                     }
                     ctx.restore();
                 });
@@ -2216,6 +2271,7 @@
                 }
 
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
+                if (player.chiliTimer > 0) player.chiliTimer -= dt;
                 if (slapCooldown > 0) slapCooldown -= dt;
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
