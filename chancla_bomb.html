@@ -170,6 +170,7 @@
             let powerups = [];
             let floatTexts = [];
             let rosePetals = [];
+            let fireParticles = [];
             let specialProjectiles = [];
             let score = 0;
             let bestScore = 0;
@@ -371,6 +372,7 @@
                 powerups = [];
                 floatTexts = [];
                 rosePetals = [];
+                fireParticles = [];
                 specialProjectiles = [];
                 impacts = [];
                 score = 0;
@@ -485,6 +487,38 @@
                     }
                     ctx.restore();
                 });
+            }
+
+            function updateFireParticles(dt) {
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.y -= p.vy * dt;
+                    p.x += p.drift * dt;
+                    p.radius -= 3 * dt;
+                    p.timer -= dt;
+
+                    if (p.radius <= 0 || p.timer <= 0) {
+                        fireParticles.splice(i, 1);
+                    }
+                }
+            }
+
+            function drawFireParticles() {
+                if (fireParticles.length === 0) return;
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                fireParticles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, Math.max(0, p.radius), 0, Math.PI * 2);
+
+                    // Color transition: Yellow -> Orange -> Red
+                    if (p.timer > 0.6) ctx.fillStyle = 'rgba(255, 215, 0, 0.7)'; // Gold/Yellow
+                    else if (p.timer > 0.3) ctx.fillStyle = 'rgba(255, 140, 0, 0.6)'; // Dark Orange
+                    else ctx.fillStyle = 'rgba(255, 69, 0, 0.5)'; // Orange Red
+
+                    ctx.fill();
+                });
+                ctx.restore();
             }
 
             function spawnRoseExplosion(x, y) {
@@ -1187,9 +1221,21 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang) {
+            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang, isFire) {
                 ctx.save();
                 ctx.translate(x, y);
+
+                if (isFire) {
+                    ctx.save();
+                    const fireSize = Math.max(40, w * 1.8);
+                    ctx.font = `${fireSize}px 'Noto Color Emoji', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.globalAlpha = 0.8;
+                    // Draw fire behind
+                    ctx.fillText('🔥', 0, 0);
+                    ctx.restore();
+                }
 
                 if (isBoomerang) {
                     ctx.save();
@@ -1657,6 +1703,7 @@
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
                         slappedAny = true;
                         comboCount++;
+                        if (comboCount >= 6) c.isFire = true;
                         score += comboCount;
 
                         // Increase special attack bar
@@ -1804,6 +1851,19 @@
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     c.rotation += c.rotSpeed * dt;
 
+                    if (c.isFire) {
+                        if (Math.random() < 0.4) {
+                             fireParticles.push({
+                                x: c.x + (Math.random() - 0.5) * 10,
+                                y: c.y,
+                                vy: -50, // Downwards (trail behind upward moving chancla) or just stationary
+                                drift: (Math.random() - 0.5) * 10,
+                                radius: 4 + Math.random() * 4,
+                                timer: 0.5
+                            });
+                        }
+                    }
+
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
                         // Check for chain reaction with other chanclas
@@ -1841,6 +1901,7 @@
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : 8;
                             if (c.isPerfect) damage += 7;
+                            if (c.isFire) damage += 10;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
@@ -2180,6 +2241,18 @@
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
+                updateFireParticles(dt);
+
+                if (comboCount >= 6 && Math.random() < 0.4) {
+                    fireParticles.push({
+                        x: player.x + (Math.random() - 0.5) * 40,
+                        y: player.y + 10,
+                        vy: 50 + Math.random() * 50,
+                        drift: (Math.random() - 0.5) * 20,
+                        radius: 5 + Math.random() * 5,
+                        timer: 1.0
+                    });
+                }
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -2239,6 +2312,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawFireParticles();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
@@ -2251,7 +2325,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang, c.isFire);
             }
 
             function drawWinScreen() {
