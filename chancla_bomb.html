@@ -1386,7 +1386,7 @@
                 // Draw special attack bar
                 const barWidth = 180;
                 const barHeight = 20;
-                const barX = canvas.width / 2 - barWidth / 2 - 20;
+                const barX = canvas.width / 2 - barWidth / 2;
                 const barY = 40;
 
                 // Background
@@ -1420,44 +1420,13 @@
                 roundRect(ctx, barX, barY, barWidth, barHeight, 10);
                 ctx.stroke();
 
-                // Eggplant emoji
-                const p = Math.min(1, specialAttackBar / maxSpecialAttack);
-                ctx.save();
-                const eggX = barX + barWidth + 20;
-                const eggY = barY + barHeight / 2;
-                ctx.translate(eggX, eggY);
-
-                let eggScale = 1 + p * 0.4; // up to 1.4x bigger
-                let glowIntensity = p * 15;
-
-                // Pulsing effect when ready
-                if (p >= 1) {
-                    const pulse = Math.sin(timeElapsed * 12); // Pulse speed
-                    eggScale += pulse * 0.15;
-                    glowIntensity += pulse * 8 + 8; // Pulsing glow
-                }
-
-                // Rotate based on progress
-                const eggRotation = p * (20 * Math.PI / 180);
-                ctx.rotate(eggRotation);
-                ctx.scale(eggScale, eggScale);
-
-                // Glow if bar has some progress
-                if (p > 0) {
-                    ctx.shadowBlur = Math.max(0, glowIntensity);
-                    ctx.shadowColor = `rgba(147, 51, 234, ${p})`; // Purple glow
-                }
-
-                ctx.font = '28px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🍆', 0, 0);
-                ctx.restore();
-
                 // "READY!" text
+                const p = Math.min(1, specialAttackBar / maxSpecialAttack);
                 if (p >= 1) {
                     ctx.save();
-                    ctx.translate(eggX, eggY + 28);
+                    const textX = canvas.width / 2;
+                    const textY = barY + barHeight + 15;
+                    ctx.translate(textX, textY);
                     const textPulse = Math.sin(timeElapsed * 12);
                     const scale = 1 + textPulse * 0.1;
                     ctx.scale(scale, scale);
@@ -1664,13 +1633,13 @@
 
                         if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
                             specialReadyTriggered = true;
-                            // HUD egg icon approx location
-                            const eggX = 290;
-                            const eggY = 50;
-                            spawnImpact(eggX, eggY, true);
+                            // HUD bar center location
+                            const barCenterX = canvas.width / 2;
+                            const barCenterY = 50;
+                            spawnImpact(barCenterX, barCenterY, true);
                             for (let k = 0; k < 8; k++) {
                                 rosePetals.push({
-                                    x: eggX, y: eggY,
+                                    x: barCenterX, y: barCenterY,
                                     vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200,
                                     rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
                                     emoji: '✨', size: 20
