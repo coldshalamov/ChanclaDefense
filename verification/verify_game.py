@@ -12,9 +12,19 @@ def verify_expressions():
         cwd = os.getcwd()
         page.goto('file://' + cwd + '/chancla_bomb.html')
 
-        # Start game by clicking (simulate touch/click)
+        # Start game by clicking the Play button
+        # The button is at y=380 to 426 on a 700 height canvas.
+        # That is roughly 54% to 60% down the canvas.
+        # We need to click specifically there.
         canvas = page.locator('#game')
-        canvas.click()
+        box = canvas.bounding_box()
+
+        # Click at approximate relative coordinates of the Play button
+        # x=center, y=~400/700
+        click_x = box['width'] * 0.5
+        click_y = box['height'] * (403 / 700)
+
+        page.mouse.click(box['x'] + click_x, box['y'] + click_y)
 
         # Wait a bit for game to start
         time.sleep(1)
