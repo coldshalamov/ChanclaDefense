@@ -1349,6 +1349,25 @@
                 lines.forEach((l, i) => context.fillText(l.trim(), x, y + i * lineHeight - (lines.length - 1) * lineHeight / 2));
             }
 
+            function drawChillVignette() {
+                if (slowEffect.timer <= 0) return;
+
+                ctx.save();
+                const pulse = (Math.sin(timeElapsed * 4) + 1) / 2; // Relaxed pulse
+                const alpha = 0.15 + pulse * 0.1; // Oscillates between 0.15 and 0.25
+
+                const gradient = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, canvas.width * 0.2,
+                    canvas.width / 2, canvas.height / 2, canvas.height * 0.8
+                );
+                gradient.addColorStop(0, 'rgba(242, 201, 76, 0)');
+                gradient.addColorStop(1, `rgba(242, 201, 76, ${alpha})`);
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
+
             function drawLowHealthVignette() {
                 if (player.lives > 1) return;
 
@@ -2242,6 +2261,7 @@
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
+                drawChillVignette();
                 drawLowHealthVignette();
                 drawFlash();
                 drawHUD();
