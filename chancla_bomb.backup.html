@@ -159,38 +159,8 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
             let state = STATE.TITLE;
-
-            const SHOP_ITEMS = [
-                { id: 'vaporub', name: 'VapoRub Shield', emoji: '🛡️', price: 100, desc: 'Start with a shield' },
-                { id: 'magnet', name: 'Chancla Magnet', emoji: '🧲', price: 250, desc: 'Attract powerups' },
-                { id: 'caguama', name: 'Caguama', emoji: '🍺', price: 500, desc: 'Longer chill time' },
-                { id: 'salsa', name: 'Salsa Valentina', emoji: '🌶️', price: 800, desc: 'Fuego Combos!' }
-            ];
-
-            let coins = 0;
-            let inventory = {};
-
-            function loadStats() {
-                try {
-                    const savedCoins = localStorage.getItem('cb_coins');
-                    const savedInventory = localStorage.getItem('cb_inventory');
-                    if (savedCoins) coins = parseInt(savedCoins, 10);
-                    if (savedInventory) inventory = JSON.parse(savedInventory);
-                } catch (e) {
-                    console.error('Error loading stats:', e);
-                }
-            }
-
-            function saveStats() {
-                try {
-                    localStorage.setItem('cb_coins', coins);
-                    localStorage.setItem('cb_inventory', JSON.stringify(inventory));
-                } catch (e) {
-                    console.error('Error saving stats:', e);
-                }
-            }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, loveTimer: 0 };
@@ -388,7 +358,7 @@
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
                 player.lives = 3;
-                player.shield = !!inventory.vaporub;
+                player.shield = false;
                 player.hitTimer = 0;
                 player.loveTimer = 0;
                 isa.anger = isa.maxAnger;
@@ -1217,22 +1187,9 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang, isFire) {
+            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang) {
                 ctx.save();
                 ctx.translate(x, y);
-
-                if (isFire) {
-                     ctx.save();
-                     const fireSize = Math.max(40, w * 1.8);
-                     ctx.font = `${fireSize}px 'Noto Color Emoji', sans-serif`;
-                     ctx.textAlign = 'center';
-                     ctx.textBaseline = 'middle';
-                     // Pulse
-                     const pulse = 1 + Math.sin(Date.now() / 100) * 0.1;
-                     ctx.scale(pulse, pulse);
-                     ctx.fillText('🔥', 0, 0);
-                     ctx.restore();
-                }
 
                 if (isBoomerang) {
                     ctx.save();
@@ -1555,83 +1512,6 @@
                 ctx.restore();
             }
 
-            function drawShop() {
-                ctx.save();
-                ctx.fillStyle = 'rgba(0,0,0,0.85)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                ctx.fillStyle = '#fff';
-                ctx.textAlign = 'center';
-                ctx.font = '30px sans-serif';
-                ctx.fillText('Tiendita', canvas.width / 2, 60);
-
-                ctx.font = '16px sans-serif';
-                ctx.fillStyle = '#ffd700';
-                ctx.fillText('Coins: ' + coins + ' 🪙', canvas.width / 2, 90);
-
-                const startY = 130;
-                const itemHeight = 85;
-
-                SHOP_ITEMS.forEach((item, index) => {
-                    const y = startY + index * (itemHeight + 10);
-                    const isOwned = inventory[item.id];
-
-                    // Item Box
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-                    roundRect(ctx, 30, y, canvas.width - 60, itemHeight, 10);
-                    ctx.fill();
-
-                    // Emoji
-                    ctx.font = '36px "Noto Color Emoji", sans-serif';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(item.emoji, 45, y + 55);
-
-                    // Name & Desc
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 16px sans-serif';
-                    ctx.fillText(item.name, 95, y + 30);
-                    ctx.fillStyle = '#ccc';
-                    ctx.font = '12px sans-serif';
-                    ctx.fillText(item.desc, 95, y + 50);
-
-                    // Price / Button
-                    const btnX = canvas.width - 110;
-                    const btnY = y + 25;
-                    const btnW = 70;
-                    const btnH = 35;
-
-                    if (isOwned) {
-                        ctx.fillStyle = '#4caf50'; // Green for owned
-                        roundRect(ctx, btnX, btnY, btnW, btnH, 8);
-                        ctx.fill();
-                        ctx.fillStyle = '#fff';
-                        ctx.font = '12px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('OWNED', btnX + btnW/2, btnY + 22);
-                    } else {
-                        const canAfford = coins >= item.price;
-                        ctx.fillStyle = canAfford ? '#ff9f1c' : '#555';
-                        roundRect(ctx, btnX, btnY, btnW, btnH, 8);
-                        ctx.fill();
-                        ctx.fillStyle = canAfford ? '#222' : '#888';
-                        ctx.font = 'bold 12px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(item.price + '🪙', btnX + btnW/2, btnY + 22);
-                    }
-                });
-
-                // Back Button
-                ctx.fillStyle = '#ff79c6';
-                roundRect(ctx, 110, canvas.height - 80, canvas.width - 220, 46, 12);
-                ctx.fill();
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 18px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('Back / Regresar', canvas.width / 2, canvas.height - 50);
-
-                ctx.restore();
-            }
-
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
@@ -1654,15 +1534,6 @@
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Jugar / Play', canvas.width / 2, 410);
-
-                // Shop Button
-                ctx.fillStyle = '#bd93f9';
-                roundRect(ctx, 110, 440, canvas.width - 220, 46, 12);
-                ctx.fill();
-                ctx.fillStyle = '#fff';
-                ctx.font = '18px sans-serif';
-                ctx.fillText('Tiendita 🛍️', canvas.width / 2, 470);
-
                 ctx.restore();
             }
 
@@ -1692,15 +1563,6 @@
                 ctx.fillStyle = '#222';
                 ctx.font = 'bold 20px sans-serif';
                 ctx.fillText('Play Again', canvas.width / 2, canvas.height / 2 + 142);
-
-                // Shop Button
-                ctx.fillStyle = '#bd93f9';
-                roundRect(ctx, 110, canvas.height / 2 + 170, canvas.width - 220, 50, 12);
-                ctx.fill();
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 20px sans-serif';
-                ctx.fillText('Tiendita 🛍️', canvas.width / 2, canvas.height / 2 + 202);
-
                 ctx.restore();
             }
 
@@ -1755,8 +1617,8 @@
                     }
                 }
                 if (p.kind === 'beer') {
-                    slowEffect.timer = inventory.caguama ? 7.0 : 4.5;
-                    addFloatText(inventory.caguama ? 'CAGUAMA! 🍺' : 'Cerveza chill 🍺', p.x, p.y);
+                    slowEffect.timer = 4.5;
+                    addFloatText('Cerveza chill 🍺', p.x, p.y);
                 }
                 if (p.kind === 'phone') {
                     isa.chismeTimer = 3.5;
@@ -1795,12 +1657,6 @@
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
                         slappedAny = true;
                         comboCount++;
-
-                        if (comboCount >= 6 && inventory.salsa) {
-                             c.isFire = true;
-                             addFloatText('FUEGO! 🔥', c.x, c.y - 20);
-                        }
-
                         score += comboCount;
 
                         // Increase special attack bar
@@ -1948,15 +1804,6 @@
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     c.rotation += c.rotSpeed * dt;
 
-                    if (c.isFire && Math.random() < 0.3) {
-                        rosePetals.push({
-                            x: c.x, y: c.y,
-                            vx: (Math.random() - 0.5) * 50, vy: -50,
-                            rotation: Math.random() * 6, rotSpeed: 2,
-                            emoji: '🔥', size: 16
-                        });
-                    }
-
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
                         // Check for chain reaction with other chanclas
@@ -1994,7 +1841,6 @@
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : 8;
                             if (c.isPerfect) damage += 7;
-                            if (c.isFire) damage += 10;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
@@ -2002,9 +1848,6 @@
                             if (c.isPerfect) {
                                 addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
                                 hitStop = 0.1;
-                            }
-                            if (c.isFire) {
-                                addFloatText('BURNING! 🔥', isa.x, isa.y + 50);
                             }
                             addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
 
@@ -2178,17 +2021,6 @@
             function updatePowerups(dt) {
                 for (let i = powerups.length - 1; i >= 0; i--) {
                     const p = powerups[i];
-
-                    if (inventory.magnet) {
-                        const dx = player.x - p.x;
-                        const dy = player.y - p.y;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist < 200) {
-                            p.x += (dx / dist) * 180 * dt;
-                            p.y += (dy / dist) * 180 * dt;
-                        }
-                    }
-
                     p.y += p.vy * dt;
                     if (rectsOverlap(player, p)) {
                         applyPowerup(p);
@@ -2293,9 +2125,6 @@
             function endGame() {
                 state = STATE.GAMEOVER;
                 bestScore = Math.max(bestScore, score);
-                const earned = Math.floor(score / 10);
-                coins += earned;
-                saveStats();
                 sayRandom('gameOver');
             }
 
@@ -2422,7 +2251,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang, c.isFire);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang);
             }
 
             function drawWinScreen() {
@@ -2486,9 +2315,6 @@
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
-                } else if (state === STATE.SHOP) {
-                    drawTitleScreen(); // Background
-                    drawShop();
                 } else {
                     draw();
                     if (state === STATE.GAMEOVER) drawGameOver();
@@ -2505,28 +2331,18 @@
                 body.classList.toggle('hide-directions', !show);
             }
 
-            function getEventPos(e) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                let clientX = e.clientX;
-                let clientY = e.clientY;
-                if (e.touches && e.touches.length > 0) {
-                    clientX = e.touches[0].clientX;
-                    clientY = e.touches[0].clientY;
-                }
-                return {
-                    x: (clientX - rect.left) * scaleX,
-                    y: (clientY - rect.top) * scaleY
-                };
-            }
-
             canvas.addEventListener('click', (e) => {
-                const pos = getEventPos(e);
-                handleMenuInteraction(pos.x, pos.y);
+                if (state === STATE.TITLE) {
+                    startGameFromTitle();
+                } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
+                    resetGame();
+                }
             });
 
             canvas.addEventListener('touchstart', (e) => {
+                if (state === STATE.TITLE) { startGameFromTitle(); return; }
+                if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+
                 if (state === STATE.PLAYING) {
                     const rect = canvas.getBoundingClientRect();
                     const touchPoint = e.touches[0];
@@ -2545,63 +2361,8 @@
                         // Movement controls for bottom area
                         if (x < rect.width / 2) touch.left = true; else touch.right = true;
                     }
-                } else {
-                    const pos = getEventPos(e);
-                    handleMenuInteraction(pos.x, pos.y);
                 }
             }, { passive: true });
-
-            function handleMenuInteraction(x, y) {
-                if (state === STATE.TITLE) {
-                    // Play Button: y 380, h 46. x 110, w canvas.width - 220
-                    if (y >= 380 && y <= 380 + 46 && x >= 110 && x <= canvas.width - 110) {
-                        startGameFromTitle();
-                    }
-                    // Shop Button: y 440, h 46
-                    if (y >= 440 && y <= 440 + 46 && x >= 110 && x <= canvas.width - 110) {
-                        state = STATE.SHOP;
-                    }
-                } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
-                    // Play Again: y canvas.height / 2 + 110, h 50
-                    const playY = canvas.height / 2 + 110;
-                    if (y >= playY && y <= playY + 50 && x >= 110 && x <= canvas.width - 110) {
-                        resetGame();
-                    }
-                    // Shop Button: y canvas.height / 2 + 170, h 50
-                    const shopY = canvas.height / 2 + 170;
-                    if (y >= shopY && y <= shopY + 50 && x >= 110 && x <= canvas.width - 110) {
-                        state = STATE.SHOP;
-                    }
-                } else if (state === STATE.SHOP) {
-                    // Back Button: y canvas.height - 80, h 46
-                    if (y >= canvas.height - 80 && y <= canvas.height - 80 + 46 && x >= 110 && x <= canvas.width - 110) {
-                        state = STATE.TITLE;
-                    }
-
-                    // Shop Items
-                    const startY = 130;
-                    const itemHeight = 85;
-                    const btnX = canvas.width - 110;
-                    const btnW = 70;
-                    const btnH = 35;
-
-                    SHOP_ITEMS.forEach((item, index) => {
-                        const rowY = startY + index * (itemHeight + 10);
-                        const btnY = rowY + 25;
-
-                        if (x >= btnX && x <= btnX + btnW && y >= btnY && y <= btnY + btnH) {
-                            if (!inventory[item.id] && coins >= item.price) {
-                                coins -= item.price;
-                                inventory[item.id] = true;
-                                saveStats();
-                                playSound(1200, 0.1); // Cha-ching
-                            } else if (!inventory[item.id]) {
-                                playSound(200, 0.1); // Error sound
-                            }
-                        }
-                    });
-                }
-            }
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {
@@ -2665,7 +2426,6 @@
             resize();
 
             function initTitle() {
-                loadStats();
                 sayRandom('start');
                 setDirectionsVisible(true);
             }
