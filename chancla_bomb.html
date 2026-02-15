@@ -69,6 +69,10 @@
             bottom: 0;
             width: 50%;
             height: 40%;
+            pointer-events: none;
+        }
+
+        body.playing .touch-zone {
             pointer-events: auto;
         }
 
@@ -159,8 +163,26 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
             let state = STATE.TITLE;
+
+            const SHOP_ITEMS = [
+                { id: 'vaporub', name: 'VapoRub Shield', emoji: '🧴', price: 100, type: 'consumable', desc: '+1 Life (Auto)' },
+                { id: 'magnet', name: 'Chancla Magnet', emoji: '🧲', price: 500, type: 'permanent', desc: 'Attract Powerups' },
+                { id: 'caguama', name: 'Caguama', emoji: '🍺', price: 300, type: 'permanent', desc: 'Longer Chill' },
+                { id: 'salsa', name: 'Salsa Valentina', emoji: '🌶️', price: 750, type: 'permanent', desc: 'Easier Fire' }
+            ];
+
+            let playerStats = {
+                coins: 0,
+                highScore: 0,
+                inventory: {
+                    vaporub: 0,
+                    magnet: false,
+                    caguama: false,
+                    salsa: false
+                }
+            };
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, loveTimer: 0 };
@@ -354,11 +376,44 @@
                 flash.color = color;
             }
 
+            function loadStats() {
+                try {
+                    const saved = localStorage.getItem('cb_stats');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        playerStats = { ...playerStats, ...parsed };
+                        // Ensure inventory keys exist
+                        if (!playerStats.inventory) playerStats.inventory = {};
+                        const defaultInv = { vaporub: 0, magnet: false, caguama: false, salsa: false };
+                        playerStats.inventory = { ...defaultInv, ...playerStats.inventory };
+                    }
+                } catch (e) {
+                    console.error("Failed to load stats", e);
+                }
+                bestScore = playerStats.highScore || 0;
+            }
+
+            function saveStats() {
+                playerStats.highScore = Math.max(playerStats.highScore || 0, bestScore);
+                try {
+                    localStorage.setItem('cb_stats', JSON.stringify(playerStats));
+                } catch (e) {
+                    console.error("Failed to save stats", e);
+                }
+            }
+
             function resetGame() {
+                body.classList.add('playing');
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
                 player.lives = 3;
                 player.shield = false;
+                if (playerStats.inventory.vaporub > 0) {
+                    player.shield = true;
+                    playerStats.inventory.vaporub--;
+                    addFloatText("Shield Active! 🧴", player.x, player.y - 50);
+                    saveStats();
+                }
                 player.hitTimer = 0;
                 player.loveTimer = 0;
                 isa.anger = isa.maxAnger;
@@ -396,10 +451,11 @@
             }
 
             function getComboPhrase(c) {
+                const fireThreshold = playerStats.inventory.salsa ? 4 : 6;
                 if (c >= 25) return "LEGEND! 👑";
                 if (c >= 15) return "IMPOSSIBLE! 🤯";
                 if (c >= 10) return "DIOS MIO! 😱";
-                if (c >= 6) return "FUEGO! 🔥";
+                if (c >= fireThreshold) return "FUEGO! 🔥";
                 if (c >= 3) return "SPICY! 🌶️";
                 return "";
             }
@@ -1518,7 +1574,7 @@
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                roundRect(ctx, 30, 260, canvas.width - 60, 200, 16);
+                roundRect(ctx, 30, 260, canvas.width - 60, 250, 16);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
@@ -1528,12 +1584,113 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+
+                // Play Button
                 ctx.fillStyle = '#ff9f1c';
                 roundRect(ctx, 110, 380, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+
+                // Shop Button
+                ctx.fillStyle = '#bd93f9';
+                roundRect(ctx, 110, 440, canvas.width - 220, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#222';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.fillText('Tiendita 🛒', canvas.width / 2, 470);
+
+                ctx.restore();
+            }
+
+            function drawShop() {
+                drawBackground();
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#ff79c6';
+                ctx.font = 'bold 32px sans-serif';
+                ctx.fillText('LA TIENDITA', canvas.width / 2, 60);
+
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '20px sans-serif';
+                ctx.fillText(`Chancla Coins: ${playerStats.coins || 0}`, canvas.width / 2, 95);
+
+                const startY = 130;
+                const gap = 15;
+                const boxW = (canvas.width - 40 - gap) / 2;
+                const boxH = 180;
+
+                SHOP_ITEMS.forEach((item, index) => {
+                    const col = index % 2;
+                    const row = Math.floor(index / 2);
+                    const x = 20 + col * (boxW + gap);
+                    const y = startY + row * (boxH + gap);
+
+                    const owned = item.type === 'permanent' && playerStats.inventory[item.id];
+                    const canAfford = playerStats.coins >= item.price;
+
+                    ctx.fillStyle = owned ? '#2d6a4f' : '#1f4068';
+                    roundRect(ctx, x, y, boxW, boxH, 10);
+                    ctx.fill();
+                    ctx.strokeStyle = owned ? '#40916c' : '#6dd3ff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.font = '40px "Noto Color Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(item.emoji, x + boxW/2, y + 40);
+
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 14px sans-serif';
+                    ctx.textBaseline = 'top';
+                    wrapText(ctx, item.name, x + boxW/2, y + 70, boxW - 10, 16);
+
+                    ctx.fillStyle = '#dcdcdc';
+                    ctx.font = '12px sans-serif';
+                    wrapText(ctx, item.desc, x + boxW/2, y + 105, boxW - 10, 14);
+
+                    const btnY = y + boxH - 35;
+                    if (owned) {
+                        ctx.fillStyle = '#95d5b2';
+                        ctx.font = 'bold 16px sans-serif';
+                        ctx.textBaseline = 'top';
+                        ctx.fillText('OWNED', x + boxW/2, btnY);
+                    } else {
+                        const btnH = 30;
+                        const btnW = boxW - 20;
+                        const btnX = x + 10;
+
+                        ctx.fillStyle = canAfford ? '#ff9f1c' : '#555';
+                        roundRect(ctx, btnX, btnY, btnW, btnH, 6);
+                        ctx.fill();
+
+                        ctx.fillStyle = canAfford ? '#222' : '#888';
+                        ctx.font = 'bold 13px sans-serif';
+                        ctx.textBaseline = 'middle';
+
+                        let label = `${item.price} 🟡`;
+                        if (item.type === 'consumable') {
+                             label += ` (x${playerStats.inventory[item.id] || 0})`;
+                        }
+                        ctx.fillText(label, x + boxW/2, btnY + btnH/2);
+                    }
+                });
+
+                const backY = canvas.height - 80;
+                ctx.fillStyle = '#ff5555';
+                roundRect(ctx, 60, backY, canvas.width - 120, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('REGRESAR', canvas.width / 2, backY + 25);
+
                 ctx.restore();
             }
 
@@ -1563,6 +1720,14 @@
                 ctx.fillStyle = '#222';
                 ctx.font = 'bold 20px sans-serif';
                 ctx.fillText('Play Again', canvas.width / 2, canvas.height / 2 + 142);
+
+                const shopY = canvas.height / 2 + 170;
+                ctx.fillStyle = '#bd93f9';
+                roundRect(ctx, 110, shopY, canvas.width - 220, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#222';
+                ctx.fillText('Tiendita 🛒', canvas.width / 2, shopY + 32);
+
                 ctx.restore();
             }
 
@@ -1617,8 +1782,8 @@
                     }
                 }
                 if (p.kind === 'beer') {
-                    slowEffect.timer = 4.5;
-                    addFloatText('Cerveza chill 🍺', p.x, p.y);
+                    slowEffect.timer = playerStats.inventory.caguama ? 7.0 : 4.5;
+                    addFloatText(playerStats.inventory.caguama ? 'CAGUAMA! 🍺' : 'Cerveza chill 🍺', p.x, p.y);
                 }
                 if (p.kind === 'phone') {
                     isa.chismeTimer = 3.5;
@@ -2022,6 +2187,17 @@
                 for (let i = powerups.length - 1; i >= 0; i--) {
                     const p = powerups[i];
                     p.y += p.vy * dt;
+
+                    if (playerStats.inventory.magnet) {
+                        const dx = player.x - p.x;
+                        const dy = player.y - p.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 250) {
+                            p.x += (dx / dist) * 180 * dt;
+                            p.y += (dy / dist) * 180 * dt;
+                        }
+                    }
+
                     if (rectsOverlap(player, p)) {
                         applyPowerup(p);
                         powerups.splice(i, 1);
@@ -2123,8 +2299,14 @@
             }
 
             function endGame() {
+                body.classList.remove('playing');
                 state = STATE.GAMEOVER;
                 bestScore = Math.max(bestScore, score);
+                const earned = Math.floor(score / 10);
+                if (earned > 0) {
+                    playerStats.coins += earned;
+                }
+                saveStats();
                 sayRandom('gameOver');
             }
 
@@ -2227,6 +2409,20 @@
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
                 if (Math.random() < 0.002) sayPlayer('idle');
+
+                const fireThreshold = playerStats.inventory.salsa ? 4 : 6;
+                if (comboCount >= fireThreshold && Math.random() < 0.15) {
+                    rosePetals.push({
+                        x: player.x + (Math.random() - 0.5) * 40,
+                        y: player.y - 10,
+                        vy: -150 - Math.random() * 50,
+                        rotation: Math.random() * 6,
+                        rotSpeed: (Math.random() - 0.5) * 5,
+                        emoji: '🔥',
+                        size: 20 + Math.random() * 10,
+                        offset: Math.random() * 10
+                    });
+                }
             }
 
             function draw() {
@@ -2312,6 +2508,7 @@
                 last = now;
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
                 if (state === STATE.TITLE) drawTitleScreen();
+                else if (state === STATE.SHOP) drawShop();
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
@@ -2331,17 +2528,96 @@
                 body.classList.toggle('hide-directions', !show);
             }
 
-            canvas.addEventListener('click', (e) => {
+            function getInputPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                let clientX = e.clientX;
+                let clientY = e.clientY;
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                }
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY
+                };
+            }
+
+            function handleMenuInput(x, y) {
                 if (state === STATE.TITLE) {
-                    startGameFromTitle();
-                } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
+                    // Shop Button: 110, 440, W-220, 46
+                    if (y >= 440 && y <= 486 && x >= 110 && x <= canvas.width - 110) {
+                        state = STATE.SHOP;
+                    } else {
+                        startGameFromTitle();
+                    }
+                } else if (state === STATE.GAMEOVER) {
+                    const shopY = canvas.height / 2 + 170;
+                    if (y >= shopY && y <= shopY + 50 && x >= 110 && x <= canvas.width - 110) {
+                        state = STATE.SHOP;
+                    } else {
+                        resetGame();
+                    }
+                } else if (state === STATE.WIN) {
                     resetGame();
+                } else if (state === STATE.SHOP) {
+                    const backY = canvas.height - 80;
+                    if (y >= backY && y <= backY + 50 && x >= 60 && x <= canvas.width - 60) {
+                        initTitle();
+                        return;
+                    }
+
+                    const startY = 130;
+                    const gap = 15;
+                    const boxW = (canvas.width - 40 - gap) / 2;
+                    const boxH = 180;
+
+                    SHOP_ITEMS.forEach((item, index) => {
+                        const col = index % 2;
+                        const row = Math.floor(index / 2);
+                        const itemX = 20 + col * (boxW + gap);
+                        const itemY = startY + row * (boxH + gap);
+
+                        if (x >= itemX && x <= itemX + boxW && y >= itemY && y <= itemY + boxH) {
+                            const owned = item.type === 'permanent' && playerStats.inventory[item.id];
+                            if (playerStats.coins >= item.price) {
+                                if (item.type === 'permanent' && !owned) {
+                                    playerStats.coins -= item.price;
+                                    playerStats.inventory[item.id] = true;
+                                    saveStats();
+                                    playSound(1200, 0.1);
+                                } else if (item.type === 'consumable') {
+                                    playerStats.coins -= item.price;
+                                    playerStats.inventory[item.id] = (playerStats.inventory[item.id] || 0) + 1;
+                                    saveStats();
+                                    playSound(1200, 0.1);
+                                } else {
+                                    playSound(200, 0.1);
+                                }
+                            } else {
+                                playSound(200, 0.1);
+                            }
+                        }
+                    });
+                }
+            }
+
+            canvas.addEventListener('click', (e) => {
+                if (state !== STATE.PLAYING) {
+                    const pos = getInputPos(e);
+                    handleMenuInput(pos.x, pos.y);
                 }
             });
 
             canvas.addEventListener('touchstart', (e) => {
-                if (state === STATE.TITLE) { startGameFromTitle(); return; }
-                if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+                if (state !== STATE.PLAYING) {
+                    const pos = getInputPos(e);
+                    handleMenuInput(pos.x, pos.y);
+                    // Prevent default to prevent click firing
+                    if (e.cancelable) e.preventDefault();
+                    return;
+                }
 
                 if (state === STATE.PLAYING) {
                     const rect = canvas.getBoundingClientRect();
@@ -2362,7 +2638,7 @@
                         if (x < rect.width / 2) touch.left = true; else touch.right = true;
                     }
                 }
-            }, { passive: true });
+            }, { passive: false });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {
@@ -2426,6 +2702,8 @@
             resize();
 
             function initTitle() {
+                body.classList.remove('playing');
+                loadStats();
                 sayRandom('start');
                 setDirectionsVisible(true);
             }
