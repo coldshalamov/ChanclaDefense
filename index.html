@@ -69,6 +69,10 @@
             bottom: 0;
             width: 50%;
             height: 40%;
+            pointer-events: none;
+        }
+
+        body.playing .touch-zone {
             pointer-events: auto;
         }
 
@@ -159,11 +163,45 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
             let state = STATE.TITLE;
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const SHOP_ITEMS = [
+                { id: 'vaporub', name: 'VapoRub Shield', emoji: '🛡️', desc: 'Start with a shield', price: 100 },
+                { id: 'magnet', name: 'Chancla Magnet', emoji: '🧲', desc: 'Attracts powerups', price: 250 },
+                { id: 'caguama', name: 'Caguama', emoji: '🍺', desc: 'Longer chill time', price: 400 },
+                { id: 'salsa', name: 'Salsa Valentina', emoji: '🌶️', desc: 'Fire combos!', price: 600 }
+            ];
+
+            const stats = { highScore: 0, totalSlaps: 0, totalGames: 0, coins: 0 };
+            const inventory = { vaporub: false, magnet: false, caguama: false, salsa: false };
+
+            function loadStats() {
+                try {
+                    stats.highScore = parseInt(localStorage.getItem('cb_highScore') || '0');
+                    stats.totalSlaps = parseInt(localStorage.getItem('cb_totalSlaps') || '0');
+                    stats.totalGames = parseInt(localStorage.getItem('cb_totalGames') || '0');
+                    stats.coins = parseInt(localStorage.getItem('cb_coins') || '0');
+                    const inv = JSON.parse(localStorage.getItem('cb_inventory') || '{}');
+                    Object.keys(inventory).forEach(k => {
+                        if (inv[k]) inventory[k] = true;
+                    });
+                    bestScore = stats.highScore;
+                } catch(e) { console.error('Load error', e); }
+            }
+
+            function saveStats() {
+                try {
+                    localStorage.setItem('cb_highScore', stats.highScore);
+                    localStorage.setItem('cb_totalSlaps', stats.totalSlaps);
+                    localStorage.setItem('cb_totalGames', stats.totalGames);
+                    localStorage.setItem('cb_coins', stats.coins);
+                    localStorage.setItem('cb_inventory', JSON.stringify(inventory));
+                } catch(e) { console.error('Save error', e); }
+            }
+
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, loveTimer: 0 };
 
             let chanclas = [];
             let pets = [];
@@ -360,10 +398,12 @@
                 player.lives = 3;
                 player.shield = false;
                 player.hitTimer = 0;
+                player.loveTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.loveTimer = 0;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -390,7 +430,13 @@
                 sayRandom('start');
                 playerDialogueTimer = 0;
                 state = STATE.PLAYING;
+                body.classList.add('playing');
                 setDirectionsVisible(false);
+
+                // Shop Mechanic: VapoRub Shield
+                if (inventory.vaporub) {
+                    player.shield = true;
+                }
             }
 
             function getComboPhrase(c) {
@@ -664,6 +710,7 @@
                 // Determine expression
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
+                else if (player.loveTimer > 0) expression = 'love';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
@@ -683,11 +730,15 @@
                 ctx.save();
                 let drawX = isa.x;
                 let drawY = isa.y;
+                let expression = 'normal';
                 if (isa.hitTimer > 0) {
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
+                    expression = 'hit';
+                } else if (isa.loveTimer > 0) {
+                    expression = 'love';
                 }
-                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
+                drawIsaAvatar(ctx, drawX, drawY, 78, expression);
 
                 if (isa.chismeTimer > 0) {
                     // Draw phone near Isa
@@ -711,7 +762,7 @@
                 ctx.closePath();
             }
 
-            function drawIsaAvatar(ctx, x, y, size, isHit) {
+            function drawIsaAvatar(ctx, x, y, size, expression = 'normal') {
                 ctx.save();
                 ctx.translate(x, y);
                 const faceW = size * 0.72;
@@ -754,7 +805,7 @@
                 ctx.fill();
 
                 // Eyes
-                if (isHit) {
+                if (expression === 'hit') {
                     // X Eyes
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 3;
@@ -769,6 +820,23 @@
                     };
                     drawXEye(-faceW * 0.2, -faceH * 0.05);
                     drawXEye(faceW * 0.2, -faceH * 0.05);
+                } else if (expression === 'love') {
+                     // Heart eyes
+                     const drawHeartEye = (cx, cy) => {
+                        ctx.save();
+                        ctx.translate(cx, cy);
+                        const scale = faceW * 0.007;
+                        ctx.scale(scale, scale);
+                        ctx.fillStyle = '#d93c7a'; // Darker pink
+                        ctx.beginPath();
+                        ctx.moveTo(0, 6);
+                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
+                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
+                        ctx.fill();
+                        ctx.restore();
+                    };
+                    drawHeartEye(-faceW * 0.2, -faceH * 0.05);
+                    drawHeartEye(faceW * 0.2, -faceH * 0.05);
                 } else {
                     // Normal eyes with lashes
                     ctx.fillStyle = '#1d1411';
@@ -795,13 +863,23 @@
                 }
 
                 // Mouth
-                if (isHit) {
+                if (expression === 'hit') {
                     // O mouth
                     ctx.strokeStyle = '#d93c7a';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.ellipse(0, faceH * 0.2, faceW * 0.1, faceH * 0.12, 0, 0, Math.PI * 2);
                     ctx.stroke();
+                } else if (expression === 'love') {
+                    // Kissy mouth
+                    ctx.fillStyle = '#d93c7a';
+                    ctx.beginPath();
+                    ctx.arc(0, faceH * 0.22, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#e86c9e'; // Highlight
+                    ctx.beginPath();
+                    ctx.arc(-2, faceH * 0.20, faceW * 0.03, 0, Math.PI * 2);
+                    ctx.fill();
                 } else {
                     // Smile and lips
                     ctx.strokeStyle = '#d93c7a';
@@ -850,6 +928,8 @@
                     ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
                 } else if (expression === 'cocky') {
                     ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
+                } else if (expression === 'love') {
+                    ctx.rotate(Math.sin(timeElapsed * 5) * 0.05); // Happy sway
                 } else if (expression === 'dead') {
                     ctx.rotate(Math.PI / 20); // Slight tilt
                 }
@@ -1127,9 +1207,18 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang) {
+            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang, isFire) {
                 ctx.save();
                 ctx.translate(x, y);
+
+                if (isFire) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(255, 69, 0, 0.5)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, w, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
 
                 if (isBoomerang) {
                     ctx.save();
@@ -1151,6 +1240,12 @@
                 ctx.textAlign = 'center';
                 ctx.rotate(rotation);
                 ctx.fillText(emoji, 0, h * 0.2);
+
+                if (isFire) {
+                    ctx.font = `${Math.max(20, w)}px sans-serif`;
+                    ctx.fillText('🔥', 0, -h * 0.5);
+                }
+
                 ctx.restore();
             }
 
@@ -1426,22 +1521,36 @@
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                roundRect(ctx, 30, 260, canvas.width - 60, 200, 16);
+                roundRect(ctx, 30, 260, canvas.width - 60, 240, 16);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
                 ctx.font = '24px sans-serif';
                 ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
-                ctx.font = '16px sans-serif';
-                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
+
                 ctx.font = '14px sans-serif';
-                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                ctx.fillStyle = '#ffd166';
+                ctx.fillText(`Best: ${stats.highScore} | Slaps: ${stats.totalSlaps}`, canvas.width / 2, 325);
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '16px sans-serif';
+                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 350);
+
                 ctx.fillStyle = '#ff9f1c';
                 roundRect(ctx, 110, 380, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+
+                // Tiendita
+                ctx.fillStyle = '#ff79c6';
+                roundRect(ctx, 130, 440, 140, 40, 10);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText('🛍️ Tiendita', canvas.width / 2, 466);
+
                 ctx.restore();
             }
 
@@ -1471,6 +1580,98 @@
                 ctx.fillStyle = '#222';
                 ctx.font = 'bold 20px sans-serif';
                 ctx.fillText('Play Again', canvas.width / 2, canvas.height / 2 + 142);
+
+                // Tiendita button
+                ctx.fillStyle = '#ff79c6';
+                roundRect(ctx, 130, 520, 140, 40, 10);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText('🛍️ Tiendita', canvas.width / 2, 545);
+
+                ctx.restore();
+            }
+
+            function drawShop() {
+                drawBackground();
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 28px sans-serif';
+                ctx.fillText('La Tiendita', canvas.width / 2, 50);
+
+                ctx.font = '20px sans-serif';
+                ctx.fillStyle = '#ffb347';
+                ctx.fillText('Coins: ' + stats.coins + ' 🪙', canvas.width / 2, 85);
+
+                const startY = 120;
+                const itemH = 100;
+
+                SHOP_ITEMS.forEach((item, i) => {
+                    const y = startY + i * (itemH + 15);
+                    const x = 30;
+                    const w = canvas.width - 60;
+
+                    // Card bg
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                    roundRect(ctx, x, y, w, itemH, 10);
+                    ctx.fill();
+
+                    // Icon
+                    ctx.font = '40px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(item.emoji, x + 40, y + 60);
+
+                    // Text
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 18px sans-serif';
+                    ctx.fillText(item.name, x + 80, y + 30);
+
+                    ctx.fillStyle = '#ccc';
+                    ctx.font = '14px sans-serif';
+                    ctx.fillText(item.desc, x + 80, y + 55);
+
+                    // Buy button or Owned
+                    const owned = inventory[item.id];
+                    const affordable = stats.coins >= item.price;
+                    const btnW = 100;
+                    const btnH = 30;
+                    const btnX = x + w - btnW - 10;
+                    const btnY = y + itemH - btnH - 10;
+
+                    if (owned) {
+                        ctx.fillStyle = '#4ade80'; // Green
+                        roundRect(ctx, btnX, btnY, btnW, btnH, 6);
+                        ctx.fill();
+                        ctx.fillStyle = '#000';
+                        ctx.font = 'bold 14px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('OWNED', btnX + btnW / 2, btnY + 20);
+                    } else {
+                        ctx.fillStyle = affordable ? '#ff9f1c' : '#555';
+                        roundRect(ctx, btnX, btnY, btnW, btnH, 6);
+                        ctx.fill();
+                        ctx.fillStyle = affordable ? '#000' : '#888';
+                        ctx.font = 'bold 14px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(item.price + ' 🪙', btnX + btnW / 2, btnY + 20);
+                    }
+                });
+
+                // Back button
+                const backY = canvas.height - 70;
+                ctx.fillStyle = '#ff4d6d';
+                roundRect(ctx, 110, backY, 180, 40, 10);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Back / Volver', canvas.width / 2, backY + 26);
+
                 ctx.restore();
             }
 
@@ -1515,6 +1716,8 @@
 
             function applyPowerup(p) {
                 if (p.kind === 'heart') {
+                    player.loveTimer = 2.0;
+                    isa.loveTimer = 2.0;
                     if (player.lives < player.maxLives) {
                         player.lives++;
                         addFloatText('I love you! +1 ❤️', p.x, p.y);
@@ -1523,8 +1726,13 @@
                     }
                 }
                 if (p.kind === 'beer') {
-                    slowEffect.timer = 4.5;
-                    addFloatText('Cerveza chill 🍺', p.x, p.y);
+                    if (inventory.caguama) {
+                        slowEffect.timer = 7.0;
+                        addFloatText('CAGUAMA! 🍺', p.x, p.y);
+                    } else {
+                        slowEffect.timer = 4.5;
+                        addFloatText('Cerveza chill 🍺', p.x, p.y);
+                    }
                 }
                 if (p.kind === 'phone') {
                     isa.chismeTimer = 3.5;
@@ -1563,7 +1771,13 @@
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
                         slappedAny = true;
                         comboCount++;
+                        stats.totalSlaps++;
                         score += comboCount;
+
+                        // Salsa Mechanic
+                        if (inventory.salsa && comboCount >= 6) {
+                            c.isFire = true;
+                        }
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
@@ -1747,6 +1961,7 @@
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : 8;
                             if (c.isPerfect) damage += 7;
+                            if (c.isFire) damage += 10; // Fire damage
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
@@ -1927,6 +2142,18 @@
             function updatePowerups(dt) {
                 for (let i = powerups.length - 1; i >= 0; i--) {
                     const p = powerups[i];
+
+                    // Magnet Mechanic
+                    if (inventory.magnet) {
+                        const dx = player.x - p.x;
+                        const dy = player.y - p.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist < 200) {
+                            p.x += (dx / dist) * 300 * dt;
+                            p.y += (dy / dist) * 300 * dt;
+                        }
+                    }
+
                     p.y += p.vy * dt;
                     if (rectsOverlap(player, p)) {
                         applyPowerup(p);
@@ -2030,7 +2257,13 @@
 
             function endGame() {
                 state = STATE.GAMEOVER;
+                body.classList.remove('playing');
                 bestScore = Math.max(bestScore, score);
+                stats.highScore = bestScore;
+                stats.totalGames++;
+                const coinsEarned = Math.floor(score / 10);
+                stats.coins += coinsEarned;
+                saveStats();
                 sayRandom('gameOver');
             }
 
@@ -2127,6 +2360,8 @@
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
+                if (player.loveTimer > 0) player.loveTimer -= dt;
+                if (isa.loveTimer > 0) isa.loveTimer -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
@@ -2155,7 +2390,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang, c.isFire);
             }
 
             function drawWinScreen() {
@@ -2167,7 +2402,7 @@
                 if (winAnimationStart === 0) winAnimationStart = Date.now();
                 const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
                 const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
-                drawIsaAvatar(ctx, isa.x, isaWinY, 78);
+                drawIsaAvatar(ctx, isa.x, isaWinY, 78, 'love');
 
                 // Speech bubble
                 if (winProgress > 0.7) {
@@ -2206,6 +2441,14 @@
                 ctx.font = '20px sans-serif';
                 ctx.fillText('Play again', canvas.width / 2, 582);
 
+                // Tiendita button
+                ctx.fillStyle = '#ff79c6';
+                roundRect(ctx, 130, 610, 140, 40, 10);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText('🛍️ Tiendita', canvas.width / 2, 636);
+
                 ctx.restore();
             }
 
@@ -2215,8 +2458,12 @@
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
-                if (state === STATE.TITLE) drawTitleScreen();
-                else if (state === STATE.WIN) {
+
+                if (state === STATE.SHOP) {
+                    drawShop();
+                } else if (state === STATE.TITLE) {
+                    drawTitleScreen();
+                } else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
                 } else {
@@ -2235,36 +2482,105 @@
                 body.classList.toggle('hide-directions', !show);
             }
 
-            canvas.addEventListener('click', (e) => {
+            function getEventPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                let clientX, clientY;
+
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY
+                };
+            }
+
+            function handleMenuInteraction(x, y) {
                 if (state === STATE.TITLE) {
-                    startGameFromTitle();
-                } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
-                    resetGame();
+                    if (y > 440 && y < 490) {
+                        state = STATE.SHOP;
+                    } else if (y > 380 && y < 430) {
+                        startGameFromTitle();
+                    }
+                } else if (state === STATE.GAMEOVER) {
+                    if (y > 520 && y < 560 && x > 130 && x < 270) {
+                        state = STATE.SHOP;
+                    } else if (y > canvas.height/2 + 110 && y < canvas.height/2 + 160) {
+                        resetGame();
+                    }
+                } else if (state === STATE.WIN) {
+                    if (y > 610 && y < 650 && x > 130 && x < 270) {
+                        state = STATE.SHOP;
+                    } else if (y > 550 && y < 600) {
+                        resetGame();
+                    }
+                } else if (state === STATE.SHOP) {
+                    if (y > canvas.height - 70 && y < canvas.height - 30 && x > 110 && x < 290) {
+                        state = STATE.TITLE;
+                        return;
+                    }
+
+                    const startY = 120;
+                    const itemH = 100;
+                    SHOP_ITEMS.forEach((item, i) => {
+                        const iy = startY + i * (itemH + 15);
+                        const btnW = 100;
+                        const btnH = 30;
+                        const w = canvas.width - 60;
+                        const btnX = 30 + w - btnW - 10;
+                        const btnY = iy + itemH - btnH - 10;
+
+                        if (x > btnX && x < btnX + btnW && y > btnY && y < btnY + btnH) {
+                            if (!inventory[item.id] && stats.coins >= item.price) {
+                                stats.coins -= item.price;
+                                inventory[item.id] = true;
+                                saveStats();
+                                playSound(1000, 0.1);
+                            } else if (!inventory[item.id]) {
+                                playSound(150, 0.2);
+                            }
+                        }
+                    });
+                }
+            }
+
+            canvas.addEventListener('click', (e) => {
+                if (state !== STATE.PLAYING) {
+                    const pos = getEventPos(e);
+                    handleMenuInteraction(pos.x, pos.y);
                 }
             });
 
             canvas.addEventListener('touchstart', (e) => {
-                if (state === STATE.TITLE) { startGameFromTitle(); return; }
-                if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+                if (state !== STATE.PLAYING) {
+                    const pos = getEventPos(e);
+                    handleMenuInteraction(pos.x, pos.y);
+                    return;
+                }
 
-                if (state === STATE.PLAYING) {
-                    const rect = canvas.getBoundingClientRect();
-                    const touchPoint = e.touches[0];
-                    const x = touchPoint.clientX - rect.left;
-                    const y = touchPoint.clientY - rect.top;
-                    const relativeY = y / rect.height;
+                const rect = canvas.getBoundingClientRect();
+                const touchPoint = e.touches[0];
+                const x = touchPoint.clientX - rect.left;
+                const y = touchPoint.clientY - rect.top;
+                const relativeY = y / rect.height;
 
-                    // If tapping in the upper area (not movement zones at bottom), trigger slap
-                    if (relativeY < 0.6) {
-                        if (specialAttackBar >= maxSpecialAttack) {
-                            fireSpecialAttack();
-                        } else {
-                            trySlap();
-                        }
+                // If tapping in the upper area (not movement zones at bottom), trigger slap
+                if (relativeY < 0.6) {
+                    if (specialAttackBar >= maxSpecialAttack) {
+                        fireSpecialAttack();
                     } else {
-                        // Movement controls for bottom area
-                        if (x < rect.width / 2) touch.left = true; else touch.right = true;
+                        trySlap();
                     }
+                } else {
+                    // Movement controls for bottom area
+                    if (x < rect.width / 2) touch.left = true; else touch.right = true;
                 }
             }, { passive: true });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
@@ -2331,8 +2647,10 @@
 
             function initTitle() {
                 sayRandom('start');
+                body.classList.remove('playing');
                 setDirectionsVisible(true);
             }
+            loadStats();
             initTitle();
         })();
     </script>
