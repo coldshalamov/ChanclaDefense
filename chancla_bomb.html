@@ -1575,7 +1575,7 @@
                 const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed, grazed: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1803,6 +1803,30 @@
                     c.x += c.vx * dt;
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     c.rotation += c.rotSpeed * dt;
+
+                    // Graze mechanic (close miss)
+                    if (!c.slapped && !c.grazed) {
+                        const dx = player.x - c.x;
+                        const dy = player.y - c.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        // Player radius ~25, Chancla radius ~15. Hit dist ~40. Graze margin ~35.
+                        if (dist < 75 && !rectsOverlap(player, c)) {
+                            c.grazed = true;
+                            score += 15;
+                            addFloatText('GRAZE! +15', player.x, player.y - 60);
+                            rosePetals.push({
+                                x: (player.x + c.x) / 2,
+                                y: (player.y + c.y) / 2,
+                                vx: (Math.random() - 0.5) * 50,
+                                vy: -50,
+                                rotation: Math.random() * 6,
+                                rotSpeed: Math.random() * 5,
+                                emoji: '✨',
+                                size: 24
+                            });
+                            playSound(1200, 0.05); // High pitch ping
+                        }
+                    }
 
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
