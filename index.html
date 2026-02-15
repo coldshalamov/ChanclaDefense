@@ -1326,7 +1326,7 @@
                 // Draw special attack bar
                 const barWidth = 180;
                 const barHeight = 20;
-                const barX = canvas.width / 2 - barWidth / 2 - 20;
+                const barX = canvas.width / 2 - barWidth / 2;
                 const barY = 40;
 
                 // Background
@@ -1360,44 +1360,12 @@
                 roundRect(ctx, barX, barY, barWidth, barHeight, 10);
                 ctx.stroke();
 
-                // Eggplant emoji
                 const p = Math.min(1, specialAttackBar / maxSpecialAttack);
-                ctx.save();
-                const eggX = barX + barWidth + 20;
-                const eggY = barY + barHeight / 2;
-                ctx.translate(eggX, eggY);
-
-                let eggScale = 1 + p * 0.4; // up to 1.4x bigger
-                let glowIntensity = p * 15;
-
-                // Pulsing effect when ready
-                if (p >= 1) {
-                    const pulse = Math.sin(timeElapsed * 12); // Pulse speed
-                    eggScale += pulse * 0.15;
-                    glowIntensity += pulse * 8 + 8; // Pulsing glow
-                }
-
-                // Rotate based on progress
-                const eggRotation = p * (20 * Math.PI / 180);
-                ctx.rotate(eggRotation);
-                ctx.scale(eggScale, eggScale);
-
-                // Glow if bar has some progress
-                if (p > 0) {
-                    ctx.shadowBlur = Math.max(0, glowIntensity);
-                    ctx.shadowColor = `rgba(147, 51, 234, ${p})`; // Purple glow
-                }
-
-                ctx.font = '28px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🍆', 0, 0);
-                ctx.restore();
 
                 // "READY!" text
                 if (p >= 1) {
                     ctx.save();
-                    ctx.translate(eggX, eggY + 28);
+                    ctx.translate(barX + barWidth / 2, barY + barHeight + 20);
                     const textPulse = Math.sin(timeElapsed * 12);
                     const scale = 1 + textPulse * 0.1;
                     ctx.scale(scale, scale);
@@ -1603,7 +1571,7 @@
                         if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
                             specialReadyTriggered = true;
                             // HUD egg icon approx location
-                            const eggX = 290;
+                            const eggX = canvas.width / 2;
                             const eggY = 50;
                             spawnImpact(eggX, eggY, true);
                             for (let k = 0; k < 8; k++) {
