@@ -1191,6 +1191,11 @@
                 ctx.save();
                 ctx.translate(x, y);
 
+                // Add shadow for depth
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetY = 4;
+
                 if (isBoomerang) {
                     ctx.save();
                     const iconSize = Math.max(30, w * 1.4);
