@@ -1483,7 +1483,7 @@
                 const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed, grazed: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1776,6 +1776,29 @@
 
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
+
+                    // Graze Mechanic
+                    if (!c.grazed && !c.slapped && !rectsOverlap(player, c)) {
+                        const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                        if (dist < 75) {
+                            c.grazed = true;
+                            score += 15;
+                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
+                            addFloatText('GRAZE!', player.x, player.y - 50);
+                            playSound(1200, 0.05);
+
+                            // Visual feedback
+                            spawnImpact(player.x, player.y - 20, false);
+                            for (let k = 0; k < 3; k++) {
+                                rosePetals.push({
+                                    x: player.x, y: player.y - 20,
+                                    vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100,
+                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+                                    emoji: '✨', size: 16
+                                });
+                            }
+                        }
+                    }
 
                     if (!c.slapped && rectsOverlap(player, c)) {
                         if (player.shield) {
