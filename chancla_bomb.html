@@ -190,6 +190,7 @@
             let hitStop = 0;
             let impacts = [];
             let chainEffects = [];
+            let fireParticles = [];
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
@@ -373,6 +374,7 @@
                 rosePetals = [];
                 specialProjectiles = [];
                 impacts = [];
+                fireParticles = [];
                 score = 0;
                 comboCount = 0;
                 spawnInterval = 1.2;
@@ -556,6 +558,49 @@
                     chainEffects[i].timer -= dt;
                     if (chainEffects[i].timer <= 0) chainEffects.splice(i, 1);
                 }
+            }
+
+            function updateFireParticles(dt) {
+                if (comboCount >= 6) {
+                    const spawnCount = Math.ceil(dt * 20);
+                    for (let k = 0; k < spawnCount; k++) {
+                        fireParticles.push({
+                            x: player.x + (Math.random() - 0.5) * player.w * 0.8,
+                            y: player.y + player.h / 2 - Math.random() * 10,
+                            vx: (Math.random() - 0.5) * 20,
+                            vy: -50 - Math.random() * 50,
+                            life: 0.5 + Math.random() * 0.3,
+                            maxLife: 0.8,
+                            size: 8 + Math.random() * 8
+                        });
+                    }
+                }
+
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.life -= dt;
+                    if (p.life <= 0) {
+                        fireParticles.splice(i, 1);
+                        continue;
+                    }
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.size -= 10 * dt;
+                }
+            }
+
+            function drawFireParticles() {
+                ctx.save();
+                fireParticles.forEach(p => {
+                    if (p.size <= 0) return;
+                    const lifeRatio = p.life / p.maxLife;
+                    ctx.globalAlpha = lifeRatio * 0.6;
+                    ctx.fillStyle = lifeRatio > 0.5 ? '#ffeb3b' : (lifeRatio > 0.2 ? '#ff9800' : '#f44336');
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.restore();
             }
 
             function drawChainEffects() {
@@ -2180,6 +2225,7 @@
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
+                updateFireParticles(dt);
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -2239,6 +2285,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawFireParticles();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
