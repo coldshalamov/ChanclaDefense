@@ -1878,8 +1878,16 @@
                             continue;
                         }
                         const dmg = c.type === 'super' ? 2 : 1;
+
+                        if (comboCount >= 5) {
+                            addFloatText('COMBO BROKEN! 💔', player.x, player.y - 60);
+                        }
                         comboCount = 0;
+
+                        triggerFlash(0.25, '#ff3333');
+                        playSound(150, 0.3);
                         triggerShake(c.type === 'super' ? 15 : 8, 0.4);
+
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
