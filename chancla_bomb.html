@@ -1575,7 +1575,8 @@
                 const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+                const isFeint = !isSuper && Math.random() < 0.1;
+                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed, isFeint, feintState: 0, feintTimer: 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1800,6 +1801,31 @@
                 const slowFactor = slowEffect.timer > 0 ? slowEffect.factor : 1;
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    // Feint Logic
+                    if (c.isFeint && !c.slapped) {
+                        if (c.feintState === 0) {
+                            if (c.y > canvas.height * 0.35 && c.y < canvas.height * 0.45) {
+                                c.feintState = 1;
+                                c.feintTimer = 0.6;
+                                c.storedVx = c.vx;
+                                c.storedVy = c.vy;
+                                c.vx = 0;
+                                c.vy = 0;
+                                addFloatText("👀", c.x, c.y - 30);
+                            }
+                        } else if (c.feintState === 1) {
+                            c.feintTimer -= dt;
+                            c.x += (Math.random() - 0.5) * 4; // Shake
+                            if (c.feintTimer <= 0) {
+                                c.feintState = 2;
+                                c.vx = c.storedVx;
+                                c.vy = c.storedVy * 2.2;
+                                playSound(1000, 0.1);
+                            }
+                        }
+                    }
+
                     c.x += c.vx * dt;
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     c.rotation += c.rotSpeed * dt;
