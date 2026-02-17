@@ -1,4 +1,3 @@
-
 from playwright.sync_api import sync_playwright
 import time
 import os
@@ -10,11 +9,14 @@ def verify_expressions():
 
         # Load the game from the file directly using absolute path
         cwd = os.getcwd()
-        page.goto('file://' + cwd + '/chancla_bomb.html')
+        page.goto('file://' + cwd + '/index.html')
 
         # Start game by clicking (simulate touch/click)
-        canvas = page.locator('#game')
-        canvas.click()
+        # Assuming the play button is at a certain location or clicking canvas is sufficient
+        # In current index.html, click starts game. In future update, it might check coordinates.
+        # So I should click specifically on the "Play" button coordinates.
+        # Play button rect: x=110, y=380, w=canvas.width-220, h=46. Center approx (200, 403).
+        page.mouse.click(200, 403)
 
         # Wait a bit for game to start
         time.sleep(1)
