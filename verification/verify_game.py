@@ -12,9 +12,9 @@ def verify_expressions():
         cwd = os.getcwd()
         page.goto('file://' + cwd + '/chancla_bomb.html')
 
-        # Start game by clicking (simulate touch/click)
+        # Start game by clicking Play Button (approx y=400)
         canvas = page.locator('#game')
-        canvas.click()
+        canvas.click(position={'x': 200, 'y': 400})
 
         # Wait a bit for game to start
         time.sleep(1)
