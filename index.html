@@ -1483,7 +1483,7 @@
                 const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed, grazed: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1776,6 +1776,27 @@
 
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
+
+                    if (!c.slapped && !c.grazed) {
+                        const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                        if (dist < 75 && !rectsOverlap(player, c)) {
+                            c.grazed = true;
+                            score += 15;
+                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
+                            addFloatText('GRAZE! +15', player.x, player.y - 50);
+                            playSound(1500, 0.05);
+                            rosePetals.push({
+                                x: (player.x + c.x) / 2,
+                                y: (player.y + c.y) / 2,
+                                vx: (Math.random() - 0.5) * 100,
+                                vy: (Math.random() - 0.5) * 100,
+                                rotation: Math.random() * Math.PI * 2,
+                                rotSpeed: 10,
+                                emoji: '✨',
+                                size: 14
+                            });
+                        }
+                    }
 
                     if (!c.slapped && rectsOverlap(player, c)) {
                         if (player.shield) {
