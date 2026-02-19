@@ -69,6 +69,10 @@
             bottom: 0;
             width: 50%;
             height: 40%;
+            pointer-events: none;
+        }
+
+        body.playing .touch-zone {
             pointer-events: auto;
         }
 
@@ -159,8 +163,15 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
             let state = STATE.TITLE;
+
+            let saveData = { bestScore: 0, coins: 0, inventory: [], totalSlaps: 0 };
+            const SHOP_ITEMS = [
+                { id: 'vaporub', name: 'VapoRub Shield', price: 50, emoji: '🛡️', desc: 'Start with shield', type: 'consumable' },
+                { id: 'magnet', name: 'Chancla Magnet', price: 200, emoji: '🧲', desc: 'Larger pickup range', type: 'permanent' },
+                { id: 'caguama', name: 'Caguama', price: 300, emoji: '🍺', desc: 'Longer Chill Time', type: 'permanent' }
+            ];
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
@@ -215,6 +226,33 @@
                 }
                 return audioContext;
             }
+
+            function loadGame() {
+                try {
+                    const saved = localStorage.getItem('cb_stats');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        // Merge with default to handle new fields
+                        // Ensure inventory is an array
+                        if (!Array.isArray(parsed.inventory)) parsed.inventory = [];
+
+                        saveData = { ...saveData, ...parsed };
+                        bestScore = saveData.bestScore || 0;
+                    }
+                } catch (e) {
+                    // console.error('Failed to load save data', e);
+                }
+            }
+
+            function saveGame() {
+                try {
+                    saveData.bestScore = bestScore;
+                    localStorage.setItem('cb_stats', JSON.stringify(saveData));
+                } catch (e) {
+                    // console.error('Failed to save game', e);
+                }
+            }
+            loadGame();
 
             const dialogue = {
                 start: [
@@ -390,7 +428,17 @@
                 sayRandom('start');
                 playerDialogueTimer = 0;
                 state = STATE.PLAYING;
+                body.classList.add('playing');
                 setDirectionsVisible(false);
+
+                // Apply Consumables
+                if (saveData.inventory.includes('vaporub')) {
+                    player.shield = true;
+                    const idx = saveData.inventory.indexOf('vaporub');
+                    if (idx > -1) saveData.inventory.splice(idx, 1);
+                    saveGame();
+                    addFloatText('🛡️ Shield Active!', player.x, player.y - 50);
+                }
             }
 
             function getComboPhrase(c) {
@@ -1420,6 +1468,91 @@
                 ctx.restore();
             }
 
+            function drawShop() {
+                drawBackground();
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Title
+                ctx.fillStyle = '#ff79c6';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 28px sans-serif';
+                ctx.fillText('Tiendita / Shop', canvas.width / 2, 50);
+
+                // Coins Display
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '20px sans-serif';
+                ctx.fillText(`Chancla Coins: ${saveData.coins} 💰`, canvas.width / 2, 85);
+
+                const itemHeight = 90;
+                const startY = 120;
+
+                SHOP_ITEMS.forEach((item, index) => {
+                    const y = startY + index * (itemHeight + 15);
+                    const isOwned = saveData.inventory.includes(item.id);
+
+                    // Item Box
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                    roundRect(ctx, 20, y, canvas.width - 40, itemHeight, 10);
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    // Icon
+                    ctx.font = '40px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(item.emoji, 60, y + itemHeight / 2 + 10);
+
+                    // Name & Desc
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'left';
+                    ctx.font = 'bold 18px sans-serif';
+                    ctx.fillText(item.name, 100, y + 30);
+                    ctx.fillStyle = '#ccc';
+                    ctx.font = '14px sans-serif';
+                    ctx.fillText(item.desc, 100, y + 55);
+
+                    // Buy Button
+                    const btnX = canvas.width - 110;
+                    const btnY = y + 25;
+                    const btnW = 80;
+                    const btnH = 40;
+
+                    if (item.type === 'permanent' && isOwned) {
+                        ctx.fillStyle = '#444';
+                        roundRect(ctx, btnX, btnY, btnW, btnH, 8);
+                        ctx.fill();
+                        ctx.fillStyle = '#aaa';
+                        ctx.font = '14px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('Owned', btnX + btnW / 2, btnY + 25);
+                    } else {
+                        const canAfford = saveData.coins >= item.price;
+                        ctx.fillStyle = canAfford ? '#ff9f1c' : '#555';
+                        roundRect(ctx, btnX, btnY, btnW, btnH, 8);
+                        ctx.fill();
+                        ctx.fillStyle = canAfford ? '#000' : '#888';
+                        ctx.font = 'bold 16px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(item.price, btnX + btnW / 2, btnY + 25);
+                    }
+                });
+
+                // Back Button
+                const backY = canvas.height - 80;
+                ctx.fillStyle = '#ff5555';
+                roundRect(ctx, 110, backY, canvas.width - 220, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Back / Regresar', canvas.width / 2, backY + 32);
+
+                ctx.restore();
+            }
+
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
@@ -1442,6 +1575,15 @@
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+
+                // Shop Button
+                ctx.fillStyle = '#ff79c6';
+                roundRect(ctx, 110, 460, canvas.width - 220, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#222';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.fillText('Tiendita 🛒', canvas.width / 2, 490);
+
                 ctx.restore();
             }
 
@@ -1471,6 +1613,16 @@
                 ctx.fillStyle = '#222';
                 ctx.font = 'bold 20px sans-serif';
                 ctx.fillText('Play Again', canvas.width / 2, canvas.height / 2 + 142);
+
+                // Shop Button
+                const shopY = canvas.height - 80;
+                ctx.fillStyle = '#ff79c6';
+                roundRect(ctx, 110, shopY, canvas.width - 220, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#222';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText('Tiendita 🛒', canvas.width / 2, shopY + 32);
+
                 ctx.restore();
             }
 
@@ -1523,8 +1675,10 @@
                     }
                 }
                 if (p.kind === 'beer') {
-                    slowEffect.timer = 4.5;
-                    addFloatText('Cerveza chill 🍺', p.x, p.y);
+                    const duration = saveData.inventory.includes('caguama') ? 7.0 : 4.5;
+                    slowEffect.timer = duration;
+                    const text = saveData.inventory.includes('caguama') ? 'CAGUAMA! 🍺' : 'Cerveza chill 🍺';
+                    addFloatText(text, p.x, p.y);
                 }
                 if (p.kind === 'phone') {
                     isa.chismeTimer = 3.5;
@@ -1925,8 +2079,20 @@
             }
 
             function updatePowerups(dt) {
+                const hasMagnet = saveData.inventory.includes('magnet');
                 for (let i = powerups.length - 1; i >= 0; i--) {
                     const p = powerups[i];
+
+                    if (hasMagnet) {
+                        const dx = player.x - p.x;
+                        const dy = player.y - p.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist < 200) { // Magnet range
+                            p.x += (dx / dist) * 300 * dt; // Pull speed
+                            p.y += (dy / dist) * 300 * dt;
+                        }
+                    }
+
                     p.y += p.vy * dt;
                     if (rectsOverlap(player, p)) {
                         applyPowerup(p);
@@ -2031,6 +2197,14 @@
             function endGame() {
                 state = STATE.GAMEOVER;
                 bestScore = Math.max(bestScore, score);
+
+                // Persistence
+                const earned = Math.floor(score / 10);
+                saveData.coins = (saveData.coins || 0) + earned;
+                saveData.bestScore = bestScore;
+                saveGame();
+
+                body.classList.remove('playing');
                 sayRandom('gameOver');
             }
 
@@ -2206,6 +2380,15 @@
                 ctx.font = '20px sans-serif';
                 ctx.fillText('Play again', canvas.width / 2, 582);
 
+                // Shop Button
+                const shopY = canvas.height - 80;
+                ctx.fillStyle = '#ff79c6';
+                roundRect(ctx, 110, shopY, canvas.width - 220, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#222';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText('Tiendita 🛒', canvas.width / 2, shopY + 32);
+
                 ctx.restore();
             }
 
@@ -2216,6 +2399,7 @@
                 last = now;
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
                 if (state === STATE.TITLE) drawTitleScreen();
+                else if (state === STATE.SHOP) drawShop();
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
@@ -2235,17 +2419,106 @@
                 body.classList.toggle('hide-directions', !show);
             }
 
+            function getClickPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
+                return { x, y };
+            }
+
+            function handleShopClick(e) {
+                const { x, y } = getClickPos(e);
+
+                // Back Button
+                if (y > canvas.height - 80 && y < canvas.height - 30) {
+                    state = STATE.TITLE;
+                    setDirectionsVisible(true);
+                    return;
+                }
+
+                const itemHeight = 90;
+                const startY = 120;
+
+                SHOP_ITEMS.forEach((item, index) => {
+                    const itemY = startY + index * (itemHeight + 15);
+                    const btnX = canvas.width - 110;
+                    const btnY = itemY + 25;
+                    const btnW = 80;
+                    const btnH = 40;
+
+                    if (x > btnX && x < btnX + btnW && y > btnY && y < btnY + btnH) {
+                        const isOwned = saveData.inventory.includes(item.id);
+                        if (item.type === 'permanent' && isOwned) return;
+
+                        if (saveData.coins >= item.price) {
+                            if (item.type === 'consumable' && isOwned) return; // Max 1
+
+                            saveData.coins -= item.price;
+                            saveData.inventory.push(item.id);
+                            saveGame();
+                            playSound(600, 0.1);
+                        } else {
+                            playSound(150, 0.2);
+                        }
+                    }
+                });
+            }
+
             canvas.addEventListener('click', (e) => {
                 if (state === STATE.TITLE) {
-                    startGameFromTitle();
+                    const { y } = getClickPos(e);
+                    // Check Shop Button (approx 450-500)
+                    if (y > 450 && y < 500) {
+                        state = STATE.SHOP;
+                        setDirectionsVisible(false);
+                    } else {
+                        startGameFromTitle();
+                    }
+                } else if (state === STATE.SHOP) {
+                    handleShopClick(e);
                 } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
-                    resetGame();
+                    const { y } = getClickPos(e);
+                    // Check Shop Button
+                    if (y > canvas.height - 100) { // Bottom area
+                         state = STATE.SHOP;
+                         setDirectionsVisible(false);
+                    } else {
+                        resetGame();
+                    }
                 }
             });
 
             canvas.addEventListener('touchstart', (e) => {
-                if (state === STATE.TITLE) { startGameFromTitle(); return; }
-                if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+                if (state === STATE.TITLE) {
+                    const touch = e.touches[0];
+                    const { y } = getClickPos(touch);
+                    if (y > 450 && y < 500) {
+                        state = STATE.SHOP;
+                        setDirectionsVisible(false);
+                    } else {
+                        startGameFromTitle();
+                    }
+                    return;
+                }
+                if (state === STATE.SHOP) {
+                    const touch = e.touches[0];
+                    handleShopClick(touch);
+                    e.preventDefault(); // Prevent click firing
+                    return;
+                }
+                if (state === STATE.GAMEOVER || state === STATE.WIN) {
+                    const touch = e.touches[0];
+                    const { y } = getClickPos(touch);
+                    if (y > canvas.height - 100) {
+                        state = STATE.SHOP;
+                        setDirectionsVisible(false);
+                    } else {
+                        resetGame();
+                    }
+                    return;
+                }
 
                 if (state === STATE.PLAYING) {
                     const rect = canvas.getBoundingClientRect();
@@ -2331,6 +2604,7 @@
 
             function initTitle() {
                 sayRandom('start');
+                body.classList.remove('playing');
                 setDirectionsVisible(true);
             }
             initTitle();
