@@ -162,8 +162,8 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
             let state = STATE.TITLE;
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, loveTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
             let pets = [];
@@ -360,12 +360,10 @@
                 player.lives = 3;
                 player.shield = false;
                 player.hitTimer = 0;
-                player.loveTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
-                isa.loveTimer = 0;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -412,20 +410,26 @@
                 cityShapes.length = 0;
                 cactusShapes.length = 0;
                 starDots.length = 0;
-                for (let i = 0; i < 6; i++) {
+                // Generate wider area for parallax (from index -1 to 7)
+                for (let i = -1; i < 8; i++) {
                     const w = 40 + Math.random() * 30;
                     const h = 60 + Math.random() * 80;
                     const x = (canvas.width / 6) * i + Math.random() * 20;
                     const y = canvas.height - h - 20;
                     cityShapes.push({ x, y, w, h });
                 }
-                for (let i = 0; i < 3; i++) {
+                // Generate more cactus for wider area
+                for (let i = -1; i < 5; i++) {
                     const baseX = 60 + i * 120 + Math.random() * 40;
                     const baseY = canvas.height - 30;
                     cactusShapes.push({ baseX, baseY });
                 }
-                for (let i = 0; i < 30; i++) {
-                    starDots.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.6 });
+                for (let i = 0; i < 50; i++) {
+                    // Wider star field
+                    starDots.push({
+                        x: Math.random() * (canvas.width + 200) - 100,
+                        y: Math.random() * canvas.height * 0.6
+                    });
                 }
             }
 
@@ -436,9 +440,29 @@
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+                const centerX = canvas.width / 2;
+                // Parallax offset based on player position relative to center
+                // Player X is constrained, so parallax is constrained.
+                // Move background opposite to player to simulate depth.
+                const parallaxX = (player.x - centerX);
+
+                ctx.save();
+                // Stars (Far layer) - Moves very slowly
+                ctx.translate(parallaxX * -0.02, 0);
+                ctx.fillStyle = '#ffe066';
+                starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+                ctx.restore();
+
+                ctx.save();
+                // City (Mid layer) - Moves slowly
+                ctx.translate(parallaxX * -0.05, 0);
                 ctx.fillStyle = '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+                ctx.restore();
 
+                ctx.save();
+                // Cactus (Near layer) - Moves faster
+                ctx.translate(parallaxX * -0.15, 0);
                 ctx.fillStyle = '#1b8c6e';
                 cactusShapes.forEach(c => {
                     ctx.beginPath();
@@ -447,9 +471,7 @@
                     ctx.lineTo(c.baseX + 40, c.baseY);
                     ctx.fill();
                 });
-
-                ctx.fillStyle = '#ffe066';
-                starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+                ctx.restore();
             }
 
             function drawFlash() {
@@ -666,7 +688,6 @@
                 // Determine expression
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
-                else if (player.loveTimer > 0) expression = 'love';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
@@ -686,15 +707,11 @@
                 ctx.save();
                 let drawX = isa.x;
                 let drawY = isa.y;
-                let expression = 'normal';
                 if (isa.hitTimer > 0) {
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
-                    expression = 'hit';
-                } else if (isa.loveTimer > 0) {
-                    expression = 'love';
                 }
-                drawIsaAvatar(ctx, drawX, drawY, 78, expression);
+                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
 
                 if (isa.chismeTimer > 0) {
                     // Draw phone near Isa
@@ -718,7 +735,7 @@
                 ctx.closePath();
             }
 
-            function drawIsaAvatar(ctx, x, y, size, expression = 'normal') {
+            function drawIsaAvatar(ctx, x, y, size, isHit) {
                 ctx.save();
                 ctx.translate(x, y);
                 const faceW = size * 0.72;
@@ -761,7 +778,7 @@
                 ctx.fill();
 
                 // Eyes
-                if (expression === 'hit') {
+                if (isHit) {
                     // X Eyes
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 3;
@@ -776,23 +793,6 @@
                     };
                     drawXEye(-faceW * 0.2, -faceH * 0.05);
                     drawXEye(faceW * 0.2, -faceH * 0.05);
-                } else if (expression === 'love') {
-                     // Heart eyes
-                     const drawHeartEye = (cx, cy) => {
-                        ctx.save();
-                        ctx.translate(cx, cy);
-                        const scale = faceW * 0.007;
-                        ctx.scale(scale, scale);
-                        ctx.fillStyle = '#d93c7a'; // Darker pink
-                        ctx.beginPath();
-                        ctx.moveTo(0, 6);
-                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
-                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
-                        ctx.fill();
-                        ctx.restore();
-                    };
-                    drawHeartEye(-faceW * 0.2, -faceH * 0.05);
-                    drawHeartEye(faceW * 0.2, -faceH * 0.05);
                 } else {
                     // Normal eyes with lashes
                     ctx.fillStyle = '#1d1411';
@@ -819,23 +819,13 @@
                 }
 
                 // Mouth
-                if (expression === 'hit') {
+                if (isHit) {
                     // O mouth
                     ctx.strokeStyle = '#d93c7a';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.ellipse(0, faceH * 0.2, faceW * 0.1, faceH * 0.12, 0, 0, Math.PI * 2);
                     ctx.stroke();
-                } else if (expression === 'love') {
-                    // Kissy mouth
-                    ctx.fillStyle = '#d93c7a';
-                    ctx.beginPath();
-                    ctx.arc(0, faceH * 0.22, faceW * 0.08, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#e86c9e'; // Highlight
-                    ctx.beginPath();
-                    ctx.arc(-2, faceH * 0.20, faceW * 0.03, 0, Math.PI * 2);
-                    ctx.fill();
                 } else {
                     // Smile and lips
                     ctx.strokeStyle = '#d93c7a';
@@ -884,8 +874,6 @@
                     ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
                 } else if (expression === 'cocky') {
                     ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
-                } else if (expression === 'love') {
-                    ctx.rotate(Math.sin(timeElapsed * 5) * 0.05); // Happy sway
                 } else if (expression === 'dead') {
                     ctx.rotate(Math.PI / 20); // Slight tilt
                 }
@@ -1030,23 +1018,6 @@
                     ctx.moveTo(headW * 0.12, -headH * 0.08);
                     ctx.quadraticCurveTo(headW * 0.2, -headH * 0.06, headW * 0.28, -headH * 0.08);
                     ctx.stroke();
-                } else if (expression === 'love') {
-                    // Heart eyes
-                    const drawHeartEye = (cx, cy) => {
-                        ctx.save();
-                        ctx.translate(cx, cy);
-                        const scale = headW * 0.006;
-                        ctx.scale(scale, scale);
-                        ctx.fillStyle = '#ff4d6d';
-                        ctx.beginPath();
-                        ctx.moveTo(0, 6);
-                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
-                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
-                        ctx.fill();
-                        ctx.restore();
-                    };
-                    drawHeartEye(-headW * 0.2, -headH * 0.04);
-                    drawHeartEye(headW * 0.2, -headH * 0.04);
                 } else {
                     // Normal eyes
                     ctx.fillStyle = '#2a1b12';
@@ -1122,13 +1093,6 @@
                     // Asymmetrical smile
                     ctx.moveTo(-headW * 0.1, headH * 0.24);
                     ctx.quadraticCurveTo(0, headH * 0.28, headW * 0.12, headH * 0.20);
-                    ctx.stroke();
-                } else if (expression === 'love') {
-                    // Big Smile
-                    ctx.strokeStyle = '#1e130c';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(0, headH * 0.20, headW * 0.15, 0, Math.PI, false);
                     ctx.stroke();
                 } else {
                     // Smile
@@ -1386,7 +1350,7 @@
                 // Draw special attack bar
                 const barWidth = 180;
                 const barHeight = 20;
-                const barX = canvas.width / 2 - barWidth / 2 - 20;
+                const barX = canvas.width / 2 - barWidth / 2;
                 const barY = 40;
 
                 // Background
@@ -1420,44 +1384,12 @@
                 roundRect(ctx, barX, barY, barWidth, barHeight, 10);
                 ctx.stroke();
 
-                // Eggplant emoji
                 const p = Math.min(1, specialAttackBar / maxSpecialAttack);
-                ctx.save();
-                const eggX = barX + barWidth + 20;
-                const eggY = barY + barHeight / 2;
-                ctx.translate(eggX, eggY);
-
-                let eggScale = 1 + p * 0.4; // up to 1.4x bigger
-                let glowIntensity = p * 15;
-
-                // Pulsing effect when ready
-                if (p >= 1) {
-                    const pulse = Math.sin(timeElapsed * 12); // Pulse speed
-                    eggScale += pulse * 0.15;
-                    glowIntensity += pulse * 8 + 8; // Pulsing glow
-                }
-
-                // Rotate based on progress
-                const eggRotation = p * (20 * Math.PI / 180);
-                ctx.rotate(eggRotation);
-                ctx.scale(eggScale, eggScale);
-
-                // Glow if bar has some progress
-                if (p > 0) {
-                    ctx.shadowBlur = Math.max(0, glowIntensity);
-                    ctx.shadowColor = `rgba(147, 51, 234, ${p})`; // Purple glow
-                }
-
-                ctx.font = '28px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🍆', 0, 0);
-                ctx.restore();
 
                 // "READY!" text
                 if (p >= 1) {
                     ctx.save();
-                    ctx.translate(eggX, eggY + 28);
+                    ctx.translate(barX + barWidth / 2, barY + barHeight + 20);
                     const textPulse = Math.sin(timeElapsed * 12);
                     const scale = 1 + textPulse * 0.1;
                     ctx.scale(scale, scale);
@@ -1607,8 +1539,6 @@
 
             function applyPowerup(p) {
                 if (p.kind === 'heart') {
-                    player.loveTimer = 2.0;
-                    isa.loveTimer = 2.0;
                     if (player.lives < player.maxLives) {
                         player.lives++;
                         addFloatText('I love you! +1 ❤️', p.x, p.y);
@@ -1665,7 +1595,7 @@
                         if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
                             specialReadyTriggered = true;
                             // HUD egg icon approx location
-                            const eggX = 290;
+                            const eggX = canvas.width / 2;
                             const eggY = 50;
                             spawnImpact(eggX, eggY, true);
                             for (let k = 0; k < 8; k++) {
@@ -2221,8 +2151,6 @@
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
-                if (player.loveTimer > 0) player.loveTimer -= dt;
-                if (isa.loveTimer > 0) isa.loveTimer -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
@@ -2263,7 +2191,7 @@
                 if (winAnimationStart === 0) winAnimationStart = Date.now();
                 const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
                 const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
-                drawIsaAvatar(ctx, isa.x, isaWinY, 78, 'love');
+                drawIsaAvatar(ctx, isa.x, isaWinY, 78);
 
                 // Speech bubble
                 if (winProgress > 0.7) {
