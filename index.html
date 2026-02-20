@@ -69,6 +69,10 @@
             bottom: 0;
             width: 50%;
             height: 40%;
+            pointer-events: none;
+        }
+
+        body.playing .touch-zone {
             pointer-events: auto;
         }
 
@@ -159,7 +163,7 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
             let state = STATE.TITLE;
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
@@ -173,6 +177,8 @@
             let specialProjectiles = [];
             let score = 0;
             let bestScore = 0;
+            let coins = 0;
+            let inventory = {};
             let spawnInterval = 1.2;
             let minSpawnInterval = 0.45;
             let spawnTimer = 0;
@@ -202,6 +208,13 @@
 
             const keys = { left: false, right: false };
             const touch = { left: false, right: false };
+
+            const SHOP_ITEMS = [
+                { id: 'vaporub', name: 'VapoRub Shield', emoji: '🛡️', price: 100, desc: 'Start with a shield.' },
+                { id: 'salsa', name: 'Salsa Valentina', emoji: '🌶️', price: 150, desc: 'Fire slaps! +Damage.' },
+                { id: 'magnet', name: 'Chancla Magnet', emoji: '🧲', price: 200, desc: 'Attracts powerups.' },
+                { id: 'caguama', name: 'Caguama', emoji: '🍺', price: 80, desc: 'Longer chill time.' }
+            ];
 
             // Audio context for sound effects (reuse to avoid browser limits)
             let audioContext = null;
@@ -322,6 +335,23 @@
                 ]
             };
 
+            function loadStats() {
+                try {
+                    const saved = JSON.parse(localStorage.getItem('cb_stats'));
+                    if (saved) {
+                        bestScore = saved.bestScore || 0;
+                        coins = saved.coins || 0;
+                        inventory = saved.inventory || {};
+                    }
+                } catch (e) {}
+            }
+
+            function saveStats() {
+                try {
+                    localStorage.setItem('cb_stats', JSON.stringify({ bestScore, coins, inventory }));
+                } catch (e) {}
+            }
+
             function sayPlayer(category) {
                 const lines = gringoLines[category];
                 if (!lines || !lines.length) return;
@@ -355,10 +385,24 @@
             }
 
             function resetGame() {
+                // Apply Inventory items (Consumables)
+                player.shield = !!inventory.vaporub;
+                if (inventory.vaporub) delete inventory.vaporub;
+
+                player.hasMagnet = !!inventory.magnet;
+                if (inventory.magnet) delete inventory.magnet;
+
+                player.hasSalsa = !!inventory.salsa;
+                if (inventory.salsa) delete inventory.salsa;
+
+                player.hasCaguama = !!inventory.caguama;
+                if (inventory.caguama) delete inventory.caguama;
+
+                saveStats(); // Save consumed inventory
+
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
                 player.lives = 3;
-                player.shield = false;
                 player.hitTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
@@ -390,6 +434,7 @@
                 sayRandom('start');
                 playerDialogueTimer = 0;
                 state = STATE.PLAYING;
+                body.classList.add('playing');
                 setDirectionsVisible(false);
             }
 
@@ -1442,6 +1487,14 @@
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+
+                // Tiendita Button
+                ctx.fillStyle = '#1f4068';
+                roundRect(ctx, 110, 450, canvas.width - 220, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillText(`Tiendita (${coins} 🪙)`, canvas.width / 2, 480);
+
                 ctx.restore();
             }
 
@@ -1471,6 +1524,106 @@
                 ctx.fillStyle = '#222';
                 ctx.font = 'bold 20px sans-serif';
                 ctx.fillText('Play Again', canvas.width / 2, canvas.height / 2 + 142);
+
+                // Tiendita Button
+                ctx.fillStyle = '#1f4068';
+                roundRect(ctx, 110, canvas.height / 2 + 170, canvas.width - 220, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillText(`Tiendita (${coins} 🪙)`, canvas.width / 2, canvas.height / 2 + 202);
+
+                ctx.restore();
+            }
+
+            function drawShop() {
+                // Background overlay
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.9)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Title
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = '28px sans-serif';
+                ctx.fillText('La Tiendita', canvas.width / 2, 50);
+
+                // Coins display
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '20px sans-serif';
+                ctx.fillText(`Coins: ${coins} 🪙`, canvas.width / 2, 80);
+
+                // Items Grid
+                const startY = 110;
+                const itemH = 100;
+                const itemGap = 10;
+
+                SHOP_ITEMS.forEach((item, index) => {
+                    const y = startY + index * (itemH + itemGap);
+                    const x = 20;
+                    const w = canvas.width - 40;
+
+                    // Card background
+                    ctx.fillStyle = '#1f4068';
+                    roundRect(ctx, x, y, w, itemH, 10);
+                    ctx.fill();
+
+                    // Icon
+                    ctx.font = '40px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(item.emoji, x + 20, y + 60);
+
+                    // Name & Price
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'left';
+                    ctx.font = 'bold 18px sans-serif';
+                    ctx.fillText(item.name, x + 80, y + 35);
+
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = '16px sans-serif';
+                    ctx.fillText(`${item.price} 🪙`, x + 80, y + 60);
+
+                    // Description
+                    ctx.fillStyle = '#ccc';
+                    ctx.font = '14px sans-serif';
+                    ctx.fillText(item.desc, x + 80, y + 85);
+
+                    // Buy Button
+                    const btnW = 80;
+                    const btnH = 36;
+                    const btnX = w - btnW - 10;
+                    const btnY = y + itemH / 2 - btnH / 2;
+
+                    const owned = inventory[item.id];
+                    const canAfford = coins >= item.price;
+
+                    if (owned) {
+                        ctx.fillStyle = '#2ecc71';
+                        roundRect(ctx, x + btnX, btnY, btnW, btnH, 8);
+                        ctx.fill();
+                        ctx.fillStyle = '#fff';
+                        ctx.textAlign = 'center';
+                        ctx.font = 'bold 14px sans-serif';
+                        ctx.fillText('OWNED', x + btnX + btnW / 2, btnY + 23);
+                    } else {
+                        ctx.fillStyle = canAfford ? '#ff9f1c' : '#555';
+                        roundRect(ctx, x + btnX, btnY, btnW, btnH, 8);
+                        ctx.fill();
+                        ctx.fillStyle = canAfford ? '#000' : '#888';
+                        ctx.textAlign = 'center';
+                        ctx.font = 'bold 14px sans-serif';
+                        ctx.fillText('BUY', x + btnX + btnW / 2, btnY + 23);
+                    }
+                });
+
+                // Back Button
+                const backY = canvas.height - 60;
+                ctx.fillStyle = '#e74c3c';
+                roundRect(ctx, 100, backY, canvas.width - 200, 40, 10);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.fillText('Back', canvas.width / 2, backY + 26);
                 ctx.restore();
             }
 
@@ -1523,8 +1676,8 @@
                     }
                 }
                 if (p.kind === 'beer') {
-                    slowEffect.timer = 4.5;
-                    addFloatText('Cerveza chill 🍺', p.x, p.y);
+                    slowEffect.timer = player.hasCaguama ? 7.0 : 4.5;
+                    addFloatText(player.hasCaguama ? 'CAGUAMA! 🍺' : 'Cerveza chill 🍺', p.x, p.y);
                 }
                 if (p.kind === 'phone') {
                     isa.chismeTimer = 3.5;
@@ -1564,6 +1717,20 @@
                         slappedAny = true;
                         comboCount++;
                         score += comboCount;
+
+                        // Salsa Fire Effect
+                        if (player.hasSalsa) {
+                            c.isFire = true;
+                             // Spawn fire particles
+                             for (let k = 0; k < 5; k++) {
+                                rosePetals.push({
+                                    x: c.x, y: c.y,
+                                    vx: (Math.random() - 0.5) * 150, vy: -100 - Math.random() * 100,
+                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+                                    emoji: '🔥', size: 18
+                                });
+                            }
+                        }
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
@@ -1729,6 +1896,8 @@
                                     other.vx = pushX * 8 + c.vx * 0.3;
                                     other.vy = -300 + (Math.random() - 0.5) * 100;
 
+                                    if (c.isFire) other.isFire = true;
+
                                     comboCount++;
                                     const comboPhrase = getComboPhrase(comboCount);
                                     addFloatText(`CHAIN! x${comboCount} ${comboPhrase}`, other.x, other.y);
@@ -1747,6 +1916,7 @@
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : 8;
                             if (c.isPerfect) damage += 7;
+                            if (c.isFire) damage += 2; // Salsa bonus
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
@@ -1755,7 +1925,11 @@
                                 addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
                                 hitStop = 0.1;
                             }
-                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+                            if (c.isFire) {
+                                addFloatText('BURNING! 🔥', isa.x, isa.y + 20);
+                            } else {
+                                addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+                            }
 
                             playSound(900, 0.1); // Higher pitch for success
                             chanclas.splice(i, 1);
@@ -1781,6 +1955,7 @@
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
+                            addFloatText('SHIELD BROKEN! 🛡️', player.x, player.y - 30);
                             continue;
                         }
                         const dmg = c.type === 'super' ? 2 : 1;
@@ -1928,6 +2103,18 @@
                 for (let i = powerups.length - 1; i >= 0; i--) {
                     const p = powerups[i];
                     p.y += p.vy * dt;
+
+                    // Magnet logic
+                    if (player.hasMagnet) {
+                        const dx = player.x - p.x;
+                        const dy = player.y - p.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist < 200) {
+                            p.x += (dx / dist) * 150 * dt;
+                            p.y += (dy / dist) * 150 * dt;
+                        }
+                    }
+
                     if (rectsOverlap(player, p)) {
                         applyPowerup(p);
                         powerups.splice(i, 1);
@@ -2030,7 +2217,11 @@
 
             function endGame() {
                 state = STATE.GAMEOVER;
+                body.classList.remove('playing');
                 bestScore = Math.max(bestScore, score);
+                const earned = Math.floor(score / 10);
+                coins += earned;
+                saveStats();
                 sayRandom('gameOver');
             }
 
@@ -2206,6 +2397,13 @@
                 ctx.font = '20px sans-serif';
                 ctx.fillText('Play again', canvas.width / 2, 582);
 
+                // Tiendita Button
+                ctx.fillStyle = '#1f4068';
+                roundRect(ctx, 110, canvas.height / 2 + 170, canvas.width - 220, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillText(`Tiendita (${coins} 🪙)`, canvas.width / 2, canvas.height / 2 + 202);
+
                 ctx.restore();
             }
 
@@ -2219,9 +2417,11 @@
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
-                } else {
+                } else if (state === STATE.GAMEOVER) {
                     draw();
-                    if (state === STATE.GAMEOVER) drawGameOver();
+                    drawGameOver();
+                } else if (state === STATE.SHOP) {
+                    drawShop();
                 }
                 requestAnimationFrame(loop);
             }
@@ -2236,16 +2436,76 @@
             }
 
             canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const clickX = (e.clientX - rect.left) * scaleX;
+                const clickY = (e.clientY - rect.top) * scaleY;
+
                 if (state === STATE.TITLE) {
-                    startGameFromTitle();
+                    // Check Tiendita Button
+                    if (clickY > 450 && clickY < 496 && clickX > 110 && clickX < canvas.width - 110) {
+                        state = STATE.SHOP;
+                        setDirectionsVisible(false);
+                    } else if (clickY > 380 && clickY < 426) {
+                        startGameFromTitle();
+                    }
                 } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
-                    resetGame();
+                     // Check Tiendita Button (Approx location)
+                    const tienditaY = canvas.height / 2 + 170;
+                     if (clickY > tienditaY && clickY < tienditaY + 50 && clickX > 110 && clickX < canvas.width - 110) {
+                        state = STATE.SHOP;
+                        setDirectionsVisible(false);
+                    } else if (clickY > canvas.height / 2 + 110 && clickY < canvas.height / 2 + 160) {
+                        resetGame();
+                    }
+                } else if (state === STATE.SHOP) {
+                    // Back button
+                    const backY = canvas.height - 60;
+                    if (clickY > backY && clickY < backY + 40 && clickX > 100 && clickX < canvas.width - 100) {
+                        state = STATE.TITLE;
+                        setDirectionsVisible(true);
+                    }
+
+                    // Item clicks
+                    const startY = 110;
+                    const itemH = 100;
+                    const itemGap = 10;
+                    SHOP_ITEMS.forEach((item, index) => {
+                        const y = startY + index * (itemH + itemGap);
+                        // Check if clicked anywhere on card or button
+                        if (clickY > y && clickY < y + itemH) {
+                            // Check if clicked button
+                            const w = canvas.width - 40;
+                            const btnW = 80;
+                            const btnX = 20 + w - btnW - 10;
+
+                            // Simple logic: clicking the card tries to buy if not owned
+                            if (!inventory[item.id] && coins >= item.price) {
+                                coins -= item.price;
+                                inventory[item.id] = true;
+                                saveStats();
+                                playSound(1200, 0.1);
+                            }
+                        }
+                    });
                 }
             });
 
             canvas.addEventListener('touchstart', (e) => {
-                if (state === STATE.TITLE) { startGameFromTitle(); return; }
-                if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+                // Allow touch for menu navigation too, by reusing click logic if not playing
+                if (state !== STATE.PLAYING) {
+                    const touchPoint = e.touches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    // Dispatch a synthetic click
+                    const clickEvent = new MouseEvent('click', {
+                        clientX: touchPoint.clientX,
+                        clientY: touchPoint.clientY,
+                        bubbles: true
+                    });
+                    canvas.dispatchEvent(clickEvent);
+                    return;
+                }
 
                 if (state === STATE.PLAYING) {
                     const rect = canvas.getBoundingClientRect();
@@ -2285,7 +2545,7 @@
                     e.preventDefault();
                 }
 
-                if (isDown && e.key === 'Enter' && state !== STATE.PLAYING) {
+                if (isDown && e.key === 'Enter' && state !== STATE.PLAYING && state !== STATE.SHOP) {
                     resetGame();
                 }
             }
@@ -2312,8 +2572,7 @@
             handleMobileZones(touchRight, 'right');
 
             document.getElementById('mobile-controls').addEventListener('touchstart', () => {
-                if (state === STATE.TITLE) startGameFromTitle();
-                else if (state === STATE.GAMEOVER || state === STATE.WIN) resetGame();
+                 // Forward touch to canvas logic if needed, but the canvas listener handles full screen clicks for menus
             }, { passive: true });
 
             function resize() {
@@ -2330,6 +2589,8 @@
             resize();
 
             function initTitle() {
+                loadStats();
+                body.classList.remove('playing');
                 sayRandom('start');
                 setDirectionsVisible(true);
             }
