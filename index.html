@@ -410,20 +410,26 @@
                 cityShapes.length = 0;
                 cactusShapes.length = 0;
                 starDots.length = 0;
-                for (let i = 0; i < 6; i++) {
+                // Generate wider area for parallax (from index -1 to 7)
+                for (let i = -1; i < 8; i++) {
                     const w = 40 + Math.random() * 30;
                     const h = 60 + Math.random() * 80;
                     const x = (canvas.width / 6) * i + Math.random() * 20;
                     const y = canvas.height - h - 20;
                     cityShapes.push({ x, y, w, h });
                 }
-                for (let i = 0; i < 3; i++) {
+                // Generate more cactus for wider area
+                for (let i = -1; i < 5; i++) {
                     const baseX = 60 + i * 120 + Math.random() * 40;
                     const baseY = canvas.height - 30;
                     cactusShapes.push({ baseX, baseY });
                 }
-                for (let i = 0; i < 30; i++) {
-                    starDots.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.6 });
+                for (let i = 0; i < 50; i++) {
+                    // Wider star field
+                    starDots.push({
+                        x: Math.random() * (canvas.width + 200) - 100,
+                        y: Math.random() * canvas.height * 0.6
+                    });
                 }
             }
 
@@ -434,9 +440,29 @@
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+                const centerX = canvas.width / 2;
+                // Parallax offset based on player position relative to center
+                // Player X is constrained, so parallax is constrained.
+                // Move background opposite to player to simulate depth.
+                const parallaxX = (player.x - centerX);
+
+                ctx.save();
+                // Stars (Far layer) - Moves very slowly
+                ctx.translate(parallaxX * -0.02, 0);
+                ctx.fillStyle = '#ffe066';
+                starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+                ctx.restore();
+
+                ctx.save();
+                // City (Mid layer) - Moves slowly
+                ctx.translate(parallaxX * -0.05, 0);
                 ctx.fillStyle = '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+                ctx.restore();
 
+                ctx.save();
+                // Cactus (Near layer) - Moves faster
+                ctx.translate(parallaxX * -0.15, 0);
                 ctx.fillStyle = '#1b8c6e';
                 cactusShapes.forEach(c => {
                     ctx.beginPath();
@@ -445,9 +471,7 @@
                     ctx.lineTo(c.baseX + 40, c.baseY);
                     ctx.fill();
                 });
-
-                ctx.fillStyle = '#ffe066';
-                starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+                ctx.restore();
             }
 
             function drawFlash() {
