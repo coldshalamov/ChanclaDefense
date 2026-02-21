@@ -1615,8 +1615,6 @@
                 const x = player.x + (Math.random() * 60 - 30);
                 const y = player.y - 80;
                 pets.push({ kind: 'rita', x, y, vx: 0, active: true, duration: 3, alpha: 1, dropped: false });
-                if (player.lives < player.maxLives) player.lives++;
-                baseSpeed *= 0.85;
                 sayRandom('petRita');
             }
 
