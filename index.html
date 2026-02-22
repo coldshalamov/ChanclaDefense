@@ -175,7 +175,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, chiliTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
@@ -184,6 +184,7 @@
             let floatTexts = [];
             let rosePetals = [];
             let specialProjectiles = [];
+            let fireParticles = [];
             let score = 0;
             let bestScore = 0;
             let spawnInterval = 1.2;
@@ -373,6 +374,7 @@
                 player.lives = 3 + (gameData.upgrades.lives ? 1 : 0);
                 player.shield = gameData.upgrades.shield;
                 player.hitTimer = 0;
+                player.chiliTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -383,6 +385,7 @@
                 floatTexts = [];
                 rosePetals = [];
                 specialProjectiles = [];
+                fireParticles = [];
                 impacts = [];
                 score = 0;
                 comboCount = 0;
@@ -677,6 +680,7 @@
                 // Determine expression
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
+                else if (player.chiliTimer > 0) expression = 'spicy';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
@@ -863,6 +867,8 @@
                     ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
                 } else if (expression === 'cocky') {
                     ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
+                } else if (expression === 'spicy') {
+                    ctx.rotate((Math.random() - 0.5) * 0.1); // Jittery energy
                 } else if (expression === 'dead') {
                     ctx.rotate(Math.PI / 20); // Slight tilt
                 }
@@ -882,7 +888,8 @@
 
                 const headW = size * 1.1;
                 const headH = size * 0.9;
-                const skin = '#f3d9bf';
+                let skin = '#f3d9bf';
+                if (expression === 'spicy') skin = '#ff9999'; // Red face
                 const hair = '#362417';
                 const beard = '#3b2418';
 
@@ -1621,6 +1628,10 @@
             }
 
             function spawnPowerup(kind, x, y) {
+                // If kind is not specified, random chance for chili
+                if (!kind) {
+                    kind = Math.random() < 0.25 ? 'chili' : (Math.random() < 0.5 ? 'phone' : 'beer');
+                }
                 powerups.push({ kind, x, y, vy: 110, w: 38, h: 38 });
             }
 
@@ -1645,6 +1656,12 @@
                     isa.chismeTimer = 3.5;
                     addFloatText('¡Chisme Time! 📱', p.x, p.y);
                     sayRandom('chisme');
+                }
+                if (p.kind === 'chili') {
+                    player.chiliTimer = 6.0;
+                    addFloatText('¡MUY CALIENTE! 🌶️', p.x, p.y);
+                    // Higher pitch sound for hot effect
+                    playSound(1000, 0.3);
                 }
             }
 
@@ -1945,7 +1962,12 @@
                     if (p.kind === 'owen') {
                         p.x += p.vx * dt;
                         if (!p.dropped && Math.random() < 0.12 * dt) {
-                            const type = Math.random() < 0.3 ? 'phone' : 'beer';
+                            // Random powerup spawn
+                            const rand = Math.random();
+                            let type = 'beer';
+                            if (rand < 0.25) type = 'phone';
+                            else if (rand < 0.45) type = 'chili'; // 20% chance for chili
+
                             spawnPowerup(type, p.x, p.y - 10);
                             p.dropped = true;
                         }
@@ -2020,6 +2042,11 @@
                         ctx.fillStyle = '#fff';
                         ctx.font = '20px sans-serif';
                         ctx.fillText('📱', 0, 8);
+                    } else if (p.kind === 'chili') {
+                        ctx.font = '32px "Noto Color Emoji", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('🌶️', 0, 0);
                     }
                     ctx.restore();
                 });
@@ -2248,9 +2275,62 @@
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
 
+                if (player.chiliTimer > 0) {
+                    player.chiliTimer -= dt;
+                    if (Math.random() < 0.4) {
+                        fireParticles.push({
+                            x: player.x + (Math.random() - 0.5) * 40,
+                            y: player.y - 40,
+                            vy: -350 - Math.random() * 200,
+                            emoji: '🔥'
+                        });
+                    }
+                }
+
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const f = fireParticles[i];
+                    f.y += f.vy * dt;
+
+                    let hit = false;
+                    for (let j = chanclas.length - 1; j >= 0; j--) {
+                        const c = chanclas[j];
+                        if (rectsOverlap({x: f.x, y: f.y, w: 20, h: 20}, c)) {
+                            spawnImpact(c.x, c.y);
+                            chanclas.splice(j, 1);
+                            score += 5;
+                            hit = true;
+                            break;
+                        }
+                    }
+
+                    if (!hit && rectsOverlap({x: f.x, y: f.y, w: 20, h: 20}, {x: isa.x, y: isa.y, w: 60, h: 60})) {
+                        isa.anger = Math.max(0, isa.anger - 2);
+                        isa.hitTimer = 0.2;
+                        hit = true;
+                        // Check win
+                        if (isa.anger <= 0) {
+                            state = STATE.WIN;
+                            sayRandom('win');
+                        }
+                    }
+
+                    if (hit || f.y < -50) {
+                        fireParticles.splice(i, 1);
+                    }
+                }
+
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
                 if (Math.random() < 0.002) sayPlayer('idle');
+            }
+
+            function drawFireParticles() {
+                fireParticles.forEach(f => {
+                    ctx.font = '24px "Noto Color Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(f.emoji, f.x, f.y);
+                });
             }
 
             function draw() {
@@ -2261,6 +2341,7 @@
                 drawSpecialProjectiles();
                 drawPets();
                 drawRosePetals();
+                drawFireParticles();
                 drawChainEffects();
                 drawImpacts();
                 drawPlayer();
@@ -2544,6 +2625,14 @@
                 setDirectionsVisible(true);
             }
             initTitle();
+            // Expose internals for testing
+            window.gameInternals = {
+                get player() { return player; },
+                get isa() { return isa; },
+                get chanclas() { return chanclas; },
+                get fireParticles() { return fireParticles; },
+                update
+            };
         })();
     </script>
 </body>
