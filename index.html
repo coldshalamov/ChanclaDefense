@@ -232,7 +232,6 @@
             const dialogue = {
                 start: [
                     "Ya no me amas, verdad?!",
-                    "¡Ya sé que lo hiciste en la ducha sin grabarlo para mí!",
                     "¡Le voy a dar tu cuerpo a mis gatos, gringo!"
                 ],
                 hitBySpecial: [
@@ -1140,21 +1139,9 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang) {
+            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
-
-                if (isBoomerang) {
-                    ctx.save();
-                    const iconSize = Math.max(30, w * 1.4);
-                    ctx.font = `${iconSize}px 'Noto Color Emoji', sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.globalAlpha = 0.8;
-                    // Draw the return icon
-                    ctx.fillText('↩️', 0, 0);
-                    ctx.restore();
-                }
 
                 // Use the thong sandal emoji for the classic "Chancla" look
                 const emoji = isSuper ? '🩴💥' : '🩴💨';
@@ -1914,25 +1901,12 @@
                             return;
                         }
                     } else if (c.y > canvas.height + c.h) {
-                        // Boomerang chance!
-                        if (!c.isBoomerang && Math.random() < 0.15) {
-                            c.isBoomerang = true;
-                            c.vy = -Math.abs(c.vy) * 1.1; // Return faster
-                            c.vx = (player.x - c.x) * 1.5; // Target player
-                            c.rotSpeed *= 3; // Aggressive spin
-                            addFloatText('¡VUELVE!', c.x, c.y - 40);
-                            // Do not remove, do not score yet
-                        } else {
-                            score += 1;
-                            const prevBest = bestScore;
-                            bestScore = Math.max(bestScore, score);
-                            if (score > prevBest && score % 10 === 0) sayRandom('highScore');
-                            if (Math.random() < 0.2) sayRandom('nearMiss');
-                            if (Math.random() < 0.25) sayPlayer('nearMiss');
-                            chanclas.splice(i, 1);
-                        }
-                    } else if (!c.slapped && c.y < -100) {
-                        // Cleanup boomerangs that miss
+                        score += 1;
+                        const prevBest = bestScore;
+                        bestScore = Math.max(bestScore, score);
+                        if (score > prevBest && score % 10 === 0) sayRandom('highScore');
+                        if (Math.random() < 0.2) sayRandom('nearMiss');
+                        if (Math.random() < 0.25) sayPlayer('nearMiss');
                         chanclas.splice(i, 1);
                     }
                 }
@@ -2275,7 +2249,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
             }
 
             function drawWinScreen() {
