@@ -175,7 +175,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, chiliTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
@@ -373,6 +373,7 @@
                 player.lives = 3 + (gameData.upgrades.lives ? 1 : 0);
                 player.shield = gameData.upgrades.shield;
                 player.hitTimer = 0;
+                player.chiliTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -679,6 +680,7 @@
                 if (player.hitTimer > 0) expression = 'hit';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
+                else if (player.chiliTimer > 0) expression = 'spicy';
                 else if (comboCount >= 5) expression = 'cocky';
 
                 drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
@@ -882,7 +884,8 @@
 
                 const headW = size * 1.1;
                 const headH = size * 0.9;
-                const skin = '#f3d9bf';
+                let skin = '#f3d9bf';
+                if (expression === 'spicy') skin = '#ffbfbf'; // Red tint
                 const hair = '#362417';
                 const beard = '#3b2418';
 
@@ -957,6 +960,13 @@
                     ctx.moveTo(headW * 0.25, -headH * 0.06);
                     ctx.lineTo(headW * 0.15, -headH * 0.02);
                     ctx.stroke();
+                } else if (expression === 'spicy') {
+                    // Fire eyes
+                    ctx.font = Math.floor(headW * 0.25) + 'px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🔥', -headW * 0.2, -headH * 0.05);
+                    ctx.fillText('🔥', headW * 0.2, -headH * 0.05);
                 } else if (expression === 'dead') {
                     // X Eyes
                     ctx.strokeStyle = '#2a1b12';
@@ -1048,6 +1058,19 @@
                     ctx.lineTo(-headW * 0.04, headH * 0.20);
                     ctx.lineTo(headW * 0.04, headH * 0.24);
                     ctx.lineTo(headW * 0.12, headH * 0.20);
+                    ctx.stroke();
+                } else if (expression === 'spicy') {
+                    // Gritted teeth
+                    ctx.fillStyle = '#fff';
+                    roundRect(ctx, -headW * 0.15, headH * 0.20, headW * 0.3, headH * 0.08, 4);
+                    ctx.fill();
+                    ctx.strokeStyle = '#2f1d12';
+                    ctx.lineWidth = 1.5;
+                    roundRect(ctx, -headW * 0.15, headH * 0.20, headW * 0.3, headH * 0.08, 4);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-headW * 0.15, headH * 0.24);
+                    ctx.lineTo(headW * 0.15, headH * 0.24);
                     ctx.stroke();
                 } else if (expression === 'dead') {
                     // Dead tongue out
@@ -1646,6 +1669,23 @@
                     addFloatText('¡Chisme Time! 📱', p.x, p.y);
                     sayRandom('chisme');
                 }
+                if (p.kind === 'chili') {
+                    player.chiliTimer = 6.0;
+                    addFloatText('¡AY CARAMBA! 🌶️', p.x, p.y);
+                    playSound(1000, 0.3);
+                    for (let i = 0; i < 8; i++) {
+                        rosePetals.push({
+                            x: player.x,
+                            y: player.y,
+                            vx: (Math.random() - 0.5) * 120,
+                            vy: -100 - Math.random() * 120,
+                            rotation: Math.random() * 6,
+                            rotSpeed: 5,
+                            emoji: '🔥',
+                            size: 20
+                        });
+                    }
+                }
             }
 
             function trySlap() {
@@ -1895,6 +1935,28 @@
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
                     if (!c.slapped && rectsOverlap(player, c)) {
+                        if (player.chiliTimer > 0) {
+                            spawnImpact(c.x, c.y, true);
+                            addFloatText('BURN! +10 🔥', c.x, c.y);
+                            score += 10;
+                            gameData.coins += 1;
+                            playSound(400, 0.1);
+                            for (let k = 0; k < 5; k++) {
+                                rosePetals.push({
+                                    x: c.x,
+                                    y: c.y,
+                                    vx: (Math.random() - 0.5) * 150,
+                                    vy: (Math.random() - 0.5) * 150,
+                                    rotation: Math.random() * 6,
+                                    rotSpeed: 5,
+                                    emoji: '🔥',
+                                    size: 20
+                                });
+                            }
+                            chanclas.splice(i, 1);
+                            continue;
+                        }
+
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -1945,7 +2007,8 @@
                     if (p.kind === 'owen') {
                         p.x += p.vx * dt;
                         if (!p.dropped && Math.random() < 0.12 * dt) {
-                            const type = Math.random() < 0.3 ? 'phone' : 'beer';
+                            const r = Math.random();
+                            const type = r < 0.2 ? 'chili' : (r < 0.5 ? 'phone' : 'beer');
                             spawnPowerup(type, p.x, p.y - 10);
                             p.dropped = true;
                         }
@@ -2020,6 +2083,14 @@
                         ctx.fillStyle = '#fff';
                         ctx.font = '20px sans-serif';
                         ctx.fillText('📱', 0, 8);
+                    } else if (p.kind === 'chili') {
+                        ctx.shadowColor = '#ff4500';
+                        ctx.shadowBlur = 10;
+                        ctx.font = '36px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('🌶️', 0, 0);
+                        ctx.shadowBlur = 0;
                     }
                     ctx.restore();
                 });
@@ -2242,6 +2313,21 @@
                 }
 
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
+                if (player.chiliTimer > 0) {
+                    player.chiliTimer -= dt;
+                    if (Math.random() < 0.4) {
+                        rosePetals.push({
+                            x: player.x + (Math.random() - 0.5) * 30,
+                            y: player.y + 20,
+                            vx: 0,
+                            vy: -80,
+                            rotation: Math.random() * 6,
+                            rotSpeed: 3,
+                            emoji: '🔥',
+                            size: 14 + Math.random() * 8
+                        });
+                    }
+                }
                 if (slapCooldown > 0) slapCooldown -= dt;
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
@@ -2544,6 +2630,15 @@
                 setDirectionsVisible(true);
             }
             initTitle();
+
+            // Expose internals for testing
+            window.gameInternals = {
+                get player() { return player; },
+                get isa() { return isa; },
+                get chanclas() { return chanclas; },
+                get fireParticles() { return rosePetals; },
+                update: update
+            };
         })();
     </script>
 </body>
