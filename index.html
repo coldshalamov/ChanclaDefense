@@ -183,6 +183,7 @@
             let powerups = [];
             let floatTexts = [];
             let rosePetals = [];
+            let fireParticles = [];
             let specialProjectiles = [];
             let score = 0;
             let bestScore = 0;
@@ -215,6 +216,16 @@
 
             const keys = { left: false, right: false };
             const touch = { left: false, right: false };
+
+            // Expose internals for testing
+            window.gameInternals = {
+                get comboCount() { return comboCount; },
+                set comboCount(v) { comboCount = v; },
+                get slapCooldown() { return slapCooldown; },
+                get fireParticles() { return fireParticles; },
+                get chanclas() { return chanclas; },
+                get player() { return player; }
+            };
 
             // Audio context for sound effects (reuse to avoid browser limits)
             let audioContext = null;
@@ -382,6 +393,7 @@
                 powerups = [];
                 floatTexts = [];
                 rosePetals = [];
+                fireParticles = [];
                 specialProjectiles = [];
                 impacts = [];
                 score = 0;
@@ -494,6 +506,21 @@
                         ctx.bezierCurveTo(-10, 0, -5, -5, 0, 0);
                         ctx.fill();
                     }
+                    ctx.restore();
+                });
+            }
+
+            function drawFireParticles() {
+                fireParticles.forEach(p => {
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha;
+                    ctx.translate(p.x, p.y);
+                    const scale = p.size / 20;
+                    ctx.scale(scale, scale);
+                    ctx.font = '20px "Noto Color Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText("🔥", 0, 0);
                     ctx.restore();
                 });
             }
@@ -1678,6 +1705,10 @@
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
                         slappedAny = true;
                         comboCount++;
+                        if (comboCount === 6) {
+                            addFloatText('SPICY MODE! 🌶️', player.x, player.y - 60);
+                            playSound(1000, 0.3); // High pitch alert
+                        }
                         score += comboCount;
 
                         // Increase special attack bar
@@ -1726,7 +1757,11 @@
                 }
 
                 if (slappedAny) {
-                    slapCooldown = gameData.upgrades.cooldown ? 0.27 : 0.3;
+                    if (comboCount >= 6) {
+                        slapCooldown = 0.12; // Rapid fire!
+                    } else {
+                        slapCooldown = gameData.upgrades.cooldown ? 0.27 : 0.3;
+                    }
                 } else {
                     slapCooldown = 0.15;
                     comboCount = 0;
@@ -2227,6 +2262,28 @@
                     }
                 }
 
+                // Update fire particles (Spicy Mode)
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.y -= p.speed * dt; // Rise up
+                    p.x += Math.sin(timeElapsed * 10 + p.offset) * 10 * dt; // Wiggle
+                    p.alpha -= dt * 1.5;
+                    if (p.alpha <= 0) fireParticles.splice(i, 1);
+                }
+
+                if (comboCount >= 6) {
+                    if (Math.random() < 0.3) {
+                        fireParticles.push({
+                            x: player.x + (Math.random() - 0.5) * 40,
+                            y: player.y,
+                            speed: 60 + Math.random() * 40,
+                            size: 20 + Math.random() * 10,
+                            alpha: 1,
+                            offset: Math.random() * 10
+                        });
+                    }
+                }
+
                 // Spawn rose petals if special is ready
                 if (specialAttackBar >= maxSpecialAttack) {
                     if (Math.random() < 0.15) { // Spawn chance per frame
@@ -2263,6 +2320,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawFireParticles();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();

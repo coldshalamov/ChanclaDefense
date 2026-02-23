@@ -14,7 +14,7 @@ def verify_expressions():
 
         # Start game by clicking (simulate touch/click)
         canvas = page.locator('#game')
-        canvas.click()
+        canvas.click(position={'x': 200, 'y': 400})
 
         # Wait a bit for game to start
         time.sleep(1)
