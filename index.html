@@ -162,17 +162,30 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
             let state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: false, shield: false, cooldown: false }, bestScore: 0 };
+            let gameData = {
+                coins: 0,
+                upgrades: { lives: false, shield: false, cooldown: false },
+                bestScore: 0,
+                streetCred: 0,
+                streetLevel: 1
+            };
+
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) gameData = JSON.parse(saved);
                 if (!gameData.upgrades) gameData.upgrades = { lives: false, shield: false, cooldown: false };
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
+                if (gameData.streetCred === undefined) gameData.streetCred = 0;
+                if (gameData.streetLevel === undefined) gameData.streetLevel = 1;
             } catch (e) { console.error(e); }
 
             function saveGameData() {
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
+            }
+
+            function getCredForNextLevel(level) {
+                return level * 500;
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
@@ -212,6 +225,10 @@
             let dialogueText = '';
             let playerDialogueText = '';
             const dialogueDuration = 3.3;
+
+            // Persistent Session Stats
+            let credEarned = 0;
+            let levelUpOccurred = false;
 
             const keys = { left: false, right: false };
             const touch = { left: false, right: false };
@@ -400,6 +417,11 @@
                 specialReadyTriggered = false;
                 chainEffects = [];
                 wrapper.style.transform = 'none';
+
+                // Reset Session Stats
+                credEarned = 0;
+                levelUpOccurred = false;
+
                 sayRandom('start');
                 playerDialogueTimer = 0;
                 state = STATE.PLAYING;
@@ -1523,32 +1545,62 @@
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                roundRect(ctx, 30, 260, canvas.width - 60, 200, 16);
+                // Increased height to accommodate Level Info
+                roundRect(ctx, 30, 240, canvas.width - 60, 250, 16);
                 ctx.fill();
+
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
                 ctx.font = '24px sans-serif';
-                ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
+                ctx.fillText('Chancla Bomb', canvas.width / 2, 280);
                 ctx.font = '16px sans-serif';
-                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
+                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 310);
+
+                // Best Score & Coins
                 ctx.font = '14px sans-serif';
-                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                ctx.fillStyle = '#e0e0e0';
+                ctx.fillText(`Best: ${gameData.bestScore} | 💰 ${gameData.coins}`, canvas.width / 2, 335);
+
+                // Street Level Info
+                const nextCost = getCredForNextLevel(gameData.streetLevel);
+                const progress = Math.min(1, gameData.streetCred / nextCost);
+                ctx.fillStyle = '#ff79c6';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText(`Street Cred: Lvl ${gameData.streetLevel}`, canvas.width / 2, 360);
+
+                // XP Bar
+                const barW = 200;
+                const barH = 10;
+                const barX = canvas.width / 2 - barW / 2;
+                const barY = 370;
+
+                ctx.fillStyle = '#444';
+                roundRect(ctx, barX, barY, barW, barH, 5);
+                ctx.fill();
+
+                ctx.fillStyle = '#ff79c6';
+                roundRect(ctx, barX, barY, barW * progress, barH, 5);
+                ctx.fill();
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '13px sans-serif';
+                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 400);
 
                 // Play Button
                 ctx.fillStyle = '#ff9f1c';
-                roundRect(ctx, 110, 380, canvas.width - 220, 46, 12);
+                roundRect(ctx, 110, 410, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
-                ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+                ctx.fillText('Jugar / Play', canvas.width / 2, 440);
 
                 // Shop Button
                 ctx.fillStyle = '#2196f3';
-                roundRect(ctx, 110, 450, canvas.width - 220, 46, 12);
+                roundRect(ctx, 110, 470, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.font = '18px sans-serif';
-                ctx.fillText('Shop / Tienda', canvas.width / 2, 480);
+                ctx.fillText('Shop / Tienda', canvas.width / 2, 500);
 
                 ctx.restore();
             }
@@ -1559,33 +1611,75 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 // Draw Dead Player
-                drawPlayerAvatar(ctx, canvas.width / 2, canvas.height / 2 - 80, 80, false, 'dead');
+                drawPlayerAvatar(ctx, canvas.width / 2, canvas.height / 2 - 100, 80, false, 'dead');
 
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
                 ctx.font = '32px sans-serif';
-                ctx.fillText('Isa ganó', canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillText('Isa ganó', canvas.width / 2, canvas.height / 2 - 10);
 
                 ctx.font = '20px sans-serif';
-                ctx.fillText('Score: ' + score + ' | Best: ' + gameData.bestScore, canvas.width / 2, canvas.height / 2 + 45);
+                ctx.fillText('Score: ' + score, canvas.width / 2, canvas.height / 2 + 25);
 
                 ctx.fillStyle = '#ffd700';
                 ctx.font = '18px sans-serif';
-                const earned = Math.floor(score / 10);
-                ctx.fillText(`Coins Earned: +${earned}`, canvas.width / 2, canvas.height / 2 + 70);
-                ctx.font = '14px sans-serif';
-                ctx.fillText(`Total Coins: ${gameData.coins}`, canvas.width / 2, canvas.height / 2 + 90);
+                const coinBonus = Math.floor(score / 10);
+                ctx.fillText(`Coins: +${coinBonus}`, canvas.width / 2, canvas.height / 2 + 50);
+
+                // XP Earned
+                ctx.fillStyle = '#ff79c6';
+                ctx.font = '18px sans-serif';
+                ctx.fillText(`Cred: +${credEarned}`, canvas.width / 2, canvas.height / 2 + 75);
+
+                // Level Up Check
+                if (levelUpOccurred) {
+                    ctx.save();
+                    const pulse = Math.sin(Date.now() / 100);
+                    const scale = 1 + pulse * 0.1;
+                    ctx.translate(canvas.width / 2, canvas.height / 2 + 105);
+                    ctx.scale(scale, scale);
+                    ctx.font = 'bold 24px sans-serif';
+                    ctx.fillStyle = '#00e5ff';
+                    ctx.shadowColor = '#00e5ff';
+                    ctx.shadowBlur = 10;
+                    ctx.fillText("LEVEL UP! ⬆️", 0, 0);
+                    ctx.font = '16px sans-serif';
+                    ctx.fillStyle = '#ffd700';
+                    ctx.shadowBlur = 0;
+                    ctx.fillText(`Bonus: +${gameData.streetLevel * 50} Coins!`, 0, 25);
+                    ctx.restore();
+                } else {
+                    // Show Progress Bar
+                    const nextCost = getCredForNextLevel(gameData.streetLevel);
+                    const progress = Math.min(1, gameData.streetCred / nextCost);
+                    const barW = 160;
+                    const barH = 12;
+                    const barX = canvas.width / 2 - barW / 2;
+                    const barY = canvas.height / 2 + 95;
+
+                    ctx.fillStyle = '#444';
+                    roundRect(ctx, barX, barY, barW, barH, 6);
+                    ctx.fill();
+                    ctx.fillStyle = '#ff79c6';
+                    roundRect(ctx, barX, barY, barW * progress, barH, 6);
+                    ctx.fill();
+                    ctx.fillStyle = '#ddd';
+                    ctx.font = '12px sans-serif';
+                    ctx.fillText(`Lvl ${gameData.streetLevel}`, canvas.width / 2, barY + 28);
+                }
 
                 ctx.fillStyle = '#dcdcdc';
                 ctx.font = 'italic 16px sans-serif';
-                ctx.fillText(dialogueText || 'Fue un honor, supongo.', canvas.width / 2, canvas.height / 2 + 75);
+                ctx.fillText(dialogueText || 'Fue un honor, supongo.', canvas.width / 2, canvas.height / 2 + 150);
 
                 ctx.fillStyle = '#ff9f1c';
-                roundRect(ctx, 110, canvas.height / 2 + 110, canvas.width - 220, 50, 12);
+                // Button position adjusted
+                const btnY = 550;
+                roundRect(ctx, 110, btnY, canvas.width - 220, 50, 12);
                 ctx.fill();
                 ctx.fillStyle = '#222';
                 ctx.font = 'bold 20px sans-serif';
-                ctx.fillText('Play Again', canvas.width / 2, canvas.height / 2 + 142);
+                ctx.fillText('Play Again', canvas.width / 2, btnY + 32);
                 ctx.restore();
             }
 
@@ -2147,8 +2241,25 @@
 
             function endGame() {
                 state = STATE.GAMEOVER;
-                const earned = Math.floor(score / 10);
-                gameData.coins += earned;
+                const coinBonus = Math.floor(score / 10);
+                gameData.coins += coinBonus;
+
+                // Street Cred Logic
+                const xpEarned = score;
+                credEarned = xpEarned;
+                gameData.streetCred += xpEarned;
+
+                const nextCost = getCredForNextLevel(gameData.streetLevel);
+                if (gameData.streetCred >= nextCost) {
+                    gameData.streetLevel++;
+                    gameData.streetCred -= nextCost;
+                    // Bonus coins for leveling up
+                    const levelBonus = gameData.streetLevel * 50;
+                    gameData.coins += levelBonus;
+                    levelUpOccurred = true;
+                    playSound(1200, 0.4);
+                }
+
                 gameData.bestScore = Math.max(gameData.bestScore, score);
                 saveGameData();
                 sayRandom('gameOver');
@@ -2370,12 +2481,12 @@
                 const pos = getMousePos(canvas, e);
 
                 if (state === STATE.TITLE) {
-                    // Check Play Button (110, 380, w, 46)
-                    if (pos.y >= 380 && pos.y <= 426 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                    // Check Play Button (110, 410, w, 46) -- Adjusted Y
+                    if (pos.y >= 410 && pos.y <= 456 && pos.x >= 110 && pos.x <= canvas.width - 110) {
                         startGameFromTitle();
                     }
-                    // Check Shop Button (110, 450, w, 46)
-                    else if (pos.y >= 450 && pos.y <= 496 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                    // Check Shop Button (110, 470, w, 46) -- Adjusted Y
+                    else if (pos.y >= 470 && pos.y <= 516 && pos.x >= 110 && pos.x <= canvas.width - 110) {
                         state = STATE.SHOP;
                     }
                 } else if (state === STATE.SHOP) {
@@ -2429,8 +2540,8 @@
                 };
 
                 if (state === STATE.TITLE) {
-                    if (pos.y >= 380 && pos.y <= 426) startGameFromTitle();
-                    else if (pos.y >= 450 && pos.y <= 496) state = STATE.SHOP;
+                    if (pos.y >= 410 && pos.y <= 456) startGameFromTitle();
+                    else if (pos.y >= 470 && pos.y <= 516) state = STATE.SHOP;
                     return;
                 }
                 if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
@@ -2544,6 +2655,20 @@
                 setDirectionsVisible(true);
             }
             initTitle();
+
+            // Expose internals for testing
+            window.gameInternals = {
+                player,
+                isa,
+                get chanclas() { return chanclas; },
+                gameData,
+                spawnChancla,
+                fireParticles: rosePetals,
+                resetGame,
+                update,
+                setXP: (xp, level) => { gameData.streetCred = xp; gameData.streetLevel = level; saveGameData(); },
+                getScore: () => score
+            };
         })();
     </script>
 </body>
