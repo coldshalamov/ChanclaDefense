@@ -159,11 +159,24 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
             let state = STATE.TITLE;
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, loveTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, loveTimer: 0 };
+            let gameData = { coins: 0, upgrades: { lives: false, shield: false, cooldown: false }, bestScore: 0 };
+            try {
+                const saved = localStorage.getItem('chancla_bomb_save');
+                if (saved) gameData = JSON.parse(saved);
+                if (!gameData.upgrades) gameData.upgrades = { lives: false, shield: false, cooldown: false };
+                if (gameData.coins === undefined) gameData.coins = 0;
+                if (gameData.bestScore === undefined) gameData.bestScore = 0;
+            } catch (e) { console.error(e); }
+
+            function saveGameData() {
+                localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
+            }
+
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
             let pets = [];
@@ -357,22 +370,20 @@
             function resetGame() {
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
-                player.lives = 3;
-                player.shield = false;
+                player.lives = 3 + (gameData.upgrades.lives ? 1 : 0);
+                player.shield = gameData.upgrades.shield;
                 player.hitTimer = 0;
-                player.loveTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
-                isa.loveTimer = 0;
-                chanclas = [];
-                pets = [];
-                powerups = [];
-                floatTexts = [];
-                rosePetals = [];
-                specialProjectiles = [];
-                impacts = [];
+                chanclas.length = 0;
+                pets.length = 0;
+                powerups.length = 0;
+                floatTexts.length = 0;
+                rosePetals.length = 0;
+                specialProjectiles.length = 0;
+                impacts.length = 0;
                 score = 0;
                 comboCount = 0;
                 spawnInterval = 1.2;
@@ -387,7 +398,7 @@
                 hitStop = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
-                chainEffects = [];
+                chainEffects.length = 0;
                 wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -666,7 +677,6 @@
                 // Determine expression
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
-                else if (player.loveTimer > 0) expression = 'love';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
@@ -686,15 +696,11 @@
                 ctx.save();
                 let drawX = isa.x;
                 let drawY = isa.y;
-                let expression = 'normal';
                 if (isa.hitTimer > 0) {
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
-                    expression = 'hit';
-                } else if (isa.loveTimer > 0) {
-                    expression = 'love';
                 }
-                drawIsaAvatar(ctx, drawX, drawY, 78, expression);
+                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
 
                 if (isa.chismeTimer > 0) {
                     // Draw phone near Isa
@@ -718,7 +724,7 @@
                 ctx.closePath();
             }
 
-            function drawIsaAvatar(ctx, x, y, size, expression = 'normal') {
+            function drawIsaAvatar(ctx, x, y, size, isHit) {
                 ctx.save();
                 ctx.translate(x, y);
                 const faceW = size * 0.72;
@@ -761,7 +767,7 @@
                 ctx.fill();
 
                 // Eyes
-                if (expression === 'hit') {
+                if (isHit) {
                     // X Eyes
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 3;
@@ -776,23 +782,6 @@
                     };
                     drawXEye(-faceW * 0.2, -faceH * 0.05);
                     drawXEye(faceW * 0.2, -faceH * 0.05);
-                } else if (expression === 'love') {
-                     // Heart eyes
-                     const drawHeartEye = (cx, cy) => {
-                        ctx.save();
-                        ctx.translate(cx, cy);
-                        const scale = faceW * 0.007;
-                        ctx.scale(scale, scale);
-                        ctx.fillStyle = '#d93c7a'; // Darker pink
-                        ctx.beginPath();
-                        ctx.moveTo(0, 6);
-                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
-                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
-                        ctx.fill();
-                        ctx.restore();
-                    };
-                    drawHeartEye(-faceW * 0.2, -faceH * 0.05);
-                    drawHeartEye(faceW * 0.2, -faceH * 0.05);
                 } else {
                     // Normal eyes with lashes
                     ctx.fillStyle = '#1d1411';
@@ -819,23 +808,13 @@
                 }
 
                 // Mouth
-                if (expression === 'hit') {
+                if (isHit) {
                     // O mouth
                     ctx.strokeStyle = '#d93c7a';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.ellipse(0, faceH * 0.2, faceW * 0.1, faceH * 0.12, 0, 0, Math.PI * 2);
                     ctx.stroke();
-                } else if (expression === 'love') {
-                    // Kissy mouth
-                    ctx.fillStyle = '#d93c7a';
-                    ctx.beginPath();
-                    ctx.arc(0, faceH * 0.22, faceW * 0.08, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#e86c9e'; // Highlight
-                    ctx.beginPath();
-                    ctx.arc(-2, faceH * 0.20, faceW * 0.03, 0, Math.PI * 2);
-                    ctx.fill();
                 } else {
                     // Smile and lips
                     ctx.strokeStyle = '#d93c7a';
@@ -884,8 +863,6 @@
                     ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
                 } else if (expression === 'cocky') {
                     ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
-                } else if (expression === 'love') {
-                    ctx.rotate(Math.sin(timeElapsed * 5) * 0.05); // Happy sway
                 } else if (expression === 'dead') {
                     ctx.rotate(Math.PI / 20); // Slight tilt
                 }
@@ -1030,23 +1007,6 @@
                     ctx.moveTo(headW * 0.12, -headH * 0.08);
                     ctx.quadraticCurveTo(headW * 0.2, -headH * 0.06, headW * 0.28, -headH * 0.08);
                     ctx.stroke();
-                } else if (expression === 'love') {
-                    // Heart eyes
-                    const drawHeartEye = (cx, cy) => {
-                        ctx.save();
-                        ctx.translate(cx, cy);
-                        const scale = headW * 0.006;
-                        ctx.scale(scale, scale);
-                        ctx.fillStyle = '#ff4d6d';
-                        ctx.beginPath();
-                        ctx.moveTo(0, 6);
-                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
-                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
-                        ctx.fill();
-                        ctx.restore();
-                    };
-                    drawHeartEye(-headW * 0.2, -headH * 0.04);
-                    drawHeartEye(headW * 0.2, -headH * 0.04);
                 } else {
                     // Normal eyes
                     ctx.fillStyle = '#2a1b12';
@@ -1122,13 +1082,6 @@
                     // Asymmetrical smile
                     ctx.moveTo(-headW * 0.1, headH * 0.24);
                     ctx.quadraticCurveTo(0, headH * 0.28, headW * 0.12, headH * 0.20);
-                    ctx.stroke();
-                } else if (expression === 'love') {
-                    // Big Smile
-                    ctx.strokeStyle = '#1e130c';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(0, headH * 0.20, headW * 0.15, 0, Math.PI, false);
                     ctx.stroke();
                 } else {
                     // Smile
@@ -1374,7 +1327,14 @@
                 ctx.font = '16px sans-serif';
                 ctx.textAlign = 'left';
                 ctx.fillText('Score: ' + score, 12, 22);
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '14px sans-serif';
+                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 16);
+
                 ctx.textAlign = 'right';
+                ctx.fillStyle = '#fff';
+                ctx.font = '16px sans-serif';
                 ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width - 12, 22);
                 if (slowEffect.timer > 0) {
                     ctx.fillStyle = '#ffd166';
@@ -1386,7 +1346,7 @@
                 // Draw special attack bar
                 const barWidth = 180;
                 const barHeight = 20;
-                const barX = canvas.width / 2 - barWidth / 2 - 20;
+                const barX = canvas.width / 2 - barWidth / 2;
                 const barY = 40;
 
                 // Background
@@ -1420,44 +1380,12 @@
                 roundRect(ctx, barX, barY, barWidth, barHeight, 10);
                 ctx.stroke();
 
-                // Eggplant emoji
                 const p = Math.min(1, specialAttackBar / maxSpecialAttack);
-                ctx.save();
-                const eggX = barX + barWidth + 20;
-                const eggY = barY + barHeight / 2;
-                ctx.translate(eggX, eggY);
-
-                let eggScale = 1 + p * 0.4; // up to 1.4x bigger
-                let glowIntensity = p * 15;
-
-                // Pulsing effect when ready
-                if (p >= 1) {
-                    const pulse = Math.sin(timeElapsed * 12); // Pulse speed
-                    eggScale += pulse * 0.15;
-                    glowIntensity += pulse * 8 + 8; // Pulsing glow
-                }
-
-                // Rotate based on progress
-                const eggRotation = p * (20 * Math.PI / 180);
-                ctx.rotate(eggRotation);
-                ctx.scale(eggScale, eggScale);
-
-                // Glow if bar has some progress
-                if (p > 0) {
-                    ctx.shadowBlur = Math.max(0, glowIntensity);
-                    ctx.shadowColor = `rgba(147, 51, 234, ${p})`; // Purple glow
-                }
-
-                ctx.font = '28px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🍆', 0, 0);
-                ctx.restore();
 
                 // "READY!" text
                 if (p >= 1) {
                     ctx.save();
-                    ctx.translate(eggX, eggY + 28);
+                    ctx.translate(barX + barWidth / 2, barY + barHeight + 20);
                     const textPulse = Math.sin(timeElapsed * 12);
                     const scale = 1 + textPulse * 0.1;
                     ctx.scale(scale, scale);
@@ -1512,6 +1440,83 @@
                 ctx.restore();
             }
 
+            function drawShop() {
+                drawBackground();
+                drawIsa(); // Background decoration
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 32px sans-serif';
+                ctx.fillText('SHOP / TIENDA', canvas.width / 2, 80);
+
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '24px sans-serif';
+                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 120);
+
+                const upgrades = [
+                    { id: 'lives', name: 'Extra Life (+1)', icon: '❤️', cost: 100, desc: 'Start with 4 lives' },
+                    { id: 'shield', name: 'Start Shield', icon: '🛡️', cost: 150, desc: 'Start with shield' },
+                    { id: 'cooldown', name: 'Fast Hands', icon: '⚡', cost: 200, desc: '-10% Slap Cooldown' }
+                ];
+
+                let y = 160;
+                upgrades.forEach(u => {
+                    const owned = gameData.upgrades[u.id];
+                    const affordable = gameData.coins >= u.cost;
+
+                    // Button bg
+                    ctx.fillStyle = owned ? '#4caf50' : (affordable ? '#2196f3' : '#555');
+                    roundRect(ctx, 40, y, canvas.width - 80, 80, 10);
+                    ctx.fill();
+
+                    // Border
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    roundRect(ctx, 40, y, canvas.width - 80, 80, 10);
+                    ctx.stroke();
+
+                    // Icon
+                    ctx.font = '30px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(u.icon, 55, y + 50);
+
+                    // Text
+                    ctx.font = 'bold 18px sans-serif';
+                    ctx.fillText(u.name, 100, y + 30);
+                    ctx.font = '14px sans-serif';
+                    ctx.fillStyle = '#ddd';
+                    ctx.fillText(u.desc, 100, y + 55);
+
+                    // Cost / Status
+                    ctx.textAlign = 'right';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillStyle = '#fff';
+                    if (owned) {
+                        ctx.fillText('OWNED', canvas.width - 55, y + 45);
+                    } else {
+                        ctx.fillText('💰 ' + u.cost, canvas.width - 55, y + 45);
+                    }
+
+                    y += 100;
+                });
+
+                // Back Button
+                ctx.fillStyle = '#ff5252';
+                roundRect(ctx, 100, canvas.height - 100, canvas.width - 200, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 68);
+
+                ctx.restore();
+            }
+
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
@@ -1528,12 +1533,23 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+
+                // Play Button
                 ctx.fillStyle = '#ff9f1c';
                 roundRect(ctx, 110, 380, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+
+                // Shop Button
+                ctx.fillStyle = '#2196f3';
+                roundRect(ctx, 110, 450, canvas.width - 220, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px sans-serif';
+                ctx.fillText('Shop / Tienda', canvas.width / 2, 480);
+
                 ctx.restore();
             }
 
@@ -1551,7 +1567,14 @@
                 ctx.fillText('Isa ganó', canvas.width / 2, canvas.height / 2 + 10);
 
                 ctx.font = '20px sans-serif';
-                ctx.fillText('Score: ' + score + ' | Best: ' + bestScore, canvas.width / 2, canvas.height / 2 + 45);
+                ctx.fillText('Score: ' + score + ' | Best: ' + gameData.bestScore, canvas.width / 2, canvas.height / 2 + 45);
+
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '18px sans-serif';
+                const earned = Math.floor(score / 10);
+                ctx.fillText(`Coins Earned: +${earned}`, canvas.width / 2, canvas.height / 2 + 70);
+                ctx.font = '14px sans-serif';
+                ctx.fillText(`Total Coins: ${gameData.coins}`, canvas.width / 2, canvas.height / 2 + 90);
 
                 ctx.fillStyle = '#dcdcdc';
                 ctx.font = 'italic 16px sans-serif';
@@ -1575,7 +1598,7 @@
                 const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed, grazed: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1607,8 +1630,6 @@
 
             function applyPowerup(p) {
                 if (p.kind === 'heart') {
-                    player.loveTimer = 2.0;
-                    isa.loveTimer = 2.0;
                     if (player.lives < player.maxLives) {
                         player.lives++;
                         addFloatText('I love you! +1 ❤️', p.x, p.y);
@@ -1665,7 +1686,7 @@
                         if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
                             specialReadyTriggered = true;
                             // HUD egg icon approx location
-                            const eggX = 290;
+                            const eggX = canvas.width / 2;
                             const eggY = 50;
                             spawnImpact(eggX, eggY, true);
                             for (let k = 0; k < 8; k++) {
@@ -1685,7 +1706,8 @@
 
                         // Add float text
                         if (isPerfect) {
-                            addFloatText('PERFECT!' + comboText, c.x, c.y - 10);
+                            gameData.coins += 2;
+                            addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.15);
                             triggerShake(6, 0.2);
@@ -1693,7 +1715,8 @@
                             hitStop = 0.15;
                             spawnRoseExplosion(c.x, c.y);
                         } else {
-                            addFloatText('SLAP!' + comboText, c.x, c.y);
+                            gameData.coins += 1;
+                            addFloatText('SLAP! +1💰' + comboText, c.x, c.y);
                             spawnImpact(c.x, c.y);
                             playSound(600, 0.1);
                         }
@@ -1703,7 +1726,7 @@
                 }
 
                 if (slappedAny) {
-                    slapCooldown = 0.3;
+                    slapCooldown = gameData.upgrades.cooldown ? 0.27 : 0.3;
                 } else {
                     slapCooldown = 0.15;
                     comboCount = 0;
@@ -1803,6 +1826,32 @@
                     c.x += c.vx * dt;
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     c.rotation += c.rotSpeed * dt;
+
+                    // Graze mechanic
+                    if (!c.grazed && !c.slapped && !rectsOverlap(player, c)) {
+                        const dx = c.x - player.x;
+                        const dy = c.y - player.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 75) {
+                            c.grazed = true;
+                            score += 15;
+                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
+                            addFloatText('GRAZE! +15', player.x, player.y - 40);
+                            playSound(1000, 0.1);
+                            for (let k = 0; k < 5; k++) {
+                                rosePetals.push({
+                                    x: player.x + (Math.random() - 0.5) * 40,
+                                    y: player.y + (Math.random() - 0.5) * 40,
+                                    vx: (Math.random() - 0.5) * 100,
+                                    vy: (Math.random() - 0.5) * 100,
+                                    rotation: Math.random() * Math.PI * 2,
+                                    rotSpeed: (Math.random() - 0.5) * 5,
+                                    emoji: '✨',
+                                    size: 16
+                                });
+                            }
+                        }
+                    }
 
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
@@ -2124,7 +2173,10 @@
 
             function endGame() {
                 state = STATE.GAMEOVER;
-                bestScore = Math.max(bestScore, score);
+                const earned = Math.floor(score / 10);
+                gameData.coins += earned;
+                gameData.bestScore = Math.max(gameData.bestScore, score);
+                saveGameData();
                 sayRandom('gameOver');
             }
 
@@ -2221,8 +2273,6 @@
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
-                if (player.loveTimer > 0) player.loveTimer -= dt;
-                if (isa.loveTimer > 0) isa.loveTimer -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
@@ -2263,7 +2313,7 @@
                 if (winAnimationStart === 0) winAnimationStart = Date.now();
                 const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
                 const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
-                drawIsaAvatar(ctx, isa.x, isaWinY, 78, 'love');
+                drawIsaAvatar(ctx, isa.x, isaWinY, 78);
 
                 // Speech bubble
                 if (winProgress > 0.7) {
@@ -2312,6 +2362,7 @@
                 last = now;
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
                 if (state === STATE.TITLE) drawTitleScreen();
+                else if (state === STATE.SHOP) drawShop();
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
@@ -2331,24 +2382,113 @@
                 body.classList.toggle('hide-directions', !show);
             }
 
+            function getMousePos(canvas, evt) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                return {
+                    x: (evt.clientX - rect.left) * scaleX,
+                    y: (evt.clientY - rect.top) * scaleY
+                };
+            }
+
             canvas.addEventListener('click', (e) => {
+                const pos = getMousePos(canvas, e);
+
                 if (state === STATE.TITLE) {
-                    startGameFromTitle();
+                    // Check Play Button (110, 380, w, 46)
+                    if (pos.y >= 380 && pos.y <= 426 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        startGameFromTitle();
+                    }
+                    // Check Shop Button (110, 450, w, 46)
+                    else if (pos.y >= 450 && pos.y <= 496 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        state = STATE.SHOP;
+                    }
+                } else if (state === STATE.SHOP) {
+                    // Check Upgrade Buttons
+                    const upgrades = [
+                        { id: 'lives', cost: 100 },
+                        { id: 'shield', cost: 150 },
+                        { id: 'cooldown', cost: 200 }
+                    ];
+                    let y = 160;
+                    // Button height 80, margin 20
+                    for (let u of upgrades) {
+                        if (pos.y >= y && pos.y <= y + 80 && pos.x >= 40 && pos.x <= canvas.width - 40) {
+                            if (!gameData.upgrades[u.id] && gameData.coins >= u.cost) {
+                                gameData.coins -= u.cost;
+                                gameData.upgrades[u.id] = true;
+                                saveGameData();
+                                playSound(1200, 0.1); // Cha-ching!
+                            } else {
+                                playSound(200, 0.1); // Error sound
+                            }
+                        }
+                        y += 100;
+                    }
+
+                    // Check Back Button
+                    if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        state = STATE.TITLE;
+                    }
                 } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
-                    resetGame();
+                    // Play Again Button (110, 550, w, 50)
+                    if (pos.y >= 550 && pos.y <= 600 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        resetGame();
+                    } else if (pos.y > 600) { // Catch-all for bottom clicks just in case
+                         resetGame();
+                    }
                 }
             });
 
             canvas.addEventListener('touchstart', (e) => {
-                if (state === STATE.TITLE) { startGameFromTitle(); return; }
+                // Prevent default touch behaviors like scrolling
+                if (e.target === canvas) e.preventDefault();
+
+                const touchPoint = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const pos = {
+                    x: (touchPoint.clientX - rect.left) * scaleX,
+                    y: (touchPoint.clientY - rect.top) * scaleY
+                };
+
+                if (state === STATE.TITLE) {
+                    if (pos.y >= 380 && pos.y <= 426) startGameFromTitle();
+                    else if (pos.y >= 450 && pos.y <= 496) state = STATE.SHOP;
+                    return;
+                }
                 if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
 
+                if (state === STATE.SHOP) {
+                     // Check Upgrade Buttons
+                    const upgrades = [
+                        { id: 'lives', cost: 100 },
+                        { id: 'shield', cost: 150 },
+                        { id: 'cooldown', cost: 200 }
+                    ];
+                    let y = 160;
+                    for (let u of upgrades) {
+                        if (pos.y >= y && pos.y <= y + 80 && pos.x >= 40 && pos.x <= canvas.width - 40) {
+                            if (!gameData.upgrades[u.id] && gameData.coins >= u.cost) {
+                                gameData.coins -= u.cost;
+                                gameData.upgrades[u.id] = true;
+                                saveGameData();
+                                playSound(1200, 0.1);
+                            }
+                        }
+                        y += 100;
+                    }
+                    // Check Back Button
+                    if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50) {
+                        state = STATE.TITLE;
+                    }
+                    return;
+                }
+
                 if (state === STATE.PLAYING) {
-                    const rect = canvas.getBoundingClientRect();
-                    const touchPoint = e.touches[0];
-                    const x = touchPoint.clientX - rect.left;
-                    const y = touchPoint.clientY - rect.top;
-                    const relativeY = y / rect.height;
+                    const relativeY = pos.y / canvas.height;
 
                     // If tapping in the upper area (not movement zones at bottom), trigger slap
                     if (relativeY < 0.6) {
@@ -2359,10 +2499,10 @@
                         }
                     } else {
                         // Movement controls for bottom area
-                        if (x < rect.width / 2) touch.left = true; else touch.right = true;
+                        if (pos.x < canvas.width / 2) touch.left = true; else touch.right = true;
                     }
                 }
-            }, { passive: true });
+            }, { passive: false });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {

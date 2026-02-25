@@ -377,13 +377,13 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
-                chanclas = [];
-                pets = [];
-                powerups = [];
-                floatTexts = [];
-                rosePetals = [];
-                specialProjectiles = [];
-                impacts = [];
+                chanclas.length = 0;
+                pets.length = 0;
+                powerups.length = 0;
+                floatTexts.length = 0;
+                rosePetals.length = 0;
+                specialProjectiles.length = 0;
+                impacts.length = 0;
                 score = 0;
                 comboCount = 0;
                 spawnInterval = 1.2;
@@ -398,7 +398,7 @@
                 hitStop = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
-                chainEffects = [];
+                chainEffects.length = 0;
                 wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -1598,7 +1598,7 @@
                 const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed, grazed: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1826,6 +1826,32 @@
                     c.x += c.vx * dt;
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     c.rotation += c.rotSpeed * dt;
+
+                    // Graze mechanic
+                    if (!c.grazed && !c.slapped && !rectsOverlap(player, c)) {
+                        const dx = c.x - player.x;
+                        const dy = c.y - player.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 75) {
+                            c.grazed = true;
+                            score += 15;
+                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
+                            addFloatText('GRAZE! +15', player.x, player.y - 40);
+                            playSound(1000, 0.1);
+                            for (let k = 0; k < 5; k++) {
+                                rosePetals.push({
+                                    x: player.x + (Math.random() - 0.5) * 40,
+                                    y: player.y + (Math.random() - 0.5) * 40,
+                                    vx: (Math.random() - 0.5) * 100,
+                                    vy: (Math.random() - 0.5) * 100,
+                                    rotation: Math.random() * Math.PI * 2,
+                                    rotSpeed: (Math.random() - 0.5) * 5,
+                                    emoji: '✨',
+                                    size: 16
+                                });
+                            }
+                        }
+                    }
 
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
