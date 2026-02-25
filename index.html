@@ -175,7 +175,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, chiliTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
@@ -373,6 +373,7 @@
                 player.lives = 3 + (gameData.upgrades.lives ? 1 : 0);
                 player.shield = gameData.upgrades.shield;
                 player.hitTimer = 0;
+                player.chiliTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -677,6 +678,7 @@
                 // Determine expression
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
+                else if (player.chiliTimer > 0) expression = 'spicy';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
@@ -859,6 +861,8 @@
                 // Add shake/rotate for hit
                 if (expression === 'hit') {
                     ctx.rotate((Math.random() - 0.5) * 0.25);
+                } else if (expression === 'spicy') {
+                    ctx.rotate((Math.random() - 0.5) * 0.05); // Rapid twitch
                 } else if (expression === 'chill') {
                     ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
                 } else if (expression === 'cocky') {
@@ -882,7 +886,7 @@
 
                 const headW = size * 1.1;
                 const headH = size * 0.9;
-                const skin = '#f3d9bf';
+                const skin = expression === 'spicy' ? '#ff6b6b' : '#f3d9bf';
                 const hair = '#362417';
                 const beard = '#3b2418';
 
@@ -1007,6 +1011,22 @@
                     ctx.moveTo(headW * 0.12, -headH * 0.08);
                     ctx.quadraticCurveTo(headW * 0.2, -headH * 0.06, headW * 0.28, -headH * 0.08);
                     ctx.stroke();
+                } else if (expression === 'spicy') {
+                    // Determined eyes with flames
+                    ctx.fillStyle = '#2a1b12';
+                    ctx.beginPath();
+                    ctx.ellipse(-headW * 0.2, -headH * 0.03, headW * 0.06, headH * 0.04, 0, 0, Math.PI * 2);
+                    ctx.ellipse(headW * 0.2, -headH * 0.03, headW * 0.06, headH * 0.04, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Eyebrows
+                    ctx.strokeStyle = '#2f1d12';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.moveTo(-headW * 0.3, -headH * 0.15);
+                    ctx.lineTo(-headW * 0.1, -headH * 0.1);
+                    ctx.moveTo(headW * 0.3, -headH * 0.15);
+                    ctx.lineTo(headW * 0.1, -headH * 0.1);
+                    ctx.stroke();
                 } else {
                     // Normal eyes
                     ctx.fillStyle = '#2a1b12';
@@ -1083,6 +1103,22 @@
                     ctx.moveTo(-headW * 0.1, headH * 0.24);
                     ctx.quadraticCurveTo(0, headH * 0.28, headW * 0.12, headH * 0.20);
                     ctx.stroke();
+                } else if (expression === 'spicy') {
+                    // Gritted teeth
+                    ctx.fillStyle = '#fff';
+                    roundRect(ctx, -headW * 0.15, headH * 0.2, headW * 0.3, headH * 0.08, 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#2f1d12';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(-headW * 0.15, headH * 0.24);
+                    ctx.lineTo(headW * 0.15, headH * 0.24);
+                    ctx.stroke();
+                    // Sweat/Fire emoji
+                    ctx.font = '20px "Noto Color Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🔥', headW * 0.6, -headH * 0.4);
                 } else {
                     // Smile
                     ctx.strokeStyle = '#1e130c'; // Ensure color is set
@@ -1336,7 +1372,13 @@
                 ctx.fillStyle = '#fff';
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width - 12, 22);
-                if (slowEffect.timer > 0) {
+
+                if (player.chiliTimer > 0) {
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.font = 'bold 14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🔥 SPICY ' + player.chiliTimer.toFixed(1) + 's', canvas.width / 2, 34);
+                } else if (slowEffect.timer > 0) {
                     ctx.fillStyle = '#ffd166';
                     ctx.font = '14px sans-serif';
                     ctx.textAlign = 'center';
@@ -1646,11 +1688,17 @@
                     addFloatText('¡Chisme Time! 📱', p.x, p.y);
                     sayRandom('chisme');
                 }
+                if (p.kind === 'chili') {
+                    player.chiliTimer = 6;
+                    addFloatText('¡PICANTE! 🌶️', p.x, p.y);
+                    playSound(1500, 0.3); // High pitch whistle
+                }
             }
 
             function trySlap() {
                 if (slapCooldown > 0) return;
 
+                const isSpicy = player.chiliTimer > 0;
                 slapEffect.timer = slapEffect.duration;
                 slapEffect.type = 'miss';
                 slapEffect.swipeDir = Math.random() < 0.5 ? 1 : -1;
@@ -1726,9 +1774,9 @@
                 }
 
                 if (slappedAny) {
-                    slapCooldown = gameData.upgrades.cooldown ? 0.27 : 0.3;
+                    slapCooldown = isSpicy ? 0.12 : (gameData.upgrades.cooldown ? 0.27 : 0.3);
                 } else {
-                    slapCooldown = 0.15;
+                    slapCooldown = isSpicy ? 0.1 : 0.15;
                     comboCount = 0;
                     playWhoosh();
                     rosePetals.push({
@@ -1945,7 +1993,12 @@
                     if (p.kind === 'owen') {
                         p.x += p.vx * dt;
                         if (!p.dropped && Math.random() < 0.12 * dt) {
-                            const type = Math.random() < 0.3 ? 'phone' : 'beer';
+                            const rand = Math.random();
+                            // 20% Chili, 25% Phone, 55% Beer
+                            let type = 'beer';
+                            if (rand < 0.20) type = 'chili';
+                            else if (rand < 0.45) type = 'phone';
+
                             spawnPowerup(type, p.x, p.y - 10);
                             p.dropped = true;
                         }
@@ -2020,6 +2073,11 @@
                         ctx.fillStyle = '#fff';
                         ctx.font = '20px sans-serif';
                         ctx.fillText('📱', 0, 8);
+                    } else if (p.kind === 'chili') {
+                        ctx.font = '24px "Noto Color Emoji", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('🌶️', 0, 0);
                     }
                     ctx.restore();
                 });
@@ -2242,6 +2300,7 @@
                 }
 
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
+                if (player.chiliTimer > 0) player.chiliTimer -= dt;
                 if (slapCooldown > 0) slapCooldown -= dt;
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
@@ -2429,8 +2488,8 @@
                 };
 
                 if (state === STATE.TITLE) {
-                    if (pos.y >= 380 && pos.y <= 426) startGameFromTitle();
-                    else if (pos.y >= 450 && pos.y <= 496) state = STATE.SHOP;
+                    if (pos.y >= 380 && pos.y <= 426 && pos.x >= 110 && pos.x <= canvas.width - 110) startGameFromTitle();
+                    else if (pos.y >= 450 && pos.y <= 496 && pos.x >= 110 && pos.x <= canvas.width - 110) state = STATE.SHOP;
                     return;
                 }
                 if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
@@ -2450,12 +2509,14 @@
                                 gameData.upgrades[u.id] = true;
                                 saveGameData();
                                 playSound(1200, 0.1);
+                            } else {
+                                playSound(200, 0.1); // Error sound
                             }
                         }
                         y += 100;
                     }
                     // Check Back Button
-                    if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50) {
+                    if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50 && pos.x >= 100 && pos.x <= canvas.width - 100) {
                         state = STATE.TITLE;
                     }
                     return;
@@ -2544,6 +2605,9 @@
                 setDirectionsVisible(true);
             }
             initTitle();
+
+            // Expose internals for verification
+            window.gameInternals = { player, isa, chanclas, spawnChancla, pets, powerups, score, update };
         })();
     </script>
 </body>
