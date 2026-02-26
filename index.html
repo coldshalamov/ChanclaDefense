@@ -175,7 +175,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, chiliTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
@@ -373,6 +373,7 @@
                 player.lives = 3 + (gameData.upgrades.lives ? 1 : 0);
                 player.shield = gameData.upgrades.shield;
                 player.hitTimer = 0;
+                player.chiliTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -635,6 +636,11 @@
                     width = 8;
                     ctx.shadowColor = '#00e5ff';
                     ctx.shadowBlur = 10;
+                } else if (slapEffect.type === 'spicy') {
+                    color = '255, 69, 58'; // Red-orange
+                    width = 8;
+                    ctx.shadowColor = '#ff453a';
+                    ctx.shadowBlur = 12;
                 }
 
                 ctx.strokeStyle = 'rgba(' + color + ', ' + alpha + ')';
@@ -661,7 +667,7 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                ctx.fillText('✋', 0, 0);
+                ctx.fillText(slapEffect.type === 'spicy' ? '🌶️' : '✋', 0, 0);
 
                 ctx.restore();
             }
@@ -679,6 +685,7 @@
                 if (player.hitTimer > 0) expression = 'hit';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (slowEffect.timer > 0) expression = 'chill';
+                else if (player.chiliTimer > 0) expression = 'spicy';
                 else if (comboCount >= 5) expression = 'cocky';
 
                 drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
@@ -865,6 +872,11 @@
                     ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
                 } else if (expression === 'dead') {
                     ctx.rotate(Math.PI / 20); // Slight tilt
+                } else if (expression === 'spicy') {
+                    // Rapid jitter
+                    const jx = (Math.random() - 0.5) * 2;
+                    const jy = (Math.random() - 0.5) * 2;
+                    ctx.translate(jx, jy);
                 }
 
                 // Draw Halo if dead
@@ -882,9 +894,13 @@
 
                 const headW = size * 1.1;
                 const headH = size * 0.9;
-                const skin = '#f3d9bf';
+                let skin = '#f3d9bf';
                 const hair = '#362417';
                 const beard = '#3b2418';
+
+                if (expression === 'spicy') {
+                    skin = '#ff7675'; // Reddish skin
+                }
 
                 ctx.fillStyle = skin;
                 roundRect(ctx, -headW / 2, -headH / 2, headW, headH, headW * 0.2);
@@ -972,7 +988,7 @@
                     };
                     drawXEye(-headW * 0.2, -headH * 0.04);
                     drawXEye(headW * 0.2, -headH * 0.04);
-                } else if (expression === 'slap') {
+                } else if (expression === 'slap' || expression === 'spicy') {
                     // Focused eyes (slightly squinted or angry brows)
                     ctx.fillStyle = '#2a1b12';
                     ctx.beginPath();
@@ -983,9 +999,11 @@
                     ctx.strokeStyle = '#2f1d12';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.moveTo(-headW * 0.28, -headH * 0.12);
+                    // Angry brows for spicy
+                    const browY = expression === 'spicy' ? -headH * 0.15 : -headH * 0.12;
+                    ctx.moveTo(-headW * 0.28, browY);
                     ctx.lineTo(-headW * 0.12, -headH * 0.08);
-                    ctx.moveTo(headW * 0.28, -headH * 0.12);
+                    ctx.moveTo(headW * 0.28, browY);
                     ctx.lineTo(headW * 0.12, -headH * 0.08);
                     ctx.stroke();
                 } else if (expression === 'cocky') {
@@ -1060,7 +1078,7 @@
                     ctx.quadraticCurveTo(headW * 0.1, headH * 0.22, -headW * 0.08, headH * 0.22);
                     ctx.fill();
                     ctx.stroke();
-                } else if (expression === 'slap') {
+                } else if (expression === 'slap' || expression === 'spicy') {
                     // Open mouth yelling
                     ctx.fillStyle = '#4a2c22'; // Darker inside mouth
                     ctx.beginPath();
@@ -1341,6 +1359,11 @@
                     ctx.font = '14px sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillText('🍺 chill ' + slowEffect.timer.toFixed(1) + 's', canvas.width / 2, 22);
+                } else if (player.chiliTimer > 0) {
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.font = 'bold 14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🌶️ SPICY! ' + player.chiliTimer.toFixed(1) + 's', canvas.width / 2, 22);
                 }
 
                 // Draw special attack bar
@@ -1646,6 +1669,11 @@
                     addFloatText('¡Chisme Time! 📱', p.x, p.y);
                     sayRandom('chisme');
                 }
+                if (p.kind === 'chili') {
+                    player.chiliTimer = 6.0;
+                    addFloatText('¡PICANTE! 🌶️', p.x, p.y);
+                    playSound(1000, 0.3);
+                }
             }
 
             function trySlap() {
@@ -1665,10 +1693,14 @@
 
                     if (dist < slapRange) {
                         // Slap the chancla away
-                        const isPerfect = dist < perfectRange;
+                        let isPerfect = dist < perfectRange;
+
+                        // Chili force perfect
+                        if (player.chiliTimer > 0) isPerfect = true;
 
                         // Upgrade visual effect
-                        if (isPerfect) slapEffect.type = 'perfect';
+                        if (player.chiliTimer > 0) slapEffect.type = 'spicy';
+                        else if (isPerfect) slapEffect.type = 'perfect';
                         else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
 
                         c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
@@ -1895,6 +1927,16 @@
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
                     if (!c.slapped && rectsOverlap(player, c)) {
+                        // Chili Powerup: destroy chancla on touch without damage
+                        if (player.chiliTimer > 0) {
+                            chanclas.splice(i, 1);
+                            spawnImpact(c.x, c.y);
+                            addFloatText('BURN! 🔥', c.x, c.y);
+                            playSound(400, 0.1);
+                            score += 5;
+                            continue;
+                        }
+
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -1945,7 +1987,11 @@
                     if (p.kind === 'owen') {
                         p.x += p.vx * dt;
                         if (!p.dropped && Math.random() < 0.12 * dt) {
-                            const type = Math.random() < 0.3 ? 'phone' : 'beer';
+                            const r = Math.random();
+                            let type = 'beer';
+                            if (r < 0.20) type = 'chili';
+                            else if (r < 0.45) type = 'phone';
+
                             spawnPowerup(type, p.x, p.y - 10);
                             p.dropped = true;
                         }
@@ -2020,6 +2066,10 @@
                         ctx.fillStyle = '#fff';
                         ctx.font = '20px sans-serif';
                         ctx.fillText('📱', 0, 8);
+                    } else if (p.kind === 'chili') {
+                         ctx.fillStyle = '#fff';
+                         ctx.font = '30px sans-serif';
+                         ctx.fillText('🌶️', -12, 10);
                     }
                     ctx.restore();
                 });
@@ -2186,11 +2236,14 @@
                     spawnTimer = 0;
                 }
 
-                const speed = player.speed;
+                // Move logic with potential speed boost from chili
+                let currentSpeed = player.speed;
+                if (player.chiliTimer > 0) currentSpeed *= 1.25;
+
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+                if (moveLeft) player.x -= currentSpeed * dt;
+                if (moveRight) player.x += currentSpeed * dt;
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
@@ -2247,6 +2300,22 @@
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
+                if (player.chiliTimer > 0) {
+                    player.chiliTimer -= dt;
+                    // Fire trail
+                    if (Math.random() < 0.3) {
+                         rosePetals.push({
+                            x: player.x + (Math.random() - 0.5) * 40,
+                            y: player.y + 10,
+                            vx: (Math.random() - 0.5) * 20,
+                            vy: -80,
+                            rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: (Math.random() - 0.5) * 5,
+                            emoji: '🔥',
+                            size: 18
+                        });
+                    }
+                }
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
@@ -2544,6 +2613,16 @@
                 setDirectionsVisible(true);
             }
             initTitle();
+
+            window.gameInternals = {
+                get player() { return player; },
+                get isa() { return isa; },
+                get chanclas() { return chanclas; },
+                get powerups() { return powerups; },
+                get score() { return score; },
+                resetGame,
+                update
+            };
         })();
     </script>
 </body>
