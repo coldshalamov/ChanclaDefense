@@ -2570,7 +2570,16 @@
                 sayRandom('start');
                 setDirectionsVisible(true);
             }
+
+            window.debug_spawnHeart = () => {
+                state = STATE.PLAYING;
+                // Reset to ensure clean state
+                resetGame();
+                // Spawn heart directly on player
+                spawnPowerup('heart', player.x, player.y);
+            };
             initTitle();
+
         })();
     </script>
 </body>
