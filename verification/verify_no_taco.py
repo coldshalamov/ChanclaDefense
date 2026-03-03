@@ -5,42 +5,37 @@ import os
 def run():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(viewport={'width': 450, 'height': 800}) # approximate mobile size
+        context = browser.new_context(viewport={'width': 450, 'height': 800})
         page = context.new_page()
 
         cwd = os.getcwd()
 
-        # Inject test functions
+        # Inject test function
         with open('index.html', 'r') as f:
             html = f.read()
 
         injection = """
-        window.setSpecial = (val) => { specialAttackBar = val; };
-        window.fireSpecial = () => { fireSpecialAttack(); };
+        window.spawnOwenForce = () => {
+            spawnOwen();
+        };
         initTitle();
         """
         patched_html = html.rsplit('initTitle();', 1)[0] + injection + html.rsplit('initTitle();', 1)[1]
 
-        with open('test_index_special.html', 'w') as f:
+        with open('test_index_no_taco.html', 'w') as f:
             f.write(patched_html)
 
-        page.goto(f"file://{cwd}/test_index_special.html")
+        page.goto(f"file://{cwd}/test_index_no_taco.html")
 
         page.wait_for_selector("#game")
-
-        # Start game
         page.mouse.click(200, 400)
         time.sleep(1)
 
-        # Set special bar
-        page.evaluate("window.setSpecial(100)")
-        time.sleep(0.5)
+        page.evaluate("window.spawnOwenForce()")
 
-        # Fire special
-        page.evaluate("window.fireSpecial()")
-        time.sleep(0.2)
+        time.sleep(3)
 
-        page.screenshot(path="verification/special_attack_leg.png")
+        page.screenshot(path="verification/verify_no_taco.png")
 
         browser.close()
 

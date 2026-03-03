@@ -1,4 +1,11 @@
-from playwright.sync_api import sync_playwright
+import sys
+
+with open('verification/test_special.py', 'r') as f:
+    content = f.read()
+
+# According to memory:
+# "To inject test functions (like `window.setSpecial` or custom game triggers) into the `index.html` IIFE for Playwright testing, tests often read the file, inject definitions using `content.rsplit('initTitle();', 1)`, and write the patched script to a temporary file before execution."
+content_new = """from playwright.sync_api import sync_playwright
 import time
 import os
 
@@ -14,11 +21,11 @@ def run():
         with open('index.html', 'r') as f:
             html = f.read()
 
-        injection = """
+        injection = \"\"\"
         window.setSpecial = (val) => { specialAttackBar = val; };
         window.fireSpecial = () => { fireSpecialAttack(); };
         initTitle();
-        """
+        \"\"\"
         patched_html = html.rsplit('initTitle();', 1)[0] + injection + html.rsplit('initTitle();', 1)[1]
 
         with open('test_index_special.html', 'w') as f:
@@ -46,3 +53,7 @@ def run():
 
 if __name__ == "__main__":
     run()
+"""
+
+with open('verification/test_special.py', 'w') as f:
+    f.write(content_new)
