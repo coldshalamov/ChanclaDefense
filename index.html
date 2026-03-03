@@ -1903,6 +1903,27 @@
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
+
+                    if (!c.slapped && !c.grazed) {
+                        const distToPlayer = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                        if (distToPlayer < 75 && !rectsOverlap(player, c)) {
+                            c.grazed = true;
+                            score += 15;
+                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
+                            addFloatText('GRAZE! +15', player.x, player.y - 40);
+                            playSound(1500, 0.1);
+
+                            for (let k = 0; k < 5; k++) {
+                                rosePetals.push({
+                                    x: player.x, y: player.y,
+                                    vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100,
+                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+                                    emoji: '✨', size: 16
+                                });
+                            }
+                        }
+                    }
+
                     if (!c.slapped && rectsOverlap(player, c)) {
                         if (player.shield) {
                             player.shield = false;
