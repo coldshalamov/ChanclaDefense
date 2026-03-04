@@ -175,7 +175,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, chiliTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
@@ -373,6 +373,7 @@
                 player.lives = 3 + (gameData.upgrades.lives ? 1 : 0);
                 player.shield = gameData.upgrades.shield;
                 player.hitTimer = 0;
+                player.chiliTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -678,6 +679,7 @@
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
                 else if (slapEffect.timer > 0) expression = 'slap';
+                else if (player.chiliTimer > 0) expression = 'spicy';
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
 
@@ -1007,6 +1009,29 @@
                     ctx.moveTo(headW * 0.12, -headH * 0.08);
                     ctx.quadraticCurveTo(headW * 0.2, -headH * 0.06, headW * 0.28, -headH * 0.08);
                     ctx.stroke();
+                } else if (expression === 'spicy') {
+                    // Fiery eyes and angry brows
+                    ctx.fillStyle = '#e24a4a'; // Red inner eyes
+                    ctx.beginPath();
+                    ctx.arc(-headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
+                    ctx.arc(headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffd700'; // Yellow dot
+                    ctx.beginPath();
+                    ctx.arc(-headW * 0.2, -headH * 0.03, headW * 0.02, 0, Math.PI * 2);
+                    ctx.arc(headW * 0.2, -headH * 0.03, headW * 0.02, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Angry Eyebrows
+                    ctx.strokeStyle = '#2f1d12';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    // Left
+                    ctx.moveTo(-headW * 0.3, -headH * 0.15);
+                    ctx.lineTo(-headW * 0.1, -headH * 0.08);
+                    // Right
+                    ctx.moveTo(headW * 0.3, -headH * 0.15);
+                    ctx.lineTo(headW * 0.1, -headH * 0.08);
+                    ctx.stroke();
                 } else {
                     // Normal eyes
                     ctx.fillStyle = '#2a1b12';
@@ -1082,6 +1107,21 @@
                     // Asymmetrical smile
                     ctx.moveTo(-headW * 0.1, headH * 0.24);
                     ctx.quadraticCurveTo(0, headH * 0.28, headW * 0.12, headH * 0.20);
+                    ctx.stroke();
+                } else if (expression === 'spicy') {
+                    // Gritting teeth
+                    ctx.fillStyle = '#fff'; // Teeth
+                    ctx.strokeStyle = '#2f1d12';
+                    ctx.lineWidth = 1.5;
+                    roundRect(ctx, -headW * 0.1, headH * 0.2, headW * 0.2, headH * 0.06, 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Teeth lines
+                    ctx.beginPath();
+                    ctx.moveTo(-headW * 0.1, headH * 0.23);
+                    ctx.lineTo(headW * 0.1, headH * 0.23);
+                    ctx.moveTo(0, headH * 0.2);
+                    ctx.lineTo(0, headH * 0.26);
                     ctx.stroke();
                 } else {
                     // Smile
@@ -1324,11 +1364,18 @@
                 ctx.fillStyle = '#fff';
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width - 12, 22);
+                if (player.chiliTimer > 0) {
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.font = '14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🌶️ SPICY ' + player.chiliTimer.toFixed(1) + 's', canvas.width / 2, 22);
+                }
                 if (slowEffect.timer > 0) {
                     ctx.fillStyle = '#ffd166';
                     ctx.font = '14px sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.fillText('🍺 chill ' + slowEffect.timer.toFixed(1) + 's', canvas.width / 2, 22);
+                    const slowY = player.chiliTimer > 0 ? 38 : 22;
+                    ctx.fillText('🍺 chill ' + slowEffect.timer.toFixed(1) + 's', canvas.width / 2, slowY);
                 }
 
                 // Draw special attack bar
@@ -1634,6 +1681,11 @@
                     addFloatText('¡Chisme Time! 📱', p.x, p.y);
                     sayRandom('chisme');
                 }
+                if (p.kind === 'chili') {
+                    player.chiliTimer = 6;
+                    addFloatText('SPICY MODE! 🌶️', p.x, p.y);
+                    playSound(1000, 0.2);
+                }
                 if (p.kind === 'taco') {
                     // Taco Bomb clears all chanclas
                     if (chanclas.length > 0) {
@@ -1674,7 +1726,7 @@
 
                     if (dist < slapRange) {
                         // Slap the chancla away
-                        const isPerfect = dist < perfectRange;
+                        const isPerfect = dist < perfectRange || player.chiliTimer > 0;
 
                         // Upgrade visual effect
                         if (isPerfect) slapEffect.type = 'perfect';
@@ -1925,6 +1977,15 @@
                     }
 
                     if (!c.slapped && rectsOverlap(player, c)) {
+                        if (player.chiliTimer > 0) {
+                            // Invincibility: destroy chancla
+                            spawnImpact(c.x, c.y, true);
+                            score += 10;
+                            comboCount++;
+                            chanclas.splice(i, 1);
+                            playSound(850, 0.1);
+                            continue;
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -1963,7 +2024,7 @@
                         p.x += p.vx * dt;
                         if (!p.dropped && Math.random() < 0.12 * dt) {
                             const r = Math.random();
-                            const type = r < 0.2 ? 'phone' : (r < 0.45 ? 'taco' : 'beer');
+                            const type = r < 0.2 ? 'phone' : (r < 0.45 ? 'chili' : 'beer');
                             spawnPowerup(type, p.x, p.y - 10);
                             p.dropped = true;
                         }
@@ -2043,6 +2104,11 @@
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText('🌮', 0, 0);
+                    } else if (p.kind === 'chili') {
+                        ctx.font = '30px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('🌶️', 0, 0);
                     }
                     ctx.restore();
                 });
@@ -2209,7 +2275,7 @@
                     spawnTimer = 0;
                 }
 
-                const speed = player.speed;
+                const speed = player.speed * (player.chiliTimer > 0 ? 1.2 : 1);
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
                 if (moveLeft) player.x -= speed * dt;
@@ -2264,6 +2330,7 @@
                     }
                 }
 
+                if (player.chiliTimer > 0) player.chiliTimer -= dt;
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
                 if (slapCooldown > 0) slapCooldown -= dt;
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
@@ -2567,6 +2634,10 @@
                 setDirectionsVisible(true);
             }
             initTitle();
+
+            // Expose for Playwright testing
+            window.setSpecial = (val) => { specialAttackBar = val; specialReadyTriggered = false; };
+            window.fireSpecial = fireSpecialAttack;
         })();
     </script>
 </body>
