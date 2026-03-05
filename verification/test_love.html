@@ -176,7 +176,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, isEnraged: false };
 
             let chanclas = [];
             let pets = [];
@@ -377,6 +377,7 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.isEnraged = false;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -442,8 +443,8 @@
 
             function drawBackground() {
                 const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                grad.addColorStop(0, '#0b1930');
-                grad.addColorStop(1, '#0f243a');
+                grad.addColorStop(0, isa.isEnraged ? '#300b0b' : '#0b1930');
+                grad.addColorStop(1, isa.isEnraged ? '#3a0f0f' : '#0f243a');
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -700,7 +701,13 @@
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
                 }
-                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
+                if(isa.isEnraged) {
+                    ctx.shadowColor = '#ff0000';
+                    ctx.shadowBlur = 20 + Math.sin(timeElapsed * 10) * 10;
+                }
+                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0, isa.isEnraged);
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
 
                 if (isa.chismeTimer > 0) {
                     // Draw phone near Isa
@@ -724,7 +731,7 @@
                 ctx.closePath();
             }
 
-            function drawIsaAvatar(ctx, x, y, size, isHit) {
+            function drawIsaAvatar(ctx, x, y, size, isHit, isEnraged) {
                 ctx.save();
                 ctx.translate(x, y);
                 const faceW = size * 0.72;
@@ -782,6 +789,20 @@
                     };
                     drawXEye(-faceW * 0.2, -faceH * 0.05);
                     drawXEye(faceW * 0.2, -faceH * 0.05);
+                } else if (isEnraged) {
+                    ctx.fillStyle = '#ff0000';
+                    ctx.beginPath();
+                    ctx.arc(-faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.arc(faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#1d1411';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(-faceW * 0.3, -faceH * 0.12);
+                    ctx.lineTo(-faceW * 0.1, -faceH * 0.08);
+                    ctx.moveTo(faceW * 0.3, -faceH * 0.12);
+                    ctx.lineTo(faceW * 0.1, -faceH * 0.08);
+                    ctx.stroke();
                 } else {
                     // Normal eyes with lashes
                     ctx.fillStyle = '#1d1411';
@@ -1140,21 +1161,9 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang) {
+            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
-
-                if (isBoomerang) {
-                    ctx.save();
-                    const iconSize = Math.max(30, w * 1.4);
-                    ctx.font = `${iconSize}px 'Noto Color Emoji', sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.globalAlpha = 0.8;
-                    // Draw the return icon
-                    ctx.fillText('↩️', 0, 0);
-                    ctx.restore();
-                }
 
                 // Use the thong sandal emoji for the classic "Chancla" look
                 const emoji = isSuper ? '🩴💥' : '🩴💨';
@@ -1602,6 +1611,22 @@
                 if (isSuper) sayPlayer('super');
             }
 
+            function spawnChanclaSpread() {
+                const vxs = [-100, 0, 100];
+                for(let i=0; i<3; i++) {
+                    const isSuper = superEnabled && Math.random() < 0.18;
+                    const w = isSuper ? 46 : 32;
+                    const h = isSuper ? 26 : 18;
+                    const x = canvas.width/2;
+                    const y = isa.y + 40;
+                    const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+                    const vx = vxs[i];
+                    const rotSpeed = (Math.random() - 0.5) * 5;
+                    chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+                }
+                if(superEnabled) sayPlayer('super');
+            }
+
             function spawnOwen() {
                 const side = Math.random() < 0.5 ? 'left' : 'right';
                 const x = side === 'left' ? -40 : canvas.width + 40;
@@ -1915,6 +1940,27 @@
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
+
+                    if (!c.slapped && !c.grazed) {
+                        const distToPlayer = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                        if (distToPlayer < 75 && !rectsOverlap(player, c)) {
+                            c.grazed = true;
+                            score += 15;
+                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
+                            addFloatText('GRAZE! +15', player.x, player.y - 40);
+                            playSound(1500, 0.1);
+
+                            for (let k = 0; k < 5; k++) {
+                                rosePetals.push({
+                                    x: player.x, y: player.y,
+                                    vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100,
+                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+                                    emoji: '✨', size: 16
+                                });
+                            }
+                        }
+                    }
+
                     if (!c.slapped && rectsOverlap(player, c)) {
                         if (player.shield) {
                             player.shield = false;
@@ -1935,25 +1981,12 @@
                             return;
                         }
                     } else if (c.y > canvas.height + c.h) {
-                        // Boomerang chance!
-                        if (!c.isBoomerang && Math.random() < 0.15) {
-                            c.isBoomerang = true;
-                            c.vy = -Math.abs(c.vy) * 1.1; // Return faster
-                            c.vx = (player.x - c.x) * 1.5; // Target player
-                            c.rotSpeed *= 3; // Aggressive spin
-                            addFloatText('¡VUELVE!', c.x, c.y - 40);
-                            // Do not remove, do not score yet
-                        } else {
-                            score += 1;
-                            const prevBest = bestScore;
-                            bestScore = Math.max(bestScore, score);
-                            if (score > prevBest && score % 10 === 0) sayRandom('highScore');
-                            if (Math.random() < 0.2) sayRandom('nearMiss');
-                            if (Math.random() < 0.25) sayPlayer('nearMiss');
-                            chanclas.splice(i, 1);
-                        }
-                    } else if (!c.slapped && c.y < -100) {
-                        // Cleanup boomerangs that miss
+                        score += 1;
+                        const prevBest = bestScore;
+                        bestScore = Math.max(bestScore, score);
+                        if (score > prevBest && score % 10 === 0) sayRandom('highScore');
+                        if (Math.random() < 0.2) sayRandom('nearMiss');
+                        if (Math.random() < 0.25) sayPlayer('nearMiss');
                         chanclas.splice(i, 1);
                     }
                 }
@@ -2201,6 +2234,15 @@
                     return;
                 }
 
+                if (isa.anger <= isa.maxAnger * 0.5 && !isa.isEnraged) {
+                    isa.isEnraged = true;
+                    addFloatText("RAGE MODE!", canvas.width / 2, canvas.height / 2);
+                    shakeTimer = 0.5;
+                    shakeIntensity = 10;
+                    playSound(300, 0.5);
+                    baseSpeed += 40;
+                    spawnInterval *= 0.75;
+                }
                 timeElapsed += dt;
                 spawnTimer += dt;
                 if (timeElapsed > 12) {
@@ -2209,7 +2251,8 @@
                 }
                 if (timeElapsed > 18) superEnabled = true;
                 if (spawnTimer >= spawnInterval && isa.chismeTimer <= 0) {
-                    spawnChancla();
+                    if (isa.isEnraged && Math.random() < 0.25) spawnChanclaSpread();
+                    else spawnChancla();
                     spawnTimer = 0;
                 }
 
@@ -2302,7 +2345,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
             }
 
             function drawWinScreen() {
