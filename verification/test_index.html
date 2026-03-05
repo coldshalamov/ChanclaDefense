@@ -175,10 +175,10 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, chiliTimer: 0 };
+            window.player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, chiliTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
-            let chanclas = [];
+            window.chanclas = [];
             let pets = [];
             let powerups = [];
             let floatTexts = [];
@@ -1679,7 +1679,7 @@
                 }
             }
 
-            function trySlap() {
+            window.trySlap = function() {
                 if (slapCooldown > 0) return;
 
                 slapEffect.timer = slapEffect.duration;
