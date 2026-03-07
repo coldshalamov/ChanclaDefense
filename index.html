@@ -1634,27 +1634,7 @@
                     addFloatText('¡Chisme Time! 📱', p.x, p.y);
                     sayRandom('chisme');
                 }
-                if (p.kind === 'taco') {
-                    // Taco Bomb clears all chanclas
-                    if (chanclas.length > 0) {
-                        for (let i = chanclas.length - 1; i >= 0; i--) {
-                            const c = chanclas[i];
-                            spawnImpact(c.x, c.y);
-                            score += 5;
-                            comboCount++;
-                            chanclas.splice(i, 1);
-                        }
-                        shakeTimer = 0.5;
-                        flash.timer = 0.2;
-                        flash.color = '#ffffff';
-                        playSound(200, 0.3);
-                        addFloatText('TACO BOMB! 🌮💥', p.x, p.y);
-                        sayRandom('super'); // reuse super dialogue or generic
-                    } else {
-                        addFloatText('🌮 (Mmm...)', p.x, p.y);
-                        score += 5;
-                    }
-                }
+
             }
 
             function trySlap() {
@@ -1963,7 +1943,7 @@
                         p.x += p.vx * dt;
                         if (!p.dropped && Math.random() < 0.12 * dt) {
                             const r = Math.random();
-                            const type = r < 0.2 ? 'phone' : (r < 0.45 ? 'taco' : 'beer');
+                            const type = r < 0.5 ? 'phone' : 'beer';
                             spawnPowerup(type, p.x, p.y - 10);
                             p.dropped = true;
                         }
@@ -2038,12 +2018,7 @@
                         ctx.fillStyle = '#fff';
                         ctx.font = '20px sans-serif';
                         ctx.fillText('📱', 0, 8);
-                    } else if (p.kind === 'taco') {
-                        ctx.font = '30px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText('🌮', 0, 0);
-                    }
+
                     ctx.restore();
                 });
             }
