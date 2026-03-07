@@ -175,7 +175,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, dashTimer: 0, dashCooldown: 0, dashDir: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
@@ -373,6 +373,9 @@
                 player.lives = 3 + (gameData.upgrades.lives ? 1 : 0);
                 player.shield = gameData.upgrades.shield;
                 player.hitTimer = 0;
+                player.dashTimer = 0;
+                player.dashCooldown = 0;
+                player.dashDir = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -681,7 +684,9 @@
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
 
+                if (player.dashTimer > 0) ctx.globalAlpha = 0.5;
                 drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
+                ctx.globalAlpha = 1.0;
                 if (player.shield) {
                     ctx.strokeStyle = '#9bfffa';
                     ctx.lineWidth = 3;
@@ -1924,7 +1929,7 @@
                         }
                     }
 
-                    if (!c.slapped && rectsOverlap(player, c)) {
+                    if (!c.slapped && rectsOverlap(player, c) && (player.hitTimer || 0) <= 0 && (player.dashTimer || 0) <= 0) {
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2212,8 +2217,27 @@
                 const speed = player.speed;
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+
+                if (player.dashTimer > 0) {
+                    player.x += player.dashDir * speed * 2.5 * dt;
+                    player.dashTimer -= dt;
+                    if (Math.random() < 0.3) {
+                        rosePetals.push({
+                            x: player.x + (Math.random() - 0.5) * 20,
+                            y: player.y - 20,
+                            vy: -50,
+                            rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: (Math.random() - 0.5) * 5,
+                            emoji: '💨',
+                            size: 24
+                        });
+                    }
+                } else {
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
+                if (player.dashCooldown > 0) player.dashCooldown -= dt;
+
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
@@ -2502,7 +2526,19 @@
             }, { passive: false });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
+            let lastKey = '';
+            let lastKeyTime = 0;
             function handleKey(e, isDown) {
+                if (isDown && ['ArrowLeft', 'a', 'A', 'ArrowRight', 'd', 'D'].includes(e.key)) {
+                    if (state === STATE.PLAYING && lastKey === e.key && Date.now() - lastKeyTime < 300 && player.dashCooldown <= 0) {
+                        player.dashTimer = 0.3;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = ['ArrowLeft', 'a', 'A'].includes(e.key) ? -1 : 1;
+                    }
+                    lastKey = e.key;
+                    lastKeyTime = Date.now();
+                }
+
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
 
@@ -2532,9 +2568,20 @@
             }
             updateTouchOverlay();
 
+            let lastTouch = '';
+            let lastTouchTime = 0;
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+
+                    if (lastTouch === dir && Date.now() - lastTouchTime < 300 && player.dashCooldown <= 0) {
+                        player.dashTimer = 0.3;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = dir === 'left' ? -1 : 1;
+                    }
+                    lastTouch = dir;
+                    lastTouchTime = Date.now();
+
                     touch[dir] = true;
                     e.preventDefault();
                 }, { passive: false });
@@ -2567,6 +2614,9 @@
                 setDirectionsVisible(true);
             }
             initTitle();
+            window.setSpecial = function(val) { specialAttackBar = val; };
+            window.fireSpecial = function() { fireSpecialAttack(); };
+            window.applyPowerup = function(p) { applyPowerup(p); };
         })();
     </script>
 </body>
