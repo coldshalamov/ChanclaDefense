@@ -175,7 +175,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, dashTimer: 0, dashCooldown: 0, dashDir: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
@@ -373,6 +373,9 @@
                 player.lives = 3 + (gameData.upgrades.lives ? 1 : 0);
                 player.shield = gameData.upgrades.shield;
                 player.hitTimer = 0;
+                player.dashTimer = 0;
+                player.dashCooldown = 0;
+                player.dashDir = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -681,7 +684,9 @@
                 else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
 
+                if (player.dashTimer > 0) ctx.globalAlpha = 0.5;
                 drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
+                ctx.globalAlpha = 1.0;
                 if (player.shield) {
                     ctx.strokeStyle = '#9bfffa';
                     ctx.lineWidth = 3;
@@ -1140,21 +1145,9 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation, isBoomerang) {
+            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
-
-                if (isBoomerang) {
-                    ctx.save();
-                    const iconSize = Math.max(30, w * 1.4);
-                    ctx.font = `${iconSize}px 'Noto Color Emoji', sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.globalAlpha = 0.8;
-                    // Draw the return icon
-                    ctx.fillText('↩️', 0, 0);
-                    ctx.restore();
-                }
 
                 // Use the thong sandal emoji for the classic "Chancla" look
                 const emoji = isSuper ? '🩴💥' : '🩴💨';
@@ -1915,7 +1908,28 @@
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
-                    if (!c.slapped && rectsOverlap(player, c)) {
+
+                    if (!c.slapped && !c.grazed) {
+                        const distToPlayer = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                        if (distToPlayer < 75 && !rectsOverlap(player, c)) {
+                            c.grazed = true;
+                            score += 15;
+                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
+                            addFloatText('GRAZE! +15', player.x, player.y - 40);
+                            playSound(1500, 0.1);
+
+                            for (let k = 0; k < 5; k++) {
+                                rosePetals.push({
+                                    x: player.x, y: player.y,
+                                    vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100,
+                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+                                    emoji: '✨', size: 16
+                                });
+                            }
+                        }
+                    }
+
+                    if (!c.slapped && rectsOverlap(player, c) && (player.hitTimer || 0) <= 0 && (player.dashTimer || 0) <= 0) {
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -1935,25 +1949,12 @@
                             return;
                         }
                     } else if (c.y > canvas.height + c.h) {
-                        // Boomerang chance!
-                        if (!c.isBoomerang && Math.random() < 0.15) {
-                            c.isBoomerang = true;
-                            c.vy = -Math.abs(c.vy) * 1.1; // Return faster
-                            c.vx = (player.x - c.x) * 1.5; // Target player
-                            c.rotSpeed *= 3; // Aggressive spin
-                            addFloatText('¡VUELVE!', c.x, c.y - 40);
-                            // Do not remove, do not score yet
-                        } else {
-                            score += 1;
-                            const prevBest = bestScore;
-                            bestScore = Math.max(bestScore, score);
-                            if (score > prevBest && score % 10 === 0) sayRandom('highScore');
-                            if (Math.random() < 0.2) sayRandom('nearMiss');
-                            if (Math.random() < 0.25) sayPlayer('nearMiss');
-                            chanclas.splice(i, 1);
-                        }
-                    } else if (!c.slapped && c.y < -100) {
-                        // Cleanup boomerangs that miss
+                        score += 1;
+                        const prevBest = bestScore;
+                        bestScore = Math.max(bestScore, score);
+                        if (score > prevBest && score % 10 === 0) sayRandom('highScore');
+                        if (Math.random() < 0.2) sayRandom('nearMiss');
+                        if (Math.random() < 0.25) sayPlayer('nearMiss');
                         chanclas.splice(i, 1);
                     }
                 }
@@ -2216,8 +2217,27 @@
                 const speed = player.speed;
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+
+                if (player.dashTimer > 0) {
+                    player.x += player.dashDir * speed * 2.5 * dt;
+                    player.dashTimer -= dt;
+                    if (Math.random() < 0.3) {
+                        rosePetals.push({
+                            x: player.x + (Math.random() - 0.5) * 20,
+                            y: player.y - 20,
+                            vy: -50,
+                            rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: (Math.random() - 0.5) * 5,
+                            emoji: '💨',
+                            size: 24
+                        });
+                    }
+                } else {
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
+                if (player.dashCooldown > 0) player.dashCooldown -= dt;
+
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
@@ -2302,7 +2322,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation, c.isBoomerang);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
             }
 
             function drawWinScreen() {
@@ -2506,7 +2526,19 @@
             }, { passive: false });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
+            let lastKey = '';
+            let lastKeyTime = 0;
             function handleKey(e, isDown) {
+                if (isDown && ['ArrowLeft', 'a', 'A', 'ArrowRight', 'd', 'D'].includes(e.key)) {
+                    if (state === STATE.PLAYING && lastKey === e.key && Date.now() - lastKeyTime < 300 && player.dashCooldown <= 0) {
+                        player.dashTimer = 0.3;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = ['ArrowLeft', 'a', 'A'].includes(e.key) ? -1 : 1;
+                    }
+                    lastKey = e.key;
+                    lastKeyTime = Date.now();
+                }
+
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
 
@@ -2536,9 +2568,20 @@
             }
             updateTouchOverlay();
 
+            let lastTouch = '';
+            let lastTouchTime = 0;
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+
+                    if (lastTouch === dir && Date.now() - lastTouchTime < 300 && player.dashCooldown <= 0) {
+                        player.dashTimer = 0.3;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = dir === 'left' ? -1 : 1;
+                    }
+                    lastTouch = dir;
+                    lastTouchTime = Date.now();
+
                     touch[dir] = true;
                     e.preventDefault();
                 }, { passive: false });
@@ -2580,6 +2623,9 @@
             };
             initTitle();
 
+            window.setSpecial = function(val) { specialAttackBar = val; };
+            window.fireSpecial = function() { fireSpecialAttack(); };
+            window.applyPowerup = function(p) { applyPowerup(p); };
         })();
     </script>
 </body>
