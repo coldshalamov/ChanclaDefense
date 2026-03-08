@@ -69,6 +69,10 @@
             bottom: 0;
             width: 50%;
             height: 40%;
+            pointer-events: none;
+        }
+
+        body.playing .touch-zone {
             pointer-events: auto;
         }
 
@@ -162,11 +166,17 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
             let state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: false, shield: false, cooldown: false }, bestScore: 0 };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, luck: 0 }, skins: { gold: false }, bestScore: 0 };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) gameData = JSON.parse(saved);
-                if (!gameData.upgrades) gameData.upgrades = { lives: false, shield: false, cooldown: false };
+                if (!gameData.upgrades) gameData.upgrades = { lives: 0, shield: 0, cooldown: 0, luck: 0 };
+                // Migration: Convert boolean upgrades to integers
+                if (typeof gameData.upgrades.lives === 'boolean') gameData.upgrades.lives = gameData.upgrades.lives ? 1 : 0;
+                if (typeof gameData.upgrades.shield === 'boolean') gameData.upgrades.shield = gameData.upgrades.shield ? 1 : 0;
+                if (typeof gameData.upgrades.cooldown === 'boolean') gameData.upgrades.cooldown = gameData.upgrades.cooldown ? 1 : 0;
+                if (gameData.upgrades.luck === undefined) gameData.upgrades.luck = 0;
+                if (!gameData.skins) gameData.skins = { gold: false };
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
             } catch (e) { console.error(e); }
@@ -370,8 +380,8 @@
             function resetGame() {
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
-                player.lives = 3 + (gameData.upgrades.lives ? 1 : 0);
-                player.shield = gameData.upgrades.shield;
+                player.lives = 3 + (gameData.upgrades.lives || 0);
+                player.shield = (gameData.upgrades.shield || 0) > 0;
                 player.hitTimer = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
@@ -882,9 +892,11 @@
 
                 const headW = size * 1.1;
                 const headH = size * 0.9;
-                const skin = '#f3d9bf';
-                const hair = '#362417';
-                const beard = '#3b2418';
+
+                const isGold = gameData.skins && gameData.skins.gold;
+                const skin = isGold ? '#ffd700' : '#f3d9bf';
+                const hair = isGold ? '#b8860b' : '#362417';
+                const beard = isGold ? '#daa520' : '#3b2418';
 
                 ctx.fillStyle = skin;
                 roundRect(ctx, -headW / 2, -headH / 2, headW, headH, headW * 0.2);
@@ -1129,12 +1141,13 @@
                 ctx.quadraticCurveTo(0, headH * 0.46, headW * 0.18, headH / 2);
                 ctx.stroke();
 
-                // Sparkle for cocky
-                if (expression === 'cocky') {
+                // Sparkle for cocky or gold
+                if (expression === 'cocky' || isGold) {
                     ctx.font = '20px "Noto Color Emoji", sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText('✨', headW * 0.6, -headH * 0.4);
+                    const sparkleX = expression === 'cocky' ? headW * 0.6 : -headW * 0.55;
+                    ctx.fillText('✨', sparkleX, -headH * 0.4);
                 }
 
                 ctx.restore();
@@ -1428,6 +1441,14 @@
                 ctx.restore();
             }
 
+            const shopItems = [
+                { id: 'lives', name: 'Extra Life', icon: '❤️', maxLevel: 3, costs: [100, 300, 1000], desc: '+1 Life per level' },
+                { id: 'shield', name: 'Start Shield', icon: '🛡️', maxLevel: 1, costs: [150], desc: 'Start with shield' },
+                { id: 'cooldown', name: 'Fast Hands', icon: '⚡', maxLevel: 3, costs: [200, 600, 1200], desc: '-10% Slap Cooldown' },
+                { id: 'luck', name: 'Lucky Charm', icon: '🍀', maxLevel: 3, costs: [300, 800, 2000], desc: '+50% Drop Rate' },
+                { id: 'gold', name: 'Golden Skin', icon: '✨', type: 'skin', cost: 5000, desc: 'Shiny & Golden' }
+            ];
+
             function drawShop() {
                 drawBackground();
                 drawIsa(); // Background decoration
@@ -1445,52 +1466,71 @@
                 ctx.font = '24px sans-serif';
                 ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 120);
 
-                const upgrades = [
-                    { id: 'lives', name: 'Extra Life (+1)', icon: '❤️', cost: 100, desc: 'Start with 4 lives' },
-                    { id: 'shield', name: 'Start Shield', icon: '🛡️', cost: 150, desc: 'Start with shield' },
-                    { id: 'cooldown', name: 'Fast Hands', icon: '⚡', cost: 200, desc: '-10% Slap Cooldown' }
-                ];
+                let y = 150;
+                shopItems.forEach(item => {
+                    let currentLevel = 0;
+                    let isMaxed = false;
+                    let cost = 0;
 
-                let y = 160;
-                upgrades.forEach(u => {
-                    const owned = gameData.upgrades[u.id];
-                    const affordable = gameData.coins >= u.cost;
+                    if (item.type === 'skin') {
+                        isMaxed = gameData.skins[item.id];
+                        cost = item.cost;
+                    } else {
+                        currentLevel = gameData.upgrades[item.id] || 0;
+                        isMaxed = currentLevel >= item.maxLevel;
+                        cost = isMaxed ? 0 : item.costs[currentLevel];
+                    }
+
+                    const affordable = !isMaxed && gameData.coins >= cost;
 
                     // Button bg
-                    ctx.fillStyle = owned ? '#4caf50' : (affordable ? '#2196f3' : '#555');
-                    roundRect(ctx, 40, y, canvas.width - 80, 80, 10);
+                    ctx.fillStyle = isMaxed ? '#4caf50' : (affordable ? '#2196f3' : '#555');
+                    roundRect(ctx, 40, y, canvas.width - 80, 70, 10);
                     ctx.fill();
 
                     // Border
                     ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 2;
-                    roundRect(ctx, 40, y, canvas.width - 80, 80, 10);
+                    roundRect(ctx, 40, y, canvas.width - 80, 70, 10);
                     ctx.stroke();
 
                     // Icon
-                    ctx.font = '30px sans-serif';
+                    ctx.font = '28px sans-serif';
                     ctx.textAlign = 'left';
                     ctx.fillStyle = '#fff';
-                    ctx.fillText(u.icon, 55, y + 50);
+                    ctx.fillText(item.icon, 55, y + 45);
 
-                    // Text
-                    ctx.font = 'bold 18px sans-serif';
-                    ctx.fillText(u.name, 100, y + 30);
-                    ctx.font = '14px sans-serif';
+                    // Name
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillText(item.name, 100, y + 25);
+
+                    // Desc
+                    ctx.font = '13px sans-serif';
                     ctx.fillStyle = '#ddd';
-                    ctx.fillText(u.desc, 100, y + 55);
+                    ctx.fillText(item.desc, 100, y + 45);
+
+                    // Level Dots or Skin Text
+                    if (item.type !== 'skin') {
+                        let dots = '';
+                        for(let i=0; i<item.maxLevel; i++) {
+                            dots += i < currentLevel ? '●' : '○';
+                        }
+                        ctx.font = '12px sans-serif';
+                        ctx.fillStyle = '#fff';
+                        ctx.fillText(dots, 100, y + 62);
+                    }
 
                     // Cost / Status
                     ctx.textAlign = 'right';
                     ctx.font = 'bold 16px sans-serif';
                     ctx.fillStyle = '#fff';
-                    if (owned) {
-                        ctx.fillText('OWNED', canvas.width - 55, y + 45);
+                    if (isMaxed) {
+                        ctx.fillText('MAXED', canvas.width - 55, y + 40);
                     } else {
-                        ctx.fillText('💰 ' + u.cost, canvas.width - 55, y + 45);
+                        ctx.fillText('💰 ' + cost, canvas.width - 55, y + 40);
                     }
 
-                    y += 100;
+                    y += 85;
                 });
 
                 // Back Button
@@ -1714,7 +1754,8 @@
                 }
 
                 if (slappedAny) {
-                    slapCooldown = gameData.upgrades.cooldown ? 0.27 : 0.3;
+                    const cdLevel = gameData.upgrades.cooldown || 0;
+                    slapCooldown = 0.3 * (1 - 0.1 * cdLevel);
                 } else {
                     slapCooldown = 0.15;
                     comboCount = 0;
@@ -2190,10 +2231,12 @@
                 if (moveRight) player.x += speed * dt;
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
-                if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
+                const luckLevel = gameData.upgrades.luck || 0;
+                const luckMult = 1 + 0.5 * luckLevel;
+                if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 * luckMult || Math.random() < 0.0007 * luckMult)) {
                     spawnOwen();
                 }
-                if (!pets.some(p => p.kind === 'rita') && Math.random() < 0.0007) {
+                if (!pets.some(p => p.kind === 'rita') && Math.random() < 0.0007 * luckMult) {
                     spawnRita();
                 }
 
@@ -2328,6 +2371,9 @@
 
             let last = 0;
             function loop(ts) {
+                if (state === STATE.PLAYING) body.classList.add('playing');
+                else body.classList.remove('playing');
+
                 const now = ts / 1000;
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
@@ -2376,26 +2422,37 @@
                         state = STATE.SHOP;
                     }
                 } else if (state === STATE.SHOP) {
-                    // Check Upgrade Buttons
-                    const upgrades = [
-                        { id: 'lives', cost: 100 },
-                        { id: 'shield', cost: 150 },
-                        { id: 'cooldown', cost: 200 }
-                    ];
-                    let y = 160;
-                    // Button height 80, margin 20
-                    for (let u of upgrades) {
-                        if (pos.y >= y && pos.y <= y + 80 && pos.x >= 40 && pos.x <= canvas.width - 40) {
-                            if (!gameData.upgrades[u.id] && gameData.coins >= u.cost) {
-                                gameData.coins -= u.cost;
-                                gameData.upgrades[u.id] = true;
+                    // Check Shop Items
+                    let y = 150;
+                    for (let item of shopItems) {
+                        if (pos.y >= y && pos.y <= y + 70 && pos.x >= 40 && pos.x <= canvas.width - 40) {
+                            let currentLevel = 0;
+                            let isMaxed = false;
+                            let cost = 0;
+
+                            if (item.type === 'skin') {
+                                isMaxed = gameData.skins[item.id];
+                                cost = item.cost;
+                            } else {
+                                currentLevel = gameData.upgrades[item.id] || 0;
+                                isMaxed = currentLevel >= item.maxLevel;
+                                cost = isMaxed ? 0 : item.costs[currentLevel];
+                            }
+
+                            if (!isMaxed && gameData.coins >= cost) {
+                                gameData.coins -= cost;
+                                if (item.type === 'skin') {
+                                    gameData.skins[item.id] = true;
+                                } else {
+                                    gameData.upgrades[item.id] = (gameData.upgrades[item.id] || 0) + 1;
+                                }
                                 saveGameData();
                                 playSound(1200, 0.1); // Cha-ching!
                             } else {
                                 playSound(200, 0.1); // Error sound
                             }
                         }
-                        y += 100;
+                        y += 85;
                     }
 
                     // Check Back Button
@@ -2433,23 +2490,37 @@
                 if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
 
                 if (state === STATE.SHOP) {
-                     // Check Upgrade Buttons
-                    const upgrades = [
-                        { id: 'lives', cost: 100 },
-                        { id: 'shield', cost: 150 },
-                        { id: 'cooldown', cost: 200 }
-                    ];
-                    let y = 160;
-                    for (let u of upgrades) {
-                        if (pos.y >= y && pos.y <= y + 80 && pos.x >= 40 && pos.x <= canvas.width - 40) {
-                            if (!gameData.upgrades[u.id] && gameData.coins >= u.cost) {
-                                gameData.coins -= u.cost;
-                                gameData.upgrades[u.id] = true;
+                     // Check Shop Items
+                    let y = 150;
+                    for (let item of shopItems) {
+                        if (pos.y >= y && pos.y <= y + 70 && pos.x >= 40 && pos.x <= canvas.width - 40) {
+                            let currentLevel = 0;
+                            let isMaxed = false;
+                            let cost = 0;
+
+                            if (item.type === 'skin') {
+                                isMaxed = gameData.skins[item.id];
+                                cost = item.cost;
+                            } else {
+                                currentLevel = gameData.upgrades[item.id] || 0;
+                                isMaxed = currentLevel >= item.maxLevel;
+                                cost = isMaxed ? 0 : item.costs[currentLevel];
+                            }
+
+                            if (!isMaxed && gameData.coins >= cost) {
+                                gameData.coins -= cost;
+                                if (item.type === 'skin') {
+                                    gameData.skins[item.id] = true;
+                                } else {
+                                    gameData.upgrades[item.id] = (gameData.upgrades[item.id] || 0) + 1;
+                                }
                                 saveGameData();
-                                playSound(1200, 0.1);
+                                playSound(1200, 0.1); // Cha-ching!
+                            } else {
+                                playSound(200, 0.1); // Error sound
                             }
                         }
-                        y += 100;
+                        y += 85;
                     }
                     // Check Back Button
                     if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50) {
