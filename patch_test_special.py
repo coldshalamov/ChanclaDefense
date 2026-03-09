@@ -1,4 +1,7 @@
-from playwright.sync_api import sync_playwright
+import sys
+
+def patch_file(filename):
+    clean_code = """from playwright.sync_api import sync_playwright
 import time
 import os
 
@@ -36,3 +39,8 @@ def run():
 
 if __name__ == "__main__":
     run()
+"""
+    with open(filename, 'w') as f:
+        f.write(clean_code)
+
+patch_file('verification/test_special.py')
