@@ -176,7 +176,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, isEnraged: false };
 
             let chanclas = [];
             let pets = [];
@@ -377,6 +377,7 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.isEnraged = false;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -442,12 +443,17 @@
 
             function drawBackground() {
                 const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                grad.addColorStop(0, '#0b1930');
-                grad.addColorStop(1, '#0f243a');
+                if (isa.isEnraged) {
+                    grad.addColorStop(0, '#2e050f'); // Dark red
+                    grad.addColorStop(1, '#4a0e1b'); // Crimson
+                } else {
+                    grad.addColorStop(0, '#0b1930');
+                    grad.addColorStop(1, '#0f243a');
+                }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                ctx.fillStyle = '#0a1527';
+                ctx.fillStyle = isa.isEnraged ? '#1a0408' : '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
 
                 ctx.fillStyle = '#1b8c6e';
@@ -700,7 +706,7 @@
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
                 }
-                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
+                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0, isa.isEnraged);
 
                 if (isa.chismeTimer > 0) {
                     // Draw phone near Isa
@@ -724,11 +730,22 @@
                 ctx.closePath();
             }
 
-            function drawIsaAvatar(ctx, x, y, size, isHit) {
+            function drawIsaAvatar(ctx, x, y, size, isHit, isEnraged) {
                 ctx.save();
                 ctx.translate(x, y);
                 const faceW = size * 0.72;
                 const faceH = size * 0.82;
+
+                if (isEnraged && !isHit) {
+                    ctx.save();
+                    ctx.shadowColor = '#ff0000';
+                    ctx.shadowBlur = 20;
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
                 const hairColor = '#3a2522';
                 const skin = '#e7b28f';
 
@@ -784,11 +801,18 @@
                     drawXEye(faceW * 0.2, -faceH * 0.05);
                 } else {
                     // Normal eyes with lashes
-                    ctx.fillStyle = '#1d1411';
+                    if (isEnraged) {
+                        ctx.fillStyle = '#ff0000';
+                        ctx.shadowColor = '#ff0000';
+                        ctx.shadowBlur = 10;
+                    } else {
+                        ctx.fillStyle = '#1d1411';
+                    }
                     ctx.beginPath();
                     ctx.arc(-faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
                     ctx.arc(faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
                     ctx.fill();
+                    ctx.shadowBlur = 0;
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 2.2;
                     const lash = (sx, dir) => {
@@ -1577,13 +1601,32 @@
                 ctx.restore();
             }
 
+            function spawnChanclaSpread() {
+                const isSuper = superEnabled && Math.random() < 0.18;
+                const w = isSuper ? 46 : 32;
+                const h = isSuper ? 26 : 18;
+                const x = isa.x;
+                const y = isa.y + 40;
+                const vy = (baseSpeed + 60 + (isSuper ? 40 : 0)) * 1.2; // Extra speed for spread
+
+                // Left
+                chanclas.push({ x: x - 20, y, vx: -120, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed: -8 });
+                // Middle
+                chanclas.push({ x, y, vx: 0, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed: (Math.random() - 0.5) * 5 });
+                // Right
+                chanclas.push({ x: x + 20, y, vx: 120, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed: 8 });
+
+                if (isSuper) sayPlayer('super');
+            }
+
             function spawnChancla() {
                 const isSuper = superEnabled && Math.random() < 0.18;
                 const w = isSuper ? 46 : 32;
                 const h = isSuper ? 26 : 18;
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+                const speedMultiplier = isa.isEnraged ? 1.2 : 1.0;
+                const vy = (baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0)) * speedMultiplier;
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
                 chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
@@ -2171,6 +2214,13 @@
                     return;
                 }
 
+                if (isa.anger <= isa.maxAnger * 0.5 && !isa.isEnraged) {
+                    isa.isEnraged = true;
+                    triggerShake(10, 0.5);
+                    addFloatText('¡RAGE MODE! 🔥', isa.x, isa.y + 20);
+                    playSound(400, 0.5);
+                }
+
                 timeElapsed += dt;
                 spawnTimer += dt;
                 if (timeElapsed > 12) {
@@ -2178,8 +2228,13 @@
                     baseSpeed += dt * 5;
                 }
                 if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval && isa.chismeTimer <= 0) {
-                    spawnChancla();
+                const effectiveSpawnInterval = isa.isEnraged ? spawnInterval * 0.7 : spawnInterval;
+                if (spawnTimer >= effectiveSpawnInterval && isa.chismeTimer <= 0) {
+                    if (isa.isEnraged && Math.random() < 0.2) {
+                        spawnChanclaSpread();
+                    } else {
+                        spawnChancla();
+                    }
                     spawnTimer = 0;
                 }
 
@@ -2284,7 +2339,7 @@
                 if (winAnimationStart === 0) winAnimationStart = Date.now();
                 const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
                 const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
-                drawIsaAvatar(ctx, isa.x, isaWinY, 78);
+                drawIsaAvatar(ctx, isa.x, isaWinY, 78, false, false);
 
                 // Speech bubble
                 if (winProgress > 0.7) {
@@ -2535,6 +2590,10 @@
             }
             window.addEventListener('resize', resize);
             resize();
+
+            window.setIsaAnger = (val) => { isa.anger = val; };
+            window.setSpecial = (val) => { specialAttackBar = val; };
+            window.fireSpecial = () => { fireSpecialAttack(); };
 
             function initTitle() {
                 sayRandom('start');
