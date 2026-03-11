@@ -2591,7 +2591,18 @@
                 sayRandom('start');
                 setDirectionsVisible(true);
             }
+
+            window.debug_forceRage = () => {
+                state = STATE.PLAYING;
+                resetGame();
+                isa.anger = 40; // Below 50%
+                // Set time so super chanclas can spawn in spread
+                timeElapsed = 20;
+                superEnabled = true;
+                // Wait for one update tick to trigger rage mode and spread attack
+            };
             initTitle();
+
         })();
     </script>
 </body>
