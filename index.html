@@ -175,7 +175,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, dashTimer: 0, dashCooldown: 0, dashDir: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
@@ -215,6 +215,7 @@
 
             const keys = { left: false, right: false };
             const touch = { left: false, right: false };
+            const lastTap = { left: 0, right: 0 };
 
             // Audio context for sound effects (reuse to avoid browser limits)
             let audioContext = null;
@@ -373,6 +374,9 @@
                 player.lives = 3 + (gameData.upgrades.lives ? 1 : 0);
                 player.shield = gameData.upgrades.shield;
                 player.hitTimer = 0;
+                player.dashTimer = 0;
+                player.dashCooldown = 0;
+                player.dashDir = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -669,6 +673,9 @@
             function drawPlayer() {
                 const { x, y, w, h } = player;
                 ctx.save();
+                if (player.dashTimer > 0) {
+                    ctx.globalAlpha = 0.5;
+                }
                 ctx.fillStyle = '#fff';
                 ctx.font = '14px sans-serif';
                 ctx.textAlign = 'center';
@@ -1904,6 +1911,9 @@
                     }
 
                     if (!c.slapped && rectsOverlap(player, c)) {
+                        if (player.dashTimer > 0 || player.hitTimer > 0) {
+                            continue; // I-frames active, ignore collision
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2183,11 +2193,29 @@
                     spawnTimer = 0;
                 }
 
-                const speed = player.speed;
-                const moveLeft = keys.left || touch.left;
-                const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+                let speed = player.speed;
+
+                if (player.dashTimer > 0) {
+                    speed *= 2.5;
+                    player.x += speed * player.dashDir * dt;
+
+                    if (Math.random() < 0.4) {
+                        rosePetals.push({
+                            x: player.x + (Math.random() - 0.5) * 20,
+                            y: player.y,
+                            vy: -20,
+                            rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: (Math.random() - 0.5) * 5,
+                            emoji: '💨',
+                            size: 16
+                        });
+                    }
+                } else {
+                    const moveLeft = keys.left || touch.left;
+                    const moveRight = keys.right || touch.right;
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
@@ -2244,6 +2272,8 @@
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
                 if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
+                if (player.dashTimer > 0) player.dashTimer -= dt;
+                if (player.dashCooldown > 0) player.dashCooldown -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
@@ -2477,8 +2507,32 @@
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {
-                if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
-                if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+                if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
+                    if (isDown && !keys.left) {
+                        const now = Date.now();
+                        if (now - lastTap.left < 300 && player.dashCooldown <= 0) {
+                            player.dashTimer = 0.3;
+                            player.dashCooldown = 0.8;
+                            player.dashDir = -1;
+                        }
+                        lastTap.left = now;
+                    }
+                    keys.left = isDown;
+                    e.preventDefault();
+                }
+                if (['ArrowRight', 'd', 'D'].includes(e.key)) {
+                    if (isDown && !keys.right) {
+                        const now = Date.now();
+                        if (now - lastTap.right < 300 && player.dashCooldown <= 0) {
+                            player.dashTimer = 0.3;
+                            player.dashCooldown = 0.8;
+                            player.dashDir = 1;
+                        }
+                        lastTap.right = now;
+                    }
+                    keys.right = isDown;
+                    e.preventDefault();
+                }
 
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
@@ -2509,6 +2563,13 @@
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+                    const now = Date.now();
+                    if (now - lastTap[dir] < 300 && player.dashCooldown <= 0) {
+                        player.dashTimer = 0.3;
+                        player.dashCooldown = 0.8;
+                        player.dashDir = dir === 'left' ? -1 : 1;
+                    }
+                    lastTap[dir] = now;
                     touch[dir] = true;
                     e.preventDefault();
                 }, { passive: false });
