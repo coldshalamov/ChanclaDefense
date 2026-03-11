@@ -10,7 +10,12 @@ def run():
         page = context.new_page()
 
         cwd = os.getcwd()
-        page.goto(f"file://{cwd}/index.html")
+
+        with open(os.path.join(cwd, "index.html"), "r") as f:
+            html = f.read()
+
+        html = html.replace("initTitle();", "initTitle(); window.setSpecial = (val) => specialAttackBar = val; window.fireSpecial = fireSpecialAttack;")
+        page.set_content(html)
 
         # Wait for canvas
         page.wait_for_selector("#game")
