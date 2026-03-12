@@ -24,6 +24,11 @@ def run():
         # Cheat to fill special bar and ensure game is playing
         # We can also force state if the click failed for some reason, but let's try to be organic first.
 
+        # Modify script to expose internal functions since they are in IIFE
+        script_content = page.evaluate("() => document.querySelector('script').textContent")
+        modified_script = script_content.replace('initTitle();', 'initTitle(); window.setSpecial = (val) => { specialAttackBar = val; }; window.fireSpecial = fireSpecialAttack;')
+        page.evaluate(modified_script)
+
         # Set special bar
         page.evaluate("window.setSpecial(100)")
         time.sleep(0.5)
