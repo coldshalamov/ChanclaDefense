@@ -1,4 +1,9 @@
+import re
 
+with open('verification/test_special.py', 'r') as f:
+    content = f.read()
+
+new_content = """
 from playwright.sync_api import sync_playwright
 import time
 import os
@@ -63,3 +68,7 @@ def run():
 
 if __name__ == "__main__":
     run()
+"""
+
+with open('verification/test_special.py', 'w') as f:
+    f.write(new_content)
