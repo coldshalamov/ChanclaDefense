@@ -1140,17 +1140,25 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
+            function drawChancla(ctx, x, y, w, h, type, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
 
                 // Use the thong sandal emoji for the classic "Chancla" look
-                const emoji = isSuper ? '🩴💥' : '🩴💨';
+                let emoji = '🩴💨';
+                if (type === 'super') emoji = '🩴💥';
+                else if (type === 'golden') emoji = '🩴✨';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.rotate(rotation);
+
+                if (type === 'golden') {
+                    ctx.shadowColor = 'gold';
+                    ctx.shadowBlur = 10;
+                }
+
                 ctx.fillText(emoji, 0, h * 0.2);
                 ctx.restore();
             }
@@ -1579,14 +1587,19 @@
 
             function spawnChancla() {
                 const isSuper = superEnabled && Math.random() < 0.18;
-                const w = isSuper ? 46 : 32;
-                const h = isSuper ? 26 : 18;
+                const isGolden = !isSuper && timeElapsed > 25 && Math.random() < 0.05;
+
+                let w = 32;
+                let h = 18;
+                if (isSuper) { w = 46; h = 26; }
+                else if (isGolden) { w = 38; h = 22; } // slightly bigger than normal
+
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : (isGolden ? 80 : 0));
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : (isGolden ? 'golden' : 'normal'), rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1693,7 +1706,18 @@
                         const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
 
                         // Add float text
-                        if (isPerfect) {
+                        if (c.type === 'golden') {
+                            gameData.coins += 15;
+                            score += 50;
+                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 50);
+                            addFloatText('GOLDEN! +15💰' + comboText, c.x, c.y - 15);
+                            spawnImpact(c.x, c.y, true);
+                            playSound(1200, 0.2);
+                            triggerShake(8, 0.25);
+                            triggerFlash(0.2, '#ffd700'); // gold flash
+                            hitStop = 0.2;
+                            spawnRoseExplosion(c.x, c.y);
+                        } else if (isPerfect) {
                             gameData.coins += 2;
                             addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
                             spawnImpact(c.x, c.y, true);
@@ -1850,7 +1874,7 @@
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : 8;
+                            let damage = c.type === 'super' ? 15 : (c.type === 'golden' ? 25 : 8);
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -1909,9 +1933,9 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = c.type === 'super' ? 2 : 1;
+                        const dmg = c.type === 'super' ? 2 : (c.type === 'golden' ? 2 : 1);
                         comboCount = 0;
-                        triggerShake(c.type === 'super' ? 15 : 8, 0.4);
+                        triggerShake((c.type === 'super' || c.type === 'golden') ? 15 : 8, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
@@ -2272,7 +2296,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
             }
 
             function drawWinScreen() {
