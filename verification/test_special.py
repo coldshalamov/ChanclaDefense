@@ -24,12 +24,43 @@ def run():
         # Cheat to fill special bar and ensure game is playing
         # We can also force state if the click failed for some reason, but let's try to be organic first.
 
+        # Modify html to expose internal functions to window for testing
+        with open("index.html", "r") as f:
+            content = f.read()
+
+        content = content.replace(
+            "initTitle();",
+            "initTitle();\nwindow.setSpecial = (val) => { specialAttackBar = val; };\nwindow.fireSpecial = () => { fireSpecialAttack(); };"
+        )
+
+        with open("index.html", "w") as f:
+            f.write(content)
+
+        page.reload()
+        page.wait_for_selector("#game")
+
+        # Click the Play Button (approx 200, 400 on 400x700 scaled canvas)
+        box = page.locator("#game").bounding_box()
+        page.mouse.click(box['x'] + 200 * (box['width'] / 400), box['y'] + 400 * (box['height'] / 700))
+
+        time.sleep(1)
+
         # Set special bar
         page.evaluate("window.setSpecial(100)")
         time.sleep(0.5)
 
         # Fire special
         page.evaluate("window.fireSpecial()")
+
+        # Restore index.html
+        with open("index.html", "r") as f:
+            content = f.read()
+        content = content.replace(
+            "initTitle();\nwindow.setSpecial = (val) => { specialAttackBar = val; };\nwindow.fireSpecial = () => { fireSpecialAttack(); };",
+            "initTitle();"
+        )
+        with open("index.html", "w") as f:
+            f.write(content)
 
         # Wait a few frames for the projectile to appear and move
         time.sleep(0.2)
