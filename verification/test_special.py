@@ -12,12 +12,18 @@ def run():
         cwd = os.getcwd()
         page.goto(f"file://{cwd}/index.html")
 
-        # Wait for canvas
-        page.wait_for_selector("#game")
+        # Test scripts must inject debug functions because earlier global test hooks were removed.
+        # We need to extract the script content, replace it, and execute it.
+        script_content = page.locator("script").inner_text()
+        injected_script = script_content.replace(
+            "function initTitle() {",
+            "window.setSpecial = function(val) { specialAttackBar = val; }; window.fireSpecial = fireSpecialAttack; function initTitle() {"
+        )
+        page.evaluate(injected_script)
 
-        # Click the canvas to start
-        # The event listener is on the canvas and triggers on any click in TITLE state
-        page.click("#game")
+        # Click the Play Button
+        # The play button is at approx (110, 380, w, 46) but centers at x=200, y=400 on 400x700
+        page.mouse.click(200, 400)
 
         time.sleep(1)
 
