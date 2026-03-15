@@ -12,6 +12,11 @@ def run():
         cwd = os.getcwd()
         page.goto(f"file://{cwd}/index.html")
 
+        # Inject globals
+        content = page.content()
+        content = content.replace('initTitle();\n        })();', 'initTitle(); window.setSpecial = (val) => specialAttackBar = val; window.fireSpecial = fireSpecialAttack; })();')
+        page.set_content(content)
+
         # Wait for canvas
         page.wait_for_selector("#game")
 
