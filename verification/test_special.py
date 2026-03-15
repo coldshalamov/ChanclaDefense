@@ -10,7 +10,15 @@ def run():
         page = context.new_page()
 
         cwd = os.getcwd()
-        page.goto(f"file://{cwd}/index.html")
+
+        # We need to inject a global reference
+        with open("index.html", "r") as f:
+            html = f.read()
+
+        # Replace the final initTitle(); with initTitle(); window.debug_setSpecial = () => { specialAttackBar = 100; }; window.debug_fireSpecial = () => { fireSpecialAttack(); };
+        html = html.replace('initTitle();\n        })();', 'initTitle();\n window.debug_setSpecial = () => { specialAttackBar = 100; }; window.debug_fireSpecial = () => { fireSpecialAttack(); };\n        })();')
+
+        page.set_content(html)
 
         # Wait for canvas
         page.wait_for_selector("#game")
@@ -24,12 +32,13 @@ def run():
         # Cheat to fill special bar and ensure game is playing
         # We can also force state if the click failed for some reason, but let's try to be organic first.
 
-        # Set special bar
-        page.evaluate("window.setSpecial(100)")
+        # Expose internal variables via injecting into the script and replacing the initTitle
+        # We can just click the top half of the screen with a full bar to fire the special
+        page.evaluate("() => { specialAttackBar = 100; }")
         time.sleep(0.5)
 
-        # Fire special
-        page.evaluate("window.fireSpecial()")
+        # Fire special by simulating click or touch in the upper half
+        page.keyboard.press(" ")
 
         # Wait a few frames for the projectile to appear and move
         time.sleep(0.2)
