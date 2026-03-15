@@ -176,7 +176,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, enraged: false };
 
             let chanclas = [];
             let pets = [];
@@ -184,6 +184,8 @@
             let floatTexts = [];
             let rosePetals = [];
             let specialProjectiles = [];
+
+            let fireParticles = [];
             let score = 0;
             let bestScore = 0;
             let spawnInterval = 1.2;
@@ -377,12 +379,14 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.enraged = false;
                 chanclas = [];
                 pets = [];
                 powerups = [];
                 floatTexts = [];
                 rosePetals = [];
                 specialProjectiles = [];
+                fireParticles = [];
                 impacts = [];
                 score = 0;
                 comboCount = 0;
@@ -442,8 +446,13 @@
 
             function drawBackground() {
                 const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                grad.addColorStop(0, '#0b1930');
-                grad.addColorStop(1, '#0f243a');
+                if (isa.enraged) {
+                    grad.addColorStop(0, '#300b0b');
+                    grad.addColorStop(1, '#3a0f0f');
+                } else {
+                    grad.addColorStop(0, '#0b1930');
+                    grad.addColorStop(1, '#0f243a');
+                }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -470,6 +479,19 @@
                 ctx.fillStyle = flash.color;
                 ctx.globalAlpha = alpha;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
+
+            function drawFireParticles() {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                fireParticles.forEach(p => {
+                    const alpha = p.life / p.maxLife;
+                    ctx.fillStyle = `rgba(255, ${Math.floor(alpha * 150)}, 0, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+                    ctx.fill();
+                });
                 ctx.restore();
             }
 
@@ -696,6 +718,22 @@
                 ctx.save();
                 let drawX = isa.x;
                 let drawY = isa.y;
+                if (isa.enraged) {
+                    const pulse = Math.sin(timeElapsed * 15) * 5 + 5;
+                    ctx.shadowColor = '#ff3300';
+                    ctx.shadowBlur = 20 + pulse;
+                    if (Math.random() < 0.2) {
+                        fireParticles.push({
+                            x: drawX + (Math.random() - 0.5) * 80,
+                            y: drawY + (Math.random() - 0.5) * 80,
+                            vx: (Math.random() - 0.5) * 20,
+                            vy: -50 - Math.random() * 50,
+                            life: 1.0,
+                            maxLife: 1.0,
+                            size: 10 + Math.random() * 15
+                        });
+                    }
+                }
                 if (isa.hitTimer > 0) {
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
@@ -1140,12 +1178,12 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
+            function drawChancla(ctx, x, y, w, h, type, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
 
                 // Use the thong sandal emoji for the classic "Chancla" look
-                const emoji = isSuper ? '🩴💥' : '🩴💨';
+                const emoji = type === 'super' ? '🩴💥' : (type === 'fire' ? '🔥' : '🩴💨');
 
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
@@ -1578,15 +1616,18 @@
             }
 
             function spawnChancla() {
-                const isSuper = superEnabled && Math.random() < 0.18;
+                let isSuper = superEnabled && Math.random() < 0.18;
+                let isFire = isa.enraged && Math.random() < 0.3;
+                if (isFire) isSuper = false;
+
                 const w = isSuper ? 46 : 32;
                 const h = isSuper ? 26 : 18;
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : (isFire ? 80 : 0));
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type: isFire ? 'fire' : (isSuper ? 'super' : 'normal'), rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1850,7 +1891,7 @@
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : 8;
+                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -1909,9 +1950,9 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = c.type === 'super' ? 2 : 1;
+                        const dmg = c.type === 'super' ? 2 : (c.type === 'fire' ? 2 : 1);
                         comboCount = 0;
-                        triggerShake(c.type === 'super' ? 15 : 8, 0.4);
+                        triggerShake(c.type === 'super' ? 15 : (c.type === 'fire' ? 20 : 8), 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
@@ -2204,6 +2245,23 @@
                 updateImpacts(dt);
                 updateChainEffects(dt);
 
+                if (!isa.enraged && isa.anger <= isa.maxAnger * 0.3) {
+                    isa.enraged = true;
+                    spawnInterval = Math.min(spawnInterval, 0.6);
+                    baseSpeed = Math.max(baseSpeed, 200);
+                    addFloatText('ENRAGED! 😡', isa.x, isa.y + 40);
+                    playSound(100, 1.0);
+                    triggerShake(10, 1.0);
+                }
+
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.life -= dt;
+                    if (p.life <= 0) fireParticles.splice(i, 1);
+                }
+
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
                     const p = rosePetals[i];
@@ -2259,6 +2317,7 @@
                 drawPets();
                 drawRosePetals();
                 drawChainEffects();
+                drawFireParticles();
                 drawImpacts();
                 drawPlayer();
                 drawSlapEffect();
@@ -2272,7 +2331,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
             }
 
             function drawWinScreen() {
