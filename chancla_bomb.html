@@ -244,7 +244,6 @@
             const dialogue = {
                 start: [
                     "Ya no me amas, verdad?!",
-                    "¡Ya sé que lo hiciste en la ducha sin grabarlo para mí!",
                     "¡Le voy a dar tu cuerpo a mis gatos, gringo!"
                 ],
                 hitBySpecial: [
@@ -1624,8 +1623,6 @@
                 const x = player.x + (Math.random() * 60 - 30);
                 const y = player.y - 80;
                 pets.push({ kind: 'rita', x, y, vx: 0, active: true, duration: 3, alpha: 1, dropped: false });
-                if (player.lives < player.maxLives) player.lives++;
-                baseSpeed *= 0.85;
                 sayRandom('petRita');
             }
 
