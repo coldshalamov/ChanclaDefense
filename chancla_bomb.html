@@ -188,7 +188,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, isEnraged: false };
 
             let chanclas = [];
             let pets = [];
@@ -394,6 +394,7 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.isEnraged = false;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -459,8 +460,13 @@
 
             function drawBackground() {
                 const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                grad.addColorStop(0, '#0b1930');
-                grad.addColorStop(1, '#0f243a');
+                if (isa.isEnraged) {
+                    grad.addColorStop(0, '#300b0b');
+                    grad.addColorStop(1, '#3a0f0f');
+                } else {
+                    grad.addColorStop(0, '#0b1930');
+                    grad.addColorStop(1, '#0f243a');
+                }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -717,7 +723,7 @@
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
                 }
-                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
+                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0, isa.isEnraged);
 
                 if (isa.chismeTimer > 0) {
                     // Draw phone near Isa
@@ -741,9 +747,21 @@
                 ctx.closePath();
             }
 
-            function drawIsaAvatar(ctx, x, y, size, isHit) {
+            function drawIsaAvatar(ctx, x, y, size, isHit, isEnraged = false) {
                 ctx.save();
                 ctx.translate(x, y);
+
+                if (isEnraged) {
+                    ctx.save();
+                    ctx.shadowColor = '#ff0000';
+                    ctx.shadowBlur = 20;
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
                 const faceW = size * 0.72;
                 const faceH = size * 0.82;
                 const hairColor = '#3a2522';
@@ -800,28 +818,56 @@
                     drawXEye(-faceW * 0.2, -faceH * 0.05);
                     drawXEye(faceW * 0.2, -faceH * 0.05);
                 } else {
-                    // Normal eyes with lashes
-                    ctx.fillStyle = '#1d1411';
-                    ctx.beginPath();
-                    ctx.arc(-faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
-                    ctx.arc(faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#1d1411';
-                    ctx.lineWidth = 2.2;
-                    const lash = (sx, dir) => {
+                    if (isEnraged) {
+                        ctx.save();
+                        ctx.shadowColor = '#ff0000';
+                        ctx.shadowBlur = 10;
+                        ctx.fillStyle = '#ff0000';
                         ctx.beginPath();
-                        ctx.moveTo(sx, -faceH * 0.15);
-                        ctx.quadraticCurveTo(sx + dir * 6, -faceH * 0.18, sx + dir * 12, -faceH * 0.16);
-                        ctx.stroke();
-                    };
-                    lash(-faceW * 0.2, -1);
-                    lash(faceW * 0.2, 1);
+                        ctx.arc(-faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+                        ctx.arc(faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+                        ctx.fill();
 
-                    ctx.fillStyle = '#fff';
-                    ctx.beginPath();
-                    ctx.arc(-faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
-                    ctx.arc(faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
-                    ctx.fill();
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath();
+                        ctx.arc(-faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
+                        ctx.arc(faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+
+                        // Angry eyebrows
+                        ctx.strokeStyle = '#1d1411';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(-faceW * 0.35, -faceH * 0.18);
+                        ctx.lineTo(-faceW * 0.1, -faceH * 0.12);
+                        ctx.moveTo(faceW * 0.35, -faceH * 0.18);
+                        ctx.lineTo(faceW * 0.1, -faceH * 0.12);
+                        ctx.stroke();
+                    } else {
+                        // Normal eyes with lashes
+                        ctx.fillStyle = '#1d1411';
+                        ctx.beginPath();
+                        ctx.arc(-faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+                        ctx.arc(faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#1d1411';
+                        ctx.lineWidth = 2.2;
+                        const lash = (sx, dir) => {
+                            ctx.beginPath();
+                            ctx.moveTo(sx, -faceH * 0.15);
+                            ctx.quadraticCurveTo(sx + dir * 6, -faceH * 0.18, sx + dir * 12, -faceH * 0.16);
+                            ctx.stroke();
+                        };
+                        lash(-faceW * 0.2, -1);
+                        lash(faceW * 0.2, 1);
+
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath();
+                        ctx.arc(-faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
+                        ctx.arc(faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
 
                 // Mouth
@@ -1598,6 +1644,22 @@
                 ctx.restore();
             }
 
+
+            function spawnChanclaSpread() {
+                const w = 32;
+                const h = 18;
+                const y = isa.y + 40;
+                const vy = baseSpeed + 40; // slightly faster than normal base
+
+                // Spawn 3 chanclas
+                const angles = [-0.4, 0, 0.4];
+                angles.forEach(angle => {
+                    const vx = Math.sin(angle) * 150;
+                    const thisVy = Math.cos(angle) * vy;
+                    chanclas.push({ x: isa.x, y, vx, vy: thisVy, w, h, type: 'normal', rotation: 0, rotSpeed: (Math.random() - 0.5) * 5 });
+                });
+            }
+
             function spawnChancla() {
                 const isSuper = superEnabled && Math.random() < 0.18;
                 const w = isSuper ? 46 : 32;
@@ -2200,14 +2262,24 @@
                 }
 
                 timeElapsed += dt;
+                isa.isEnraged = isa.anger <= isa.maxAnger * 0.5;
                 spawnTimer += dt;
                 if (timeElapsed > 12) {
-                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * 0.02);
+                    let decreaseRate = isa.isEnraged ? 0.04 : 0.02;
+                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * decreaseRate);
                     baseSpeed += dt * 5;
                 }
                 if (timeElapsed > 18) superEnabled = true;
                 if (spawnTimer >= spawnInterval && isa.chismeTimer <= 0) {
-                    spawnChancla();
+                    if (isa.isEnraged && Math.random() < 0.25) {
+                        spawnChanclaSpread();
+                    } else {
+                        spawnChancla();
+                        // If enraged, spawn chanclas faster (multiplier on vy already handled in spawnChancla, or we can just let baseSpeed handle it, but let's give an extra boost)
+                        if (isa.isEnraged) {
+                            chanclas[chanclas.length - 1].vy *= 1.2;
+                        }
+                    }
                     spawnTimer = 0;
                 }
 
@@ -2312,7 +2384,7 @@
                 if (winAnimationStart === 0) winAnimationStart = Date.now();
                 const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
                 const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
-                drawIsaAvatar(ctx, isa.x, isaWinY, 78);
+                drawIsaAvatar(ctx, isa.x, isaWinY, 78, false, false);
 
                 // Speech bubble
                 if (winProgress > 0.7) {
