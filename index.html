@@ -188,7 +188,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, enraged: false };
 
             let chanclas = [];
             let pets = [];
@@ -196,6 +196,7 @@
             let floatTexts = [];
             let rosePetals = [];
             let specialProjectiles = [];
+            let fireParticles = [];
             let score = 0;
             let bestScore = 0;
             let spawnInterval = 1.2;
@@ -394,12 +395,14 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.enraged = false;
                 chanclas = [];
                 pets = [];
                 powerups = [];
                 floatTexts = [];
                 rosePetals = [];
                 specialProjectiles = [];
+                fireParticles = [];
                 impacts = [];
                 score = 0;
                 comboCount = 0;
@@ -459,12 +462,17 @@
 
             function drawBackground() {
                 const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                grad.addColorStop(0, '#0b1930');
-                grad.addColorStop(1, '#0f243a');
+                if (isa.enraged) {
+                    grad.addColorStop(0, '#300b0b'); // Dark red top
+                    grad.addColorStop(1, '#3a0f0f'); // Slightly lighter dark red bottom
+                } else {
+                    grad.addColorStop(0, '#0b1930');
+                    grad.addColorStop(1, '#0f243a');
+                }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                ctx.fillStyle = '#0a1527';
+                ctx.fillStyle = isa.enraged ? '#1a0505' : '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
 
                 ctx.fillStyle = '#1b8c6e';
@@ -744,6 +752,23 @@
             function drawIsaAvatar(ctx, x, y, size, isHit) {
                 ctx.save();
                 ctx.translate(x, y);
+
+                // Rage Aura
+                if (isa.enraged) {
+                    ctx.save();
+                    const auraPulse = (Math.sin(timeElapsed * 15) + 1) / 2;
+                    const auraScale = 1 + auraPulse * 0.2;
+                    ctx.scale(auraScale, auraScale);
+                    const auraGradient = ctx.createRadialGradient(0, 0, size * 0.4, 0, 0, size * 0.8);
+                    auraGradient.addColorStop(0, 'rgba(255, 69, 0, 0.6)'); // Bright orange/red
+                    auraGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                    ctx.fillStyle = auraGradient;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size * 0.8, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
                 const faceW = size * 0.72;
                 const faceH = size * 0.82;
                 const hairColor = '#3a2522';
@@ -1157,12 +1182,37 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
+            function drawFireParticles() {
+                fireParticles.forEach(p => {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+
+                    if (p.emoji) {
+                        ctx.font = (p.size || 20) + 'px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(p.emoji, 0, 0);
+                    } else {
+                        // Simple fire shape
+                        ctx.fillStyle = p.color || '#ff4500'; // Orange/Red default
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                });
+            }
+
+            function drawChancla(ctx, x, y, w, h, type, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
 
                 // Use the thong sandal emoji for the classic "Chancla" look
-                const emoji = isSuper ? '🩴💥' : '🩴💨';
+                let emoji = '🩴💨'; // normal
+                if (type === 'super') emoji = '🩴💥';
+                else if (type === 'fire') emoji = '🔥';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
@@ -1599,16 +1649,28 @@
             }
 
             function spawnChancla() {
-                const isSuper = superEnabled && Math.random() < 0.18;
-                const w = isSuper ? 46 : 32;
-                const h = isSuper ? 26 : 18;
+                let type = 'normal';
+                if (isa.enraged && Math.random() < 0.3) {
+                    type = 'fire';
+                } else if (superEnabled && Math.random() < 0.18) {
+                    type = 'super';
+                }
+
+                const isSuper = type === 'super';
+                const isFire = type === 'fire';
+
+                const w = isSuper ? 46 : (isFire ? 36 : 32);
+                const h = isSuper ? 26 : (isFire ? 20 : 18);
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : (isFire ? 25 : 0));
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+
+                chanclas.push({ x, y, vx, vy, w, h, type: type, rotation: 0, rotSpeed });
+
                 if (isSuper) sayPlayer('super');
+                if (isFire) sayPlayer('fireSpecial');
             }
 
             function spawnOwen() {
@@ -1936,9 +1998,9 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = c.type === 'super' ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
                         comboCount = 0;
-                        triggerShake(c.type === 'super' ? 15 : 8, 0.4);
+                        triggerShake((c.type === 'super' || c.type === 'fire') ? 15 : 8, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
@@ -2201,10 +2263,20 @@
 
                 timeElapsed += dt;
                 spawnTimer += dt;
+
+                if (!isa.enraged && isa.anger <= isa.maxAnger * 0.3) {
+                    isa.enraged = true;
+                }
+
                 if (timeElapsed > 12) {
                     spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * 0.02);
                     baseSpeed += dt * 5;
                 }
+                if (isa.enraged) {
+                     spawnInterval = Math.max(minSpawnInterval * 0.8, spawnInterval - dt * 0.05);
+                     baseSpeed += dt * 10;
+                }
+
                 if (timeElapsed > 18) superEnabled = true;
                 if (spawnTimer >= spawnInterval && isa.chismeTimer <= 0) {
                     spawnChancla();
@@ -2252,6 +2324,36 @@
                     }
                 }
 
+                // Spawn fire particles for fire chanclas
+                for (const c of chanclas) {
+                    if (c.type === 'fire' && Math.random() < 0.4) {
+                        fireParticles.push({
+                            x: c.x + (Math.random() - 0.5) * c.w,
+                            y: c.y + (Math.random() - 0.5) * c.h,
+                            vx: (Math.random() - 0.5) * 30,
+                            vy: -50 - Math.random() * 50,
+                            life: 0.3 + Math.random() * 0.3,
+                            maxLife: 0.6,
+                            rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: (Math.random() - 0.5) * 10,
+                            size: 4 + Math.random() * 6,
+                            color: Math.random() < 0.5 ? '#ff4500' : '#ff8c00'
+                        });
+                    }
+                }
+
+                // Update fire particles
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.life -= dt;
+                    p.rotation += p.rotSpeed * dt;
+                    if (p.life <= 0) {
+                        fireParticles.splice(i, 1);
+                    }
+                }
+
                 // Spawn rose petals if special is ready
                 if (specialAttackBar >= maxSpecialAttack) {
                     if (Math.random() < 0.15) { // Spawn chance per frame
@@ -2286,6 +2388,7 @@
                 drawSpecialProjectiles();
                 drawPets();
                 drawRosePetals();
+                drawFireParticles();
                 drawChainEffects();
                 drawImpacts();
                 drawPlayer();
@@ -2300,7 +2403,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
             }
 
             function drawWinScreen() {
