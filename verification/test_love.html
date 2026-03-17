@@ -188,7 +188,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, enraged: false };
 
             let chanclas = [];
             let pets = [];
@@ -196,6 +196,7 @@
             let floatTexts = [];
             let rosePetals = [];
             let specialProjectiles = [];
+            let fireParticles = [];
             let score = 0;
             let bestScore = 0;
             let spawnInterval = 1.2;
@@ -394,12 +395,14 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.enraged = false;
                 chanclas = [];
                 pets = [];
                 powerups = [];
                 floatTexts = [];
                 rosePetals = [];
                 specialProjectiles = [];
+                fireParticles = [];
                 impacts = [];
                 score = 0;
                 comboCount = 0;
@@ -459,8 +462,13 @@
 
             function drawBackground() {
                 const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                grad.addColorStop(0, '#0b1930');
-                grad.addColorStop(1, '#0f243a');
+                if (isa.enraged) {
+                    grad.addColorStop(0, '#3a0f0f');
+                    grad.addColorStop(1, '#1a0505');
+                } else {
+                    grad.addColorStop(0, '#0b1930');
+                    grad.addColorStop(1, '#0f243a');
+                }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -488,6 +496,20 @@
                 ctx.globalAlpha = alpha;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.restore();
+            }
+
+            function drawFireParticles() {
+                fireParticles.forEach(p => {
+                    ctx.save();
+                    ctx.globalAlpha = p.life / 1.0; // Fade out
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.font = (p.size) + 'px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(p.emoji, 0, 0);
+                    ctx.restore();
+                });
             }
 
             function drawRosePetals() {
@@ -713,6 +735,28 @@
                 ctx.save();
                 let drawX = isa.x;
                 let drawY = isa.y;
+
+                if (isa.enraged && state === STATE.PLAYING) {
+                    // Pulsating aura
+                    const pulse = Math.sin(timeElapsed * 8) * 0.2 + 0.8;
+                    ctx.shadowColor = '#ff3300';
+                    ctx.shadowBlur = 30 * pulse;
+
+                    // Spawn fire particles randomly
+                    if (Math.random() < 0.2) {
+                        fireParticles.push({
+                            x: drawX + (Math.random() - 0.5) * 60,
+                            y: drawY + (Math.random() - 0.5) * 60,
+                            vx: (Math.random() - 0.5) * 40,
+                            vy: -30 - Math.random() * 40,
+                            rotation: Math.random() * Math.PI * 2,
+                            rotSpeed: (Math.random() - 0.5) * 5,
+                            emoji: '🔥',
+                            size: 15 + Math.random() * 15,
+                            life: 0.5 + Math.random() * 0.5
+                        });
+                    }
+                }
                 if (isa.hitTimer > 0) {
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
@@ -1157,12 +1201,14 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
+            function drawChancla(ctx, x, y, w, h, type, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
 
                 // Use the thong sandal emoji for the classic "Chancla" look
-                const emoji = isSuper ? '🩴💥' : '🩴💨';
+                let emoji = '🩴💨';
+                if (type === 'super') emoji = '🩴💥';
+                else if (type === 'fire') emoji = '🔥';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
@@ -1600,14 +1646,28 @@
 
             function spawnChancla() {
                 const isSuper = superEnabled && Math.random() < 0.18;
+                let isFire = false;
+
+                if (isa.enraged && Math.random() < 0.25) {
+                    isFire = true;
+                }
+
                 const w = isSuper ? 46 : 32;
                 const h = isSuper ? 26 : 18;
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+
+                let vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+                if (isa.enraged) vy *= 1.3; // 30% faster in rage phase
+
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+
+                let type = 'normal';
+                if (isFire) type = 'fire';
+                else if (isSuper) type = 'super';
+
+                chanclas.push({ x, y, vx, vy, w, h, type: type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1936,9 +1996,9 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = c.type === 'super' ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
                         comboCount = 0;
-                        triggerShake(c.type === 'super' ? 15 : 8, 0.4);
+                        triggerShake(c.type === 'super' ? 15 : (c.type === 'fire' ? 20 : 8), 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
@@ -2201,8 +2261,15 @@
 
                 timeElapsed += dt;
                 spawnTimer += dt;
+
+                if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
+                    isa.enraged = true;
+                    addFloatText('¡ME HACES ENOJAR!', isa.x, isa.y + 40);
+                    triggerShake(10, 1.0);
+                    playSound(300, 1.0); // ominous sound
+                }
                 if (timeElapsed > 12) {
-                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * 0.02);
+                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * (isa.enraged ? 0.04 : 0.02));
                     baseSpeed += dt * 5;
                 }
                 if (timeElapsed > 18) superEnabled = true;
@@ -2231,6 +2298,18 @@
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
+
+                // Update fire particles
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.rotation += p.rotSpeed * dt;
+                    p.life -= dt;
+                    if (p.life <= 0) {
+                        fireParticles.splice(i, 1);
+                    }
+                }
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -2286,6 +2365,7 @@
                 drawSpecialProjectiles();
                 drawPets();
                 drawRosePetals();
+                drawFireParticles();
                 drawChainEffects();
                 drawImpacts();
                 drawPlayer();
@@ -2300,7 +2380,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
             }
 
             function drawWinScreen() {
