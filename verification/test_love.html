@@ -190,6 +190,10 @@
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
+            const sandalSprite = new Image();
+            sandalSprite.src = 'sandal_sprite.png';
+
+
             let chanclas = [];
             let pets = [];
             let powerups = [];
@@ -1160,15 +1164,37 @@
             function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
-
-                // Use the thong sandal emoji for the classic "Chancla" look
-                const emoji = isSuper ? '🩴💥' : '🩴💨';
-
-                // Prioritize Noto Color Emoji and system emoji fonts
-                ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
-                ctx.textAlign = 'center';
                 ctx.rotate(rotation);
-                ctx.fillText(emoji, 0, h * 0.2);
+
+                // If it's a super chancla, add a red drop shadow
+                if (isSuper) {
+                    ctx.shadowColor = 'rgba(255, 50, 50, 0.8)';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                }
+
+                if (sandalSprite.complete && sandalSprite.naturalWidth !== 0) {
+                    // Make it nice and chunky like the hitboxes
+                    const drawW = w * 1.5;
+                    const drawH = h * 2.5;
+
+                    ctx.drawImage(sandalSprite, -drawW / 2, -drawH / 2, drawW, drawH);
+
+                    // Add the trail effect behind super chanclas explicitly since the emoji text is gone
+                    if (isSuper) {
+                        ctx.font = '24px "Noto Color Emoji", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('💥', 0, -drawH / 2);
+                    }
+                } else {
+                    // Fallback to emoji if image hasn't loaded
+                    const emoji = isSuper ? '🩴💥' : '🩴💨';
+                    ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(emoji, 0, h * 0.2);
+                }
+
                 ctx.restore();
             }
 
