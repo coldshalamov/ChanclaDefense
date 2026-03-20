@@ -146,7 +146,7 @@
             <div class="touch-visual touch-visual-left"><span>⬅️ Drag aquí</span></div>
             <div class="touch-visual touch-visual-right"><span>➡️ Drag aquí</span></div>
         </div>
-        <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
+        <div class="mobile-hint">Mover: ←/→ | Dash: Shift/Double-Tap | Manotazo: Espacio o Tap Arriba 👋</div>
     </div>
     <script>
         (() => {
@@ -187,10 +187,11 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, dashTimer: 0, dashCooldown: 0, dashDir: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
 
             let chanclas = [];
+            let dashTrails = [];
             let pets = [];
             let powerups = [];
             let floatTexts = [];
@@ -395,6 +396,9 @@
                 isa.y = 70;
                 isa.chismeTimer = 0;
                 chanclas = [];
+                dashTrails = [];
+                player.dashTimer = 0;
+                player.dashCooldown = 0;
                 pets = [];
                 powerups = [];
                 floatTexts = [];
@@ -2211,12 +2215,33 @@
                     spawnTimer = 0;
                 }
 
-                const speed = player.speed;
-                const moveLeft = keys.left || touch.left;
-                const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+                let currentSpeed = player.speed;
+                let moveLeft = keys.left || touch.left;
+                let moveRight = keys.right || touch.right;
+
+                if (player.dashCooldown > 0) player.dashCooldown -= dt;
+
+                if (player.dashTimer > 0) {
+                    player.dashTimer -= dt;
+                    currentSpeed *= 3.5;
+                    player.hitTimer = 0.1; // brief invincibility
+
+                    if (player.dashDir === 'left') { moveLeft = true; moveRight = false; }
+                    else { moveRight = true; moveLeft = false; }
+
+                    if (Math.random() < 0.3) {
+                        dashTrails.push({ x: player.x, y: player.y, timer: 0.15, max: 0.15 });
+                    }
+                }
+
+                if (moveLeft) player.x -= currentSpeed * dt;
+                if (moveRight) player.x += currentSpeed * dt;
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
+
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].timer -= dt;
+                    if (dashTrails[i].timer <= 0) dashTrails.splice(i, 1);
+                }
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
                     spawnOwen();
@@ -2288,6 +2313,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawDashTrails();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
@@ -2297,6 +2323,16 @@
                 drawFloatTexts();
                 drawDialogue();
                 drawPlayerDialogue();
+            }
+
+            function drawDashTrails() {
+                dashTrails.forEach(t => {
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, t.timer / t.max) * 0.5;
+                    // Draw simplified ghost image using drawPlayerAvatar logic
+                    drawPlayerAvatar(ctx, t.x, t.y, Math.min(player.w, player.h), false, 'normal');
+                    ctx.restore();
+                });
             }
 
             function drawChanclasAll() {
@@ -2516,6 +2552,16 @@
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
 
+                // Dash with Shift
+                if (e.key === 'Shift' && isDown && state === STATE.PLAYING && player.dashCooldown <= 0) {
+                    player.dashTimer = 0.2;
+                    player.dashCooldown = 1.0;
+                    if (keys.left) player.dashDir = 'left';
+                    else if (keys.right) player.dashDir = 'right';
+                    else player.dashDir = Math.random() < 0.5 ? 'left' : 'right'; // default if standing still
+                    e.preventDefault();
+                }
+
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
                     if (isDown && state === STATE.PLAYING) {
@@ -2543,9 +2589,19 @@
             updateTouchOverlay();
 
             function handleMobileZones(zone, dir) {
+                let lastTap = 0;
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
                     touch[dir] = true;
+
+                    const now = Date.now();
+                    if (now - lastTap < 300 && player.dashCooldown <= 0) {
+                        player.dashTimer = 0.2;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = dir;
+                    }
+                    lastTap = now;
+
                     e.preventDefault();
                 }, { passive: false });
                 zone.addEventListener('touchend', () => { touch[dir] = false; });
