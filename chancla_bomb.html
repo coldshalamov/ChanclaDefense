@@ -188,7 +188,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0 };
 
             let chanclas = [];
             let pets = [];
@@ -308,15 +308,7 @@
                     "¿Cómo te atreves a manotear mis chanclas?!",
                     "Eso no es justo, gringo!",
                     "¡Ay! Esa es mi chancla favorita!"
-                ],
-                chisme: [
-                    "Wait! Maria just posted!",
-                    "Omg, hold on, I need to reply to this.",
-                    "Pause! Chisme alert!",
-                    "¿Qué hizo la Karen ahora?",
-                    "¡No me digas! ¿En serio?"
-                ]
-            };
+                ]            };
 
             const gringoLines = {
                 fireSpecial: [
@@ -393,8 +385,7 @@
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
-                isa.chismeTimer = 0;
-                chanclas = [];
+                                chanclas = [];
                 pets = [];
                 powerups = [];
                 floatTexts = [];
@@ -719,11 +710,7 @@
                 }
                 drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
 
-                if (isa.chismeTimer > 0) {
-                    // Draw phone near Isa
-                    ctx.font = '30px sans-serif';
-                    ctx.fillText('📱', drawX + 30, drawY + 20);
-                }
+
                 ctx.restore();
             }
 
@@ -1650,11 +1637,6 @@
                     slowEffect.timer = 4.5;
                     addFloatText('Cerveza chill 🍺', p.x, p.y);
                 }
-                if (p.kind === 'phone') {
-                    isa.chismeTimer = 3.5;
-                    addFloatText('¡Chisme Time! 📱', p.x, p.y);
-                    sayRandom('chisme');
-                }
             }
 
             function trySlap() {
@@ -1968,9 +1950,7 @@
                     if (p.kind === 'owen') {
                         p.x += p.vx * dt;
                         if (!p.dropped && Math.random() < 0.12 * dt) {
-                            const r = Math.random();
-                            const type = r < 0.5 ? 'phone' : 'beer';
-                            spawnPowerup(type, p.x, p.y - 10);
+                            spawnPowerup('beer', p.x, p.y - 10);
                             p.dropped = true;
                         }
                         if (p.x < -60 || p.x > canvas.width + 60 || p.duration <= 0) {
@@ -2034,16 +2014,6 @@
                         ctx.fillStyle = '#5f4b32';
                         ctx.font = '12px sans-serif';
                         ctx.fillText('🍺', 0, 6);
-                    } else if (p.kind === 'phone') {
-                        ctx.fillStyle = '#333';
-                        roundRect(ctx, -14, -20, 28, 44, 4);
-                        ctx.fill();
-                        ctx.fillStyle = '#111';
-                        roundRect(ctx, -12, -18, 24, 40, 2);
-                        ctx.fill();
-                        ctx.fillStyle = '#fff';
-                        ctx.font = '20px sans-serif';
-                        ctx.fillText('📱', 0, 8);
                     }
                     ctx.restore();
                 });
@@ -2206,7 +2176,7 @@
                     baseSpeed += dt * 5;
                 }
                 if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval && isa.chismeTimer <= 0) {
+                if (spawnTimer >= spawnInterval) {
                     spawnChancla();
                     spawnTimer = 0;
                 }
@@ -2271,7 +2241,6 @@
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
-                if (isa.chismeTimer > 0) isa.chismeTimer -= dt;
 
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
