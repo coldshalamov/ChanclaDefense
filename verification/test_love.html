@@ -188,13 +188,14 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, chismeTimer: 0, enraged: false };
 
             let chanclas = [];
             let pets = [];
             let powerups = [];
             let floatTexts = [];
             let rosePetals = [];
+            let fireParticles = [];
             let specialProjectiles = [];
             let score = 0;
             let bestScore = 0;
@@ -394,11 +395,13 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.chismeTimer = 0;
+                isa.enraged = false;
                 chanclas = [];
                 pets = [];
                 powerups = [];
                 floatTexts = [];
                 rosePetals = [];
+                fireParticles = [];
                 specialProjectiles = [];
                 impacts = [];
                 score = 0;
@@ -459,10 +462,28 @@
 
             function drawBackground() {
                 const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                grad.addColorStop(0, '#0b1930');
-                grad.addColorStop(1, '#0f243a');
-                ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                if (isa.enraged) {
+                    const pulse = Math.sin(timeElapsed * 4) * 0.15;
+                    grad.addColorStop(0, `rgba(40, 0, 0, ${1})`);
+                    grad.addColorStop(1, `rgba(60, 10, 10, ${1})`);
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    // Add angry vignette
+                    const vignette = ctx.createRadialGradient(
+                        canvas.width / 2, canvas.height / 2, canvas.width * 0.4,
+                        canvas.width / 2, canvas.height / 2, canvas.height * 0.8
+                    );
+                    vignette.addColorStop(0, 'rgba(255, 0, 0, 0)');
+                    vignette.addColorStop(1, `rgba(255, 0, 0, ${0.15 + pulse})`);
+                    ctx.fillStyle = vignette;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                } else {
+                    grad.addColorStop(0, '#0b1930');
+                    grad.addColorStop(1, '#0f243a');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
 
                 ctx.fillStyle = '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
@@ -488,6 +509,33 @@
                 ctx.globalAlpha = alpha;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.restore();
+            }
+
+            function drawFireParticles() {
+                fireParticles.forEach(p => {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    const alpha = Math.max(0, p.life / p.maxLife);
+                    ctx.globalAlpha = alpha;
+
+                    if (p.emoji) {
+                        ctx.font = `${p.size}px "Noto Color Emoji", sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(p.emoji, 0, 0);
+                    } else {
+                        ctx.fillStyle = '#ff4d00'; // Orange/red fire
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = '#ffcc00'; // Yellow core
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.size * 0.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                });
             }
 
             function drawRosePetals() {
@@ -1157,17 +1205,32 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
+            function drawChancla(ctx, x, y, w, h, type, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
 
-                // Use the thong sandal emoji for the classic "Chancla" look
-                const emoji = isSuper ? '🩴💥' : '🩴💨';
+                let emoji = '🩴💨';
+                if (type === 'super') emoji = '🩴💥';
+                else if (type === 'fire') emoji = '🔥';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.rotate(rotation);
+
+                // Draw trailing fire particles if it's a fire chancla
+                if (type === 'fire' && Math.random() < 0.3 && state === STATE.PLAYING) {
+                    fireParticles.push({
+                        x: x + (Math.random() - 0.5) * 10,
+                        y: y + (Math.random() - 0.5) * 10,
+                        vx: (Math.random() - 0.5) * 20,
+                        vy: -50 - Math.random() * 50,
+                        life: 0.5,
+                        maxLife: 0.5,
+                        size: 10 + Math.random() * 10
+                    });
+                }
+
                 ctx.fillText(emoji, 0, h * 0.2);
                 ctx.restore();
             }
@@ -1599,15 +1662,17 @@
             }
 
             function spawnChancla() {
-                const isSuper = superEnabled && Math.random() < 0.18;
-                const w = isSuper ? 46 : 32;
-                const h = isSuper ? 26 : 18;
+                const isFire = isa.enraged && Math.random() < 0.35;
+                const isSuper = !isFire && superEnabled && Math.random() < 0.18;
+                const w = isSuper ? 46 : (isFire ? 38 : 32);
+                const h = isSuper ? 26 : (isFire ? 38 : 18);
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : (isFire ? 80 : 0));
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
+                const type = isFire ? 'fire' : (isSuper ? 'super' : 'normal');
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1877,7 +1942,7 @@
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : 8;
+                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -1936,13 +2001,13 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = c.type === 'super' ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
                         comboCount = 0;
-                        triggerShake(c.type === 'super' ? 15 : 8, 0.4);
+                        triggerShake(c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8), 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
-                        sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
+                        sayRandom((c.type === 'super' || c.type === 'fire') ? 'hitSuper' : 'hitNormal');
                         sayPlayer('hit');
                         if (player.lives === 1) sayRandom('lowHealth');
                         if (player.lives <= 0) {
@@ -2206,6 +2271,19 @@
                     baseSpeed += dt * 5;
                 }
                 if (timeElapsed > 18) superEnabled = true;
+
+                // Trigger Enrage Phase
+                if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
+                    isa.enraged = true;
+                    triggerShake(10, 0.5);
+                    triggerFlash(0.3, '#ff0000');
+                    spawnInterval *= 0.7; // Faster spawns
+                    minSpawnInterval *= 0.7;
+                    baseSpeed += 50;
+                    addFloatText('¡ESTOY HARTA!', isa.x, isa.y + 40);
+                    playSound(300, 0.5);
+                }
+
                 if (spawnTimer >= spawnInterval && isa.chismeTimer <= 0) {
                     spawnChancla();
                     spawnTimer = 0;
@@ -2231,6 +2309,17 @@
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
+
+                // Update fire particles
+                for (let i = fireParticles.length - 1; i >= 0; i--) {
+                    const p = fireParticles[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.life -= dt;
+                    if (p.life <= 0) {
+                        fireParticles.splice(i, 1);
+                    }
+                }
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -2286,6 +2375,7 @@
                 drawSpecialProjectiles();
                 drawPets();
                 drawRosePetals();
+                drawFireParticles();
                 drawChainEffects();
                 drawImpacts();
                 drawPlayer();
@@ -2300,7 +2390,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
             }
 
             function drawWinScreen() {
