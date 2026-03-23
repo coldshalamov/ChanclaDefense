@@ -187,10 +187,13 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, dashTimer: 0, dashCooldown: 0, dashDir: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0 };
 
             let chanclas = [];
+            let dashTrails = [];
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
             let pets = [];
             let powerups = [];
             let floatTexts = [];
@@ -383,6 +386,12 @@
                 player.lives = 3 + (gameData.upgrades.lives || 0);
                 player.shield = (gameData.upgrades.shield || 0) > 0;
                 player.hitTimer = 0;
+                player.dashTimer = 0;
+                player.dashCooldown = 0;
+                player.dashDir = 0;
+                dashTrails = [];
+                lastTapLeft = 0;
+                lastTapRight = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -1894,8 +1903,26 @@
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
 
-                    if (!c.slapped && !c.grazed) {
-                        const distToPlayer = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                    const distToPlayer = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+
+                    if (player.dashTimer > 0) {
+                        if (!c.dodged && distToPlayer < 85) {
+                            c.dodged = true;
+                            score += 25;
+                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
+                            addFloatText('DODGE! +25', player.x, player.y - 40);
+                            playSound(1600, 0.1);
+
+                            for (let k = 0; k < 5; k++) {
+                                rosePetals.push({
+                                    x: player.x, y: player.y,
+                                    vx: (Math.random() - 0.5) * 120, vy: (Math.random() - 0.5) * 120,
+                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+                                    emoji: '💨', size: 16
+                                });
+                            }
+                        }
+                    } else if (!c.slapped && !c.grazed) {
                         if (distToPlayer < 75 && !rectsOverlap(player, c)) {
                             c.grazed = true;
                             score += 15;
@@ -1914,7 +1941,7 @@
                         }
                     }
 
-                    if (!c.slapped && rectsOverlap(player, c)) {
+                    if (!c.slapped && player.dashTimer <= 0 && rectsOverlap(player, c)) {
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2184,12 +2211,22 @@
                     spawnTimer = 0;
                 }
 
-                const speed = player.speed;
-                const moveLeft = keys.left || touch.left;
-                const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+                if (player.dashTimer > 0) {
+                    player.x += player.dashDir * 600 * dt;
+                    dashTrails.push({ x: player.x, y: player.y, timer: 0.15, maxTime: 0.15 });
+                } else {
+                    const speed = player.speed;
+                    const moveLeft = keys.left || touch.left;
+                    const moveRight = keys.right || touch.right;
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
+
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].timer -= dt;
+                    if (dashTrails[i].timer <= 0) dashTrails.splice(i, 1);
+                }
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
                     spawnOwen();
@@ -2239,6 +2276,8 @@
                     }
                 }
 
+                if (player.dashTimer > 0) player.dashTimer -= dt;
+                if (player.dashCooldown > 0) player.dashCooldown -= dt;
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
                 if (slapCooldown > 0) slapCooldown -= dt;
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
@@ -2248,6 +2287,20 @@
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
                 if (Math.random() < 0.002) sayPlayer('idle');
+            }
+
+            function drawDashTrails() {
+                dashTrails.forEach(t => {
+                    ctx.save();
+                    const alpha = Math.max(0, t.timer / t.maxTime) * 0.6;
+                    ctx.globalAlpha = alpha;
+                    // Silhouette tint
+                    ctx.shadowColor = '#00e5ff';
+                    ctx.shadowBlur = 10;
+                    // Draw player at old pos
+                    drawPlayerAvatar(ctx, t.x, t.y, Math.min(player.w, player.h), false, 'normal');
+                    ctx.restore();
+                });
             }
 
             function draw() {
@@ -2260,6 +2313,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawDashTrails();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
@@ -2488,6 +2542,18 @@
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
 
+                if (isDown && e.key === 'Shift' && state === STATE.PLAYING && player.dashCooldown <= 0) {
+                    if (keys.left) {
+                        player.dashTimer = 0.25;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = -1;
+                    } else if (keys.right) {
+                        player.dashTimer = 0.25;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = 1;
+                    }
+                }
+
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
                     if (isDown && state === STATE.PLAYING) {
@@ -2517,6 +2583,24 @@
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+
+                    const now = Date.now();
+                    if (dir === 'left') {
+                        if (now - lastTapLeft < 300 && player.dashCooldown <= 0) {
+                            player.dashTimer = 0.25;
+                            player.dashCooldown = 1.0;
+                            player.dashDir = -1;
+                        }
+                        lastTapLeft = now;
+                    } else if (dir === 'right') {
+                        if (now - lastTapRight < 300 && player.dashCooldown <= 0) {
+                            player.dashTimer = 0.25;
+                            player.dashCooldown = 1.0;
+                            player.dashDir = 1;
+                        }
+                        lastTapRight = now;
+                    }
+
                     touch[dir] = true;
                     e.preventDefault();
                 }, { passive: false });
