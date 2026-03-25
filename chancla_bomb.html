@@ -188,7 +188,10 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, dashTimer: 0, dashCooldown: 0, dashDir: 0 };
+            let dashTrails = [];
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0 };
 
             const ACHIEVEMENTS_LIST = [
@@ -383,6 +386,32 @@
                 flash.color = color;
             }
 
+
+            function tryDash(dir) {
+                if (player.dashCooldown > 0) return;
+                player.dashTimer = 0.25; // Invincibility and speed duration
+                player.dashCooldown = 1.0;
+                player.dashDir = dir;
+                playSound(300, 0.1);
+
+                // Spawn initial trail
+                dashTrails.push({ x: player.x, y: player.y, timer: 0.3 });
+
+                // Add a dust cloud
+                for (let i = 0; i < 5; i++) {
+                    rosePetals.push({
+                        x: player.x,
+                        y: player.y + player.h / 2,
+                        vx: -dir * (100 + Math.random() * 100),
+                        vy: (Math.random() - 0.5) * 50,
+                        rotation: Math.random() * Math.PI * 2,
+                        rotSpeed: (Math.random() - 0.5) * 5,
+                        emoji: '💨',
+                        size: 16
+                    });
+                }
+            }
+
             function resetGame() {
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
                 gameData.stats.gamesPlayed++;
@@ -394,6 +423,9 @@
                 player.lives = 3 + (gameData.upgrades.lives || 0);
                 player.shield = (gameData.upgrades.shield || 0) > 0;
                 player.hitTimer = 0;
+                player.dashTimer = 0;
+                player.dashCooldown = 0;
+                dashTrails = [];
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -684,6 +716,21 @@
                 ctx.fillText('✋', 0, 0);
 
                 ctx.restore();
+            }
+
+
+            function drawDashTrails() {
+                dashTrails.forEach(t => {
+                    ctx.save();
+                    const p = t.timer / 0.3;
+                    ctx.globalAlpha = p * 0.5;
+                    ctx.fillStyle = '#00e5ff'; // Cyan trail
+                    const w = player.w;
+                    const h = player.h;
+                    roundRect(ctx, t.x - w/2, t.y - h/2, w, h, 10);
+                    ctx.fill();
+                    ctx.restore();
+                });
             }
 
             function drawPlayer() {
@@ -1986,6 +2033,16 @@
 
 
                     if (!c.slapped && rectsOverlap(player, c)) {
+                        if (player.dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                addFloatText('DODGED!', player.x, player.y - 40);
+                                score += 15;
+                                specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
+                                playSound(1200, 0.1);
+                            }
+                            continue;
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2258,8 +2315,28 @@
                 const speed = player.speed;
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+
+                if (player.dashTimer > 0) {
+                    player.dashTimer -= dt;
+                    player.x += player.dashDir * speed * 2.5 * dt; // Fast dash
+
+                    // Spawn trails while dashing
+                    if (Math.random() < 0.4) {
+                        dashTrails.push({ x: player.x, y: player.y, timer: 0.3 });
+                    }
+                } else {
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
+
+                if (player.dashCooldown > 0) player.dashCooldown -= dt;
+
+                // Update trails
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].timer -= dt;
+                    if (dashTrails[i].timer <= 0) dashTrails.splice(i, 1);
+                }
+
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
@@ -2331,6 +2408,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawDashTrails();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
@@ -2615,6 +2693,13 @@
 
             function handleKey(e, isDown) {
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
+                if (e.key === 'Shift') {
+                    if (isDown && state === STATE.PLAYING && player.dashCooldown <= 0) {
+                        if (keys.left) tryDash(-1);
+                        else if (keys.right) tryDash(1);
+                    }
+                    e.preventDefault();
+                }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
 
                 // Slap key - spacebar
@@ -2647,6 +2732,14 @@
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
                     touch[dir] = true;
+                    const now = Date.now();
+                    if (dir === 'left') {
+                        if (now - lastTapLeft < 300 && player.dashCooldown <= 0) tryDash(-1);
+                        lastTapLeft = now;
+                    } else {
+                        if (now - lastTapRight < 300 && player.dashCooldown <= 0) tryDash(1);
+                        lastTapRight = now;
+                    }
                     e.preventDefault();
                 }, { passive: false });
                 zone.addEventListener('touchend', () => { touch[dir] = false; });
