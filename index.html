@@ -189,7 +189,9 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
+            const sandalSprite = new Image();
+            sandalSprite.src = 'sandal_sprite.png';
 
             const ACHIEVEMENTS_LIST = [
                 { id: 'first_slap', name: 'First Slap', desc: 'Slap your first chancla', reward: 10, check: () => gameData.stats.totalSlaps >= 1 },
@@ -397,6 +399,7 @@
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
+                isa.enraged = false;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -462,8 +465,13 @@
 
             function drawBackground() {
                 const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                grad.addColorStop(0, '#0b1930');
-                grad.addColorStop(1, '#0f243a');
+                if (isa.enraged) {
+                    grad.addColorStop(0, '#3a0f0f');
+                    grad.addColorStop(1, '#1a0505');
+                } else {
+                    grad.addColorStop(0, '#0b1930');
+                    grad.addColorStop(1, '#0f243a');
+                }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -720,6 +728,20 @@
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
                 }
+
+                if (isa.enraged) {
+                    const pulse = (Math.sin(timeElapsed * 10) + 1) / 2;
+                    ctx.save();
+                    ctx.translate(drawX, drawY);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 50 + pulse * 10, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 50, 0, ${0.3 + pulse * 0.2})`;
+                    ctx.shadowColor = '#ff3300';
+                    ctx.shadowBlur = 20;
+                    ctx.fill();
+                    ctx.restore();
+                }
+
                 drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
 
 
@@ -1156,18 +1178,23 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
+            function drawChancla(ctx, x, y, w, h, type, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
-
-                // Use the thong sandal emoji for the classic "Chancla" look
-                const emoji = isSuper ? '🩴💥' : '🩴💨';
-
-                // Prioritize Noto Color Emoji and system emoji fonts
-                ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
-                ctx.textAlign = 'center';
                 ctx.rotate(rotation);
-                ctx.fillText(emoji, 0, h * 0.2);
+
+                if (type === 'normal' && sandalSprite.complete && sandalSprite.naturalWidth !== 0) {
+                    ctx.drawImage(sandalSprite, -w / 2, -h / 2, w, h);
+                } else {
+                    let emoji = '🩴💨';
+                    if (type === 'super') emoji = '🩴💥';
+                    else if (type === 'fire') emoji = '🔥';
+
+                    ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(emoji, 0, h * 0.2);
+                }
+
                 ctx.restore();
             }
 
@@ -1678,16 +1705,31 @@
             }
 
             function spawnChancla() {
-                const isSuper = superEnabled && Math.random() < 0.18;
-                const w = isSuper ? 46 : 32;
-                const h = isSuper ? 26 : 18;
+                let type = 'normal';
+                let w = 32;
+                let h = 18;
+                let speedBoost = 0;
+
+                if (isa.enraged && Math.random() < 0.35) {
+                    type = 'fire';
+                    w = 38;
+                    h = 22;
+                    speedBoost = 80;
+                } else if (superEnabled && Math.random() < 0.18) {
+                    type = 'super';
+                    w = 46;
+                    h = 26;
+                    speedBoost = 40;
+                }
+
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+                const vy = baseSpeed + speedBoost + Math.random() * 60;
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
-                if (isSuper) sayPlayer('super');
+
+                chanclas.push({ x, y, vx, vy, w, h, type: type, rotation: 0, rotSpeed });
+                if (type === 'super') sayPlayer('super');
             }
 
             function spawnOwen() {
@@ -1952,7 +1994,9 @@
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : 8;
+                            let damage = 8;
+                            if (c.type === 'super') damage = 15;
+                            else if (c.type === 'fire') damage = 12;
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -1991,13 +2035,22 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = c.type === 'super' ? 2 : 1;
+                        let dmg = 1;
+                        let shake = 8;
+                        let sayCat = 'hitNormal';
+
+                        if (c.type === 'super') {
+                            dmg = 2; shake = 15; sayCat = 'hitSuper';
+                        } else if (c.type === 'fire') {
+                            dmg = 2; shake = 20;
+                        }
+
                         comboCount = 0;
-                        triggerShake(c.type === 'super' ? 15 : 8, 0.4);
+                        triggerShake(shake, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
-                        sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
+                        sayRandom(sayCat);
                         sayPlayer('hit');
                         if (player.lives === 1) sayRandom('lowHealth');
                         if (player.lives <= 0) {
@@ -2245,12 +2298,27 @@
 
                 timeElapsed += dt;
                 spawnTimer += dt;
+
+                if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
+                    isa.enraged = true;
+                    triggerShake(15, 0.5);
+                    triggerFlash(0.3, '#ff0000');
+                    playSound(400, 0.5);
+                    sayRandom('hitNormal');
+                    addFloatText('ENRAGED! 🔥', isa.x, isa.y + 30);
+                }
                 if (timeElapsed > 12) {
                     spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * 0.02);
                     baseSpeed += dt * 5;
                 }
                 if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval) {
+
+                let currentSpawnInterval = spawnInterval;
+                if (isa.enraged) {
+                    currentSpawnInterval *= 0.6; // 40% faster
+                }
+
+                if (spawnTimer >= currentSpawnInterval) {
                     spawnChancla();
                     spawnTimer = 0;
                 }
@@ -2343,7 +2411,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
             }
 
             function drawWinScreen() {

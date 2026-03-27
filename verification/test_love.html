@@ -159,10 +159,10 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements' };
             let state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 } };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {} };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -181,6 +181,7 @@
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.achievements) gameData.achievements = {};
             } catch (e) { console.error(e); }
 
             function saveGameData() {
@@ -188,7 +189,19 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
+            const sandalSprite = new Image();
+            sandalSprite.src = 'sandal_sprite.png';
+
+            const ACHIEVEMENTS_LIST = [
+                { id: 'first_slap', name: 'First Slap', desc: 'Slap your first chancla', reward: 10, check: () => gameData.stats.totalSlaps >= 1 },
+                { id: 'slap_master', name: 'Slap Master', desc: 'Slap 500 chanclas', reward: 100, check: () => gameData.stats.totalSlaps >= 500 },
+                { id: 'perfect_timing', name: 'Perfect Timing', desc: 'Get 50 perfect slaps', reward: 50, check: () => gameData.stats.perfectSlaps >= 50 },
+                { id: 'high_roller', name: 'High Roller', desc: 'Score 1000 in one game', reward: 150, check: () => gameData.bestScore >= 1000 },
+                { id: 'rich_gringo', name: 'Rich Gringo', desc: 'Earn 1000 total coins', reward: 200, check: () => gameData.stats.totalCoinsEarned >= 1000 },
+                { id: 'veteran', name: 'Veteran', desc: 'Play 50 games', reward: 75, check: () => gameData.stats.gamesPlayed >= 50 }
+            ];
+
 
             let chanclas = [];
             let pets = [];
@@ -386,6 +399,7 @@
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
+                isa.enraged = false;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -451,8 +465,13 @@
 
             function drawBackground() {
                 const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                grad.addColorStop(0, '#0b1930');
-                grad.addColorStop(1, '#0f243a');
+                if (isa.enraged) {
+                    grad.addColorStop(0, '#3a0f0f');
+                    grad.addColorStop(1, '#1a0505');
+                } else {
+                    grad.addColorStop(0, '#0b1930');
+                    grad.addColorStop(1, '#0f243a');
+                }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -709,6 +728,20 @@
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
                 }
+
+                if (isa.enraged) {
+                    const pulse = (Math.sin(timeElapsed * 10) + 1) / 2;
+                    ctx.save();
+                    ctx.translate(drawX, drawY);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 50 + pulse * 10, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 50, 0, ${0.3 + pulse * 0.2})`;
+                    ctx.shadowColor = '#ff3300';
+                    ctx.shadowBlur = 20;
+                    ctx.fill();
+                    ctx.restore();
+                }
+
                 drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
 
 
@@ -1145,18 +1178,23 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, isSuper, rotation) {
+            function drawChancla(ctx, x, y, w, h, type, rotation) {
                 ctx.save();
                 ctx.translate(x, y);
-
-                // Use the thong sandal emoji for the classic "Chancla" look
-                const emoji = isSuper ? '🩴💥' : '🩴💨';
-
-                // Prioritize Noto Color Emoji and system emoji fonts
-                ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
-                ctx.textAlign = 'center';
                 ctx.rotate(rotation);
-                ctx.fillText(emoji, 0, h * 0.2);
+
+                if (type === 'normal' && sandalSprite.complete && sandalSprite.naturalWidth !== 0) {
+                    ctx.drawImage(sandalSprite, -w / 2, -h / 2, w, h);
+                } else {
+                    let emoji = '🩴💨';
+                    if (type === 'super') emoji = '🩴💥';
+                    else if (type === 'fire') emoji = '🔥';
+
+                    ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(emoji, 0, h * 0.2);
+                }
+
                 ctx.restore();
             }
 
@@ -1433,6 +1471,78 @@
                 ctx.restore();
             }
 
+
+            function drawAchievements() {
+                drawBackground();
+                drawIsa(); // Background decoration
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 32px sans-serif';
+                ctx.fillText('LOGROS / ACHIEV.', canvas.width / 2, 60);
+
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '24px sans-serif';
+                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 95);
+
+                let y = 130;
+                ACHIEVEMENTS_LIST.forEach(a => {
+                    const status = gameData.achievements[a.id];
+                    const unlocked = a.check();
+
+                    let bgColor = '#555'; // Locked
+                    if (status === 'claimed') bgColor = '#4caf50';
+                    else if (unlocked) bgColor = '#ff9f1c'; // Unlocked but not claimed
+
+                    // Button bg
+                    ctx.fillStyle = bgColor;
+                    roundRect(ctx, 30, y, canvas.width - 60, 65, 10);
+                    ctx.fill();
+
+                    // Border
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    roundRect(ctx, 30, y, canvas.width - 60, 65, 10);
+                    ctx.stroke();
+
+                    // Text
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'left';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillText(a.name, 45, y + 22);
+
+                    ctx.font = '12px sans-serif';
+                    ctx.fillText(a.desc, 45, y + 42);
+
+                    ctx.textAlign = 'right';
+                    ctx.font = 'bold 14px sans-serif';
+                    if (status === 'claimed') {
+                        ctx.fillText('CLAIMED', canvas.width - 45, y + 35);
+                    } else if (unlocked) {
+                        ctx.fillText('CLAIM 💰 ' + a.reward, canvas.width - 45, y + 35);
+                    } else {
+                        ctx.fillText('LOCKED 💰 ' + a.reward, canvas.width - 45, y + 35);
+                    }
+
+                    y += 75;
+                });
+
+                // Back Button
+                ctx.fillStyle = '#e91e63';
+                roundRect(ctx, 100, canvas.height - 70, canvas.width - 200, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = '18px sans-serif';
+                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 40);
+
+                ctx.restore();
+            }
+
             function drawShop() {
                 drawBackground();
                 drawIsa(); // Background decoration
@@ -1547,6 +1657,14 @@
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Shop / Tienda', canvas.width / 2, 480);
 
+                // Achievements Button
+                ctx.fillStyle = '#9c27b0';
+                roundRect(ctx, 110, 520, canvas.width - 220, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px sans-serif';
+                ctx.fillText('Logros / Achiev.', canvas.width / 2, 550);
+
                 ctx.restore();
             }
 
@@ -1587,16 +1705,31 @@
             }
 
             function spawnChancla() {
-                const isSuper = superEnabled && Math.random() < 0.18;
-                const w = isSuper ? 46 : 32;
-                const h = isSuper ? 26 : 18;
+                let type = 'normal';
+                let w = 32;
+                let h = 18;
+                let speedBoost = 0;
+
+                if (isa.enraged && Math.random() < 0.35) {
+                    type = 'fire';
+                    w = 38;
+                    h = 22;
+                    speedBoost = 80;
+                } else if (superEnabled && Math.random() < 0.18) {
+                    type = 'super';
+                    w = 46;
+                    h = 26;
+                    speedBoost = 40;
+                }
+
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0);
+                const vy = baseSpeed + speedBoost + Math.random() * 60;
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
-                chanclas.push({ x, y, vx, vy, w, h, type: isSuper ? 'super' : 'normal', rotation: 0, rotSpeed });
-                if (isSuper) sayPlayer('super');
+
+                chanclas.push({ x, y, vx, vy, w, h, type: type, rotation: 0, rotSpeed });
+                if (type === 'super') sayPlayer('super');
             }
 
             function spawnOwen() {
@@ -1861,7 +1994,9 @@
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : 8;
+                            let damage = 8;
+                            if (c.type === 'super') damage = 15;
+                            else if (c.type === 'fire') damage = 12;
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -1894,39 +2029,28 @@
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
 
-                    if (!c.slapped && !c.grazed) {
-                        const distToPlayer = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
-                        if (distToPlayer < 75 && !rectsOverlap(player, c)) {
-                            c.grazed = true;
-                            score += 15;
-                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
-                            addFloatText('GRAZE! +15', player.x, player.y - 40);
-                            playSound(1500, 0.1);
-
-                            for (let k = 0; k < 5; k++) {
-                                rosePetals.push({
-                                    x: player.x, y: player.y,
-                                    vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100,
-                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
-                                    emoji: '✨', size: 16
-                                });
-                            }
-                        }
-                    }
-
                     if (!c.slapped && rectsOverlap(player, c)) {
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = c.type === 'super' ? 2 : 1;
+                        let dmg = 1;
+                        let shake = 8;
+                        let sayCat = 'hitNormal';
+
+                        if (c.type === 'super') {
+                            dmg = 2; shake = 15; sayCat = 'hitSuper';
+                        } else if (c.type === 'fire') {
+                            dmg = 2; shake = 20;
+                        }
+
                         comboCount = 0;
-                        triggerShake(c.type === 'super' ? 15 : 8, 0.4);
+                        triggerShake(shake, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
-                        sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
+                        sayRandom(sayCat);
                         sayPlayer('hit');
                         if (player.lives === 1) sayRandom('lowHealth');
                         if (player.lives <= 0) {
@@ -2174,12 +2298,27 @@
 
                 timeElapsed += dt;
                 spawnTimer += dt;
+
+                if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
+                    isa.enraged = true;
+                    triggerShake(15, 0.5);
+                    triggerFlash(0.3, '#ff0000');
+                    playSound(400, 0.5);
+                    sayRandom('hitNormal');
+                    addFloatText('ENRAGED! 🔥', isa.x, isa.y + 30);
+                }
                 if (timeElapsed > 12) {
                     spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * 0.02);
                     baseSpeed += dt * 5;
                 }
                 if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval) {
+
+                let currentSpawnInterval = spawnInterval;
+                if (isa.enraged) {
+                    currentSpawnInterval *= 0.6; // 40% faster
+                }
+
+                if (spawnTimer >= currentSpawnInterval) {
                     spawnChancla();
                     spawnTimer = 0;
                 }
@@ -2272,7 +2411,7 @@
             }
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type === 'super', c.rotation);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
             }
 
             function drawWinScreen() {
@@ -2334,6 +2473,7 @@
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
                 if (state === STATE.TITLE) drawTitleScreen();
                 else if (state === STATE.SHOP) drawShop();
+                else if (state === STATE.ACHIEVEMENTS) drawAchievements();
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
@@ -2373,7 +2513,13 @@
                     }
                     // Check Shop Button (110, 450, w, 46)
                     else if (pos.y >= 450 && pos.y <= 496 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
                         state = STATE.SHOP;
+                    }
+                    // Check Achievements Button (110, 520, w, 46)
+                    else if (pos.y >= 520 && pos.y <= 566 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.ACHIEVEMENTS;
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
@@ -2403,6 +2549,27 @@
 
                     // Check Back Button
                     if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
+                        state = STATE.TITLE;
+                    }
+                } else if (state === STATE.ACHIEVEMENTS) {
+                    let y = 130;
+                    for (let a of ACHIEVEMENTS_LIST) {
+                        if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+                            const status = gameData.achievements[a.id];
+                            const unlocked = a.check();
+                            if (unlocked && status !== 'claimed') {
+                                gameData.coins += a.reward;
+                                gameData.achievements[a.id] = 'claimed';
+                                saveGameData();
+                                playSound(1200, 0.1); // Cha-ching!
+                            }
+                        }
+                        y += 75;
+                    }
+                    // Check Back Button
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
                         state = STATE.TITLE;
                     }
                 } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
@@ -2429,11 +2596,40 @@
                 };
 
                 if (state === STATE.TITLE) {
-                    if (pos.y >= 380 && pos.y <= 426) startGameFromTitle();
-                    else if (pos.y >= 450 && pos.y <= 496) state = STATE.SHOP;
+                    if (pos.y >= 380 && pos.y <= 426 && pos.x >= 110 && pos.x <= canvas.width - 110) startGameFromTitle();
+                    else if (pos.y >= 450 && pos.y <= 496 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.SHOP;
+                    } else if (pos.y >= 520 && pos.y <= 566 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.ACHIEVEMENTS;
+                    }
                     return;
                 }
                 if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+
+                                if (state === STATE.ACHIEVEMENTS) {
+                    let y = 130;
+                    for (let a of ACHIEVEMENTS_LIST) {
+                        if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+                            const status = gameData.achievements[a.id];
+                            const unlocked = a.check();
+                            if (unlocked && status !== 'claimed') {
+                                gameData.coins += a.reward;
+                                gameData.achievements[a.id] = 'claimed';
+                                saveGameData();
+                                playSound(1200, 0.1); // Cha-ching!
+                            }
+                        }
+                        y += 75;
+                    }
+                    // Check Back Button
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
+                        state = STATE.TITLE;
+                    }
+                    return;
+                }
 
                 if (state === STATE.SHOP) {
                      // Check Upgrade Buttons
@@ -2460,7 +2656,8 @@
                         y += 100;
                     }
                     // Check Back Button
-                    if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50) {
+                    if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
                         state = STATE.TITLE;
                     }
                     return;
