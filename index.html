@@ -162,7 +162,7 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements' };
             let state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {} };
+            let gameData = { xp: 0, level: 1, coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {} };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -182,6 +182,8 @@
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
                 if (!gameData.achievements) gameData.achievements = {};
+                if (gameData.xp === undefined) gameData.xp = 0;
+                if (gameData.level === undefined) gameData.level = 1;
             } catch (e) { console.error(e); }
 
             function saveGameData() {
@@ -1331,6 +1333,9 @@
                 ctx.font = '16px sans-serif';
                 ctx.textAlign = 'left';
                 ctx.fillText('Score: ' + score, 12, 22);
+                ctx.fillStyle = '#ff79c6';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillText('Lv. ' + gameData.level, 12, 42);
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#ffd700';
                 ctx.font = '14px sans-serif';
@@ -1608,6 +1613,10 @@
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
                 ctx.font = '24px sans-serif';
+                ctx.fillStyle = '#ff79c6';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText('Lv. ' + gameData.level, canvas.width / 2, 275);
+                ctx.fillStyle = '#fff';
                 ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
@@ -1656,6 +1665,10 @@
 
                 ctx.font = '20px sans-serif';
                 ctx.fillText('Score: ' + score + ' | Best: ' + gameData.bestScore, canvas.width / 2, canvas.height / 2 + 45);
+                ctx.fillStyle = '#ff79c6';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText('Lv. ' + gameData.level + ' | XP: ' + gameData.xp, canvas.width / 2, canvas.height / 2 + 25);
+                ctx.fillStyle = '#fff';
 
                 ctx.fillStyle = '#ffd700';
                 ctx.font = '18px sans-serif';
@@ -1970,6 +1983,13 @@
                             // Check win
                             if (isa.anger <= 0) {
                                 state = STATE.WIN;
+                                const earned = Math.floor(score / 10);
+                                gameData.coins += earned;
+                                gameData.stats.totalCoinsEarned += earned;
+                                gameData.bestScore = Math.max(gameData.bestScore, score);
+                                gameData.xp += score;
+                                gameData.level = Math.floor(Math.sqrt(gameData.xp / 50)) + 1;
+                                saveGameData();
                                 sayRandom('win');
                             }
                             continue;
@@ -2190,6 +2210,13 @@
                         // Check for win
                         if (isa.anger <= 0) {
                             state = STATE.WIN;
+                            const earned = Math.floor(score / 10);
+                            gameData.coins += earned;
+                            gameData.stats.totalCoinsEarned += earned;
+                            gameData.bestScore = Math.max(gameData.bestScore, score);
+                            gameData.xp += score;
+                            gameData.level = Math.floor(Math.sqrt(gameData.xp / 50)) + 1;
+                            saveGameData();
                             sayRandom('win');
                         }
                         continue;
@@ -2219,6 +2246,8 @@
                 gameData.coins += earned;
                 gameData.stats.totalCoinsEarned += earned;
                 gameData.bestScore = Math.max(gameData.bestScore, score);
+                gameData.xp += score;
+                gameData.level = Math.floor(Math.sqrt(gameData.xp / 50)) + 1;
                 saveGameData();
                 sayRandom('gameOver');
             }
@@ -2385,6 +2414,10 @@
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
                 ctx.font = '20px sans-serif';
                 ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+
+                ctx.fillStyle = '#ff79c6';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText("Lv. " + gameData.level + "  |  XP: " + gameData.xp, canvas.width / 2, 280);
 
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';
