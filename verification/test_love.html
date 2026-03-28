@@ -159,10 +159,10 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements' };
             let state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 } };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {} };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -181,14 +181,25 @@
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.achievements) gameData.achievements = {};
             } catch (e) { console.error(e); }
 
             function saveGameData() {
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, dashTimer: 0, dashCooldown: 0, dashDir: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0 };
+
+            const ACHIEVEMENTS_LIST = [
+                { id: 'first_slap', name: 'First Slap', desc: 'Slap your first chancla', reward: 10, check: () => gameData.stats.totalSlaps >= 1 },
+                { id: 'slap_master', name: 'Slap Master', desc: 'Slap 500 chanclas', reward: 100, check: () => gameData.stats.totalSlaps >= 500 },
+                { id: 'perfect_timing', name: 'Perfect Timing', desc: 'Get 50 perfect slaps', reward: 50, check: () => gameData.stats.perfectSlaps >= 50 },
+                { id: 'high_roller', name: 'High Roller', desc: 'Score 1000 in one game', reward: 150, check: () => gameData.bestScore >= 1000 },
+                { id: 'rich_gringo', name: 'Rich Gringo', desc: 'Earn 1000 total coins', reward: 200, check: () => gameData.stats.totalCoinsEarned >= 1000 },
+                { id: 'veteran', name: 'Veteran', desc: 'Play 50 games', reward: 75, check: () => gameData.stats.gamesPlayed >= 50 }
+            ];
+
 
             let chanclas = [];
             let pets = [];
@@ -218,6 +229,10 @@
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
+
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
+            let dashTrails = [];
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -402,6 +417,10 @@
                 specialAttackBar = 0;
                 slapCooldown = 0;
                 winAnimationStart = 0;
+                player.dashTimer = 0;
+                player.dashCooldown = 0;
+                player.dashDir = 0;
+                dashTrails = [];
                 slowEffect.timer = 0;
                 shakeTimer = 0;
                 hitStop = 0;
@@ -673,6 +692,15 @@
                 ctx.fillText('✋', 0, 0);
 
                 ctx.restore();
+            }
+
+            function drawDashTrails() {
+                dashTrails.forEach(t => {
+                    ctx.save();
+                    ctx.globalAlpha = t.timer / 0.15 * 0.5; // Fades out
+                    drawPlayerAvatar(ctx, t.x, t.y, Math.min(player.w, player.h), false, 'normal');
+                    ctx.restore();
+                });
             }
 
             function drawPlayer() {
@@ -1433,6 +1461,78 @@
                 ctx.restore();
             }
 
+
+            function drawAchievements() {
+                drawBackground();
+                drawIsa(); // Background decoration
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 32px sans-serif';
+                ctx.fillText('LOGROS / ACHIEV.', canvas.width / 2, 60);
+
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '24px sans-serif';
+                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 95);
+
+                let y = 130;
+                ACHIEVEMENTS_LIST.forEach(a => {
+                    const status = gameData.achievements[a.id];
+                    const unlocked = a.check();
+
+                    let bgColor = '#555'; // Locked
+                    if (status === 'claimed') bgColor = '#4caf50';
+                    else if (unlocked) bgColor = '#ff9f1c'; // Unlocked but not claimed
+
+                    // Button bg
+                    ctx.fillStyle = bgColor;
+                    roundRect(ctx, 30, y, canvas.width - 60, 65, 10);
+                    ctx.fill();
+
+                    // Border
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    roundRect(ctx, 30, y, canvas.width - 60, 65, 10);
+                    ctx.stroke();
+
+                    // Text
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'left';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillText(a.name, 45, y + 22);
+
+                    ctx.font = '12px sans-serif';
+                    ctx.fillText(a.desc, 45, y + 42);
+
+                    ctx.textAlign = 'right';
+                    ctx.font = 'bold 14px sans-serif';
+                    if (status === 'claimed') {
+                        ctx.fillText('CLAIMED', canvas.width - 45, y + 35);
+                    } else if (unlocked) {
+                        ctx.fillText('CLAIM 💰 ' + a.reward, canvas.width - 45, y + 35);
+                    } else {
+                        ctx.fillText('LOCKED 💰 ' + a.reward, canvas.width - 45, y + 35);
+                    }
+
+                    y += 75;
+                });
+
+                // Back Button
+                ctx.fillStyle = '#e91e63';
+                roundRect(ctx, 100, canvas.height - 70, canvas.width - 200, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = '18px sans-serif';
+                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 40);
+
+                ctx.restore();
+            }
+
             function drawShop() {
                 drawBackground();
                 drawIsa(); // Background decoration
@@ -1546,6 +1646,14 @@
                 ctx.fillStyle = '#fff';
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Shop / Tienda', canvas.width / 2, 480);
+
+                // Achievements Button
+                ctx.fillStyle = '#9c27b0';
+                roundRect(ctx, 110, 520, canvas.width - 220, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px sans-serif';
+                ctx.fillText('Logros / Achiev.', canvas.width / 2, 550);
 
                 ctx.restore();
             }
@@ -1894,27 +2002,7 @@
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
 
-                    if (!c.slapped && !c.grazed) {
-                        const distToPlayer = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
-                        if (distToPlayer < 75 && !rectsOverlap(player, c)) {
-                            c.grazed = true;
-                            score += 15;
-                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
-                            addFloatText('GRAZE! +15', player.x, player.y - 40);
-                            playSound(1500, 0.1);
-
-                            for (let k = 0; k < 5; k++) {
-                                rosePetals.push({
-                                    x: player.x, y: player.y,
-                                    vx: (Math.random() - 0.5) * 100, vy: (Math.random() - 0.5) * 100,
-                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
-                                    emoji: '✨', size: 16
-                                });
-                            }
-                        }
-                    }
-
-                    if (!c.slapped && rectsOverlap(player, c)) {
+                    if (!c.slapped && rectsOverlap(player, c) && player.hitTimer <= 0 && player.dashTimer <= 0) {
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -1933,6 +2021,12 @@
                             endGame();
                             return;
                         }
+                    } else if (player.dashTimer > 0 && !c.dodged && Math.abs(c.x - player.x) < 60 && Math.abs(c.y - player.y) < 60) {
+                        c.dodged = true;
+                        score += 15;
+                        specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
+                        addFloatText('DODGE! +15', c.x, c.y);
+                        playSound(1100, 0.1);
                     } else if (c.y > canvas.height + c.h) {
                         score += 1;
                         const prevBest = bestScore;
@@ -2185,11 +2279,23 @@
                 }
 
                 const speed = player.speed;
-                const moveLeft = keys.left || touch.left;
-                const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+                if (player.dashTimer > 0) {
+                    player.dashTimer -= dt;
+                    player.x += speed * 2.5 * player.dashDir * dt;
+                    dashTrails.push({ x: player.x, y: player.y, timer: 0.15 });
+                } else {
+                    const moveLeft = keys.left || touch.left;
+                    const moveRight = keys.right || touch.right;
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
+                if (player.dashCooldown > 0) player.dashCooldown -= dt;
+
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].timer -= dt;
+                    if (dashTrails[i].timer <= 0) dashTrails.splice(i, 1);
+                }
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
                     spawnOwen();
@@ -2260,6 +2366,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawDashTrails();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
@@ -2334,6 +2441,7 @@
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
                 if (state === STATE.TITLE) drawTitleScreen();
                 else if (state === STATE.SHOP) drawShop();
+                else if (state === STATE.ACHIEVEMENTS) drawAchievements();
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
@@ -2373,7 +2481,13 @@
                     }
                     // Check Shop Button (110, 450, w, 46)
                     else if (pos.y >= 450 && pos.y <= 496 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
                         state = STATE.SHOP;
+                    }
+                    // Check Achievements Button (110, 520, w, 46)
+                    else if (pos.y >= 520 && pos.y <= 566 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.ACHIEVEMENTS;
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
@@ -2403,6 +2517,27 @@
 
                     // Check Back Button
                     if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
+                        state = STATE.TITLE;
+                    }
+                } else if (state === STATE.ACHIEVEMENTS) {
+                    let y = 130;
+                    for (let a of ACHIEVEMENTS_LIST) {
+                        if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+                            const status = gameData.achievements[a.id];
+                            const unlocked = a.check();
+                            if (unlocked && status !== 'claimed') {
+                                gameData.coins += a.reward;
+                                gameData.achievements[a.id] = 'claimed';
+                                saveGameData();
+                                playSound(1200, 0.1); // Cha-ching!
+                            }
+                        }
+                        y += 75;
+                    }
+                    // Check Back Button
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
                         state = STATE.TITLE;
                     }
                 } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
@@ -2429,11 +2564,40 @@
                 };
 
                 if (state === STATE.TITLE) {
-                    if (pos.y >= 380 && pos.y <= 426) startGameFromTitle();
-                    else if (pos.y >= 450 && pos.y <= 496) state = STATE.SHOP;
+                    if (pos.y >= 380 && pos.y <= 426 && pos.x >= 110 && pos.x <= canvas.width - 110) startGameFromTitle();
+                    else if (pos.y >= 450 && pos.y <= 496 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.SHOP;
+                    } else if (pos.y >= 520 && pos.y <= 566 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.ACHIEVEMENTS;
+                    }
                     return;
                 }
                 if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+
+                                if (state === STATE.ACHIEVEMENTS) {
+                    let y = 130;
+                    for (let a of ACHIEVEMENTS_LIST) {
+                        if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+                            const status = gameData.achievements[a.id];
+                            const unlocked = a.check();
+                            if (unlocked && status !== 'claimed') {
+                                gameData.coins += a.reward;
+                                gameData.achievements[a.id] = 'claimed';
+                                saveGameData();
+                                playSound(1200, 0.1); // Cha-ching!
+                            }
+                        }
+                        y += 75;
+                    }
+                    // Check Back Button
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
+                        state = STATE.TITLE;
+                    }
+                    return;
+                }
 
                 if (state === STATE.SHOP) {
                      // Check Upgrade Buttons
@@ -2460,7 +2624,8 @@
                         y += 100;
                     }
                     // Check Back Button
-                    if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50) {
+                    if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
                         state = STATE.TITLE;
                     }
                     return;
@@ -2487,6 +2652,13 @@
             function handleKey(e, isDown) {
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+
+                if (isDown && e.key === 'Shift' && state === STATE.PLAYING && player.dashCooldown <= 0) {
+                    player.dashTimer = 0.2;
+                    player.dashCooldown = 1.0;
+                    player.dashDir = keys.right ? 1 : (keys.left ? -1 : (Math.random() < 0.5 ? 1 : -1));
+                    playSound(900, 0.1);
+                }
 
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
@@ -2518,6 +2690,18 @@
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
                     touch[dir] = true;
+
+                    const now = Date.now();
+                    const lastTap = dir === 'left' ? lastTapLeft : lastTapRight;
+                    if (now - lastTap < 300 && player.dashCooldown <= 0) {
+                        player.dashTimer = 0.2;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = dir === 'left' ? -1 : 1;
+                        playSound(900, 0.1);
+                    }
+                    if (dir === 'left') lastTapLeft = now;
+                    else lastTapRight = now;
+
                     e.preventDefault();
                 }, { passive: false });
                 zone.addEventListener('touchend', () => { touch[dir] = false; });
