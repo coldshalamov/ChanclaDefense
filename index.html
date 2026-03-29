@@ -188,7 +188,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, dashTimer: 0, dashCooldown: 0, dashDir: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0 };
 
             const ACHIEVEMENTS_LIST = [
@@ -201,6 +201,9 @@
             ];
 
 
+            let dashTrails = [];
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
             let chanclas = [];
             let pets = [];
             let powerups = [];
@@ -394,9 +397,14 @@
                 player.lives = 3 + (gameData.upgrades.lives || 0);
                 player.shield = (gameData.upgrades.shield || 0) > 0;
                 player.hitTimer = 0;
+                player.dashTimer = 0;
+                player.dashCooldown = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
+                dashTrails = [];
+                lastTapLeft = 0;
+                lastTapRight = 0;
                 chanclas = [];
                 pets = [];
                 powerups = [];
@@ -1986,23 +1994,32 @@
 
 
                     if (!c.slapped && rectsOverlap(player, c)) {
-                        if (player.shield) {
-                            player.shield = false;
+                        if (player.dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                score += 15;
+                                specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
+                                addFloatText('DODGE! +15', c.x, c.y);
+                            }
+                        } else {
+                            if (player.shield) {
+                                player.shield = false;
+                                chanclas.splice(i, 1);
+                                continue;
+                            }
+                            const dmg = c.type === 'super' ? 2 : 1;
+                            comboCount = 0;
+                            triggerShake(c.type === 'super' ? 15 : 8, 0.4);
+                            player.lives -= dmg;
+                            player.hitTimer = 0.5;
                             chanclas.splice(i, 1);
-                            continue;
-                        }
-                        const dmg = c.type === 'super' ? 2 : 1;
-                        comboCount = 0;
-                        triggerShake(c.type === 'super' ? 15 : 8, 0.4);
-                        player.lives -= dmg;
-                        player.hitTimer = 0.5;
-                        chanclas.splice(i, 1);
-                        sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
-                        sayPlayer('hit');
-                        if (player.lives === 1) sayRandom('lowHealth');
-                        if (player.lives <= 0) {
-                            endGame();
-                            return;
+                            sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
+                            sayPlayer('hit');
+                            if (player.lives === 1) sayRandom('lowHealth');
+                            if (player.lives <= 0) {
+                                endGame();
+                                return;
+                            }
                         }
                     } else if (c.y > canvas.height + c.h) {
                         score += 1;
@@ -2258,8 +2275,18 @@
                 const speed = player.speed;
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+
+                if (player.dashTimer > 0) {
+                    player.dashTimer -= dt;
+                    player.x += speed * 3.5 * player.dashDir * dt;
+                    if (Math.random() < 0.3) {
+                        dashTrails.push({ x: player.x, y: player.y, timer: 0.2, dir: player.dashDir });
+                    }
+                } else {
+                    if (player.dashCooldown > 0) player.dashCooldown -= dt;
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
@@ -2316,9 +2343,23 @@
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
 
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].timer -= dt;
+                    if (dashTrails[i].timer <= 0) dashTrails.splice(i, 1);
+                }
+
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
                 if (Math.random() < 0.002) sayPlayer('idle');
+            }
+
+            function drawDashTrails() {
+                dashTrails.forEach(t => {
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, t.timer / 0.2) * 0.5;
+                    drawPlayerAvatar(ctx, t.x, t.y, Math.min(player.w, player.h), false, 'normal');
+                    ctx.restore();
+                });
             }
 
             function draw() {
@@ -2331,6 +2372,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawDashTrails();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
@@ -2617,6 +2659,17 @@
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
 
+                if (e.key === 'Shift' && isDown && state === STATE.PLAYING) {
+                    if (player.dashCooldown <= 0) {
+                        player.dashTimer = 0.2;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = keys.left ? -1 : (keys.right ? 1 : (Math.random() < 0.5 ? -1 : 1));
+                        playSound(300, 0.1);
+                        dashTrails.push({ x: player.x, y: player.y, timer: 0.2, dir: player.dashDir });
+                    }
+                    e.preventDefault();
+                }
+
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
                     if (isDown && state === STATE.PLAYING) {
@@ -2647,6 +2700,19 @@
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
                     touch[dir] = true;
+
+                    const now = Date.now();
+                    const lastTap = dir === 'left' ? lastTapLeft : lastTapRight;
+                    if (now - lastTap < 300 && player.dashCooldown <= 0) {
+                        player.dashTimer = 0.2;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = dir === 'left' ? -1 : 1;
+                        playSound(300, 0.1);
+                        dashTrails.push({ x: player.x, y: player.y, timer: 0.2, dir: player.dashDir });
+                    }
+                    if (dir === 'left') lastTapLeft = now;
+                    else lastTapRight = now;
+
                     e.preventDefault();
                 }, { passive: false });
                 zone.addEventListener('touchend', () => { touch[dir] = false; });
