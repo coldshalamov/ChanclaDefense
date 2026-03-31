@@ -159,10 +159,10 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
             let state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {} };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: [], currentHat: null };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -182,6 +182,8 @@
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
                 if (!gameData.achievements) gameData.achievements = {};
+                if (!gameData.cosmetics) gameData.cosmetics = [];
+                if (gameData.currentHat === undefined) gameData.currentHat = null;
             } catch (e) { console.error(e); }
 
             function saveGameData() {
@@ -190,6 +192,15 @@
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
+
+            const COSMETICS_LIST = [
+                { id: 'crown', icon: '👑', cost: 500, name: 'Crown' },
+                { id: 'cowboy', icon: '🤠', cost: 300, name: 'Cowboy' },
+                { id: 'cap', icon: '🧢', cost: 150, name: 'Cap' },
+                { id: 'wizard', icon: '🧙‍♂️', cost: 400, name: 'Wizard' },
+                { id: 'ninja', icon: '🥷', cost: 600, name: 'Ninja' },
+                { id: 'sombrero', icon: '🌮', cost: 250, name: 'Taco Hat' }
+            ];
 
             const ACHIEVEMENTS_LIST = [
                 { id: 'first_slap', name: 'First Slap', desc: 'Slap your first chancla', reward: 10, check: () => gameData.stats.totalSlaps >= 1 },
@@ -1166,6 +1177,23 @@
                     ctx.fillText('✨', headW * 0.6, -headH * 0.4);
                 }
 
+                // Hat
+                if (gameData.currentHat) {
+                    const hat = COSMETICS_LIST.find(c => c.id === gameData.currentHat);
+                    if (hat) {
+                        ctx.font = (size * 0.9) + 'px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+
+                        // Slightly shift the hat based on expression / rotation
+                        let hatY = -headH * 0.6;
+                        if (expression === 'chill' || expression === 'cocky') {
+                            ctx.rotate(0.05); // slight jaunty angle
+                        }
+                        ctx.fillText(hat.icon, 0, hatY);
+                    }
+                }
+
                 ctx.restore();
             }
 
@@ -1612,13 +1640,102 @@
                 ctx.restore();
             }
 
+
+            function drawCosmetics() {
+                drawBackground();
+                drawIsa(); // Background decoration
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 30px sans-serif';
+                ctx.fillText('COSMETICS / COSMET.', canvas.width / 2, 60);
+
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '24px sans-serif';
+                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 95);
+
+                let y = 120;
+                COSMETICS_LIST.forEach(c => {
+                    const isUnlocked = gameData.cosmetics.includes(c.id);
+                    const isEquipped = gameData.currentHat === c.id;
+                    const affordable = gameData.coins >= c.cost;
+
+                    let bgColor = '#555'; // Locked, unaffordable
+                    if (isEquipped) bgColor = '#4caf50'; // Equipped
+                    else if (isUnlocked) bgColor = '#2196f3'; // Unlocked
+                    else if (affordable) bgColor = '#ff9f1c'; // Affordable
+
+                    // Button bg
+                    ctx.fillStyle = bgColor;
+                    roundRect(ctx, 30, y, canvas.width - 60, 65, 10);
+                    ctx.fill();
+
+                    // Border
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    roundRect(ctx, 30, y, canvas.width - 60, 65, 10);
+                    ctx.stroke();
+
+                    // Icon
+                    ctx.font = '40px "Noto Color Emoji", sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(c.icon, 45, y + 32);
+
+                    // Text
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'alphabetic';
+                    ctx.font = 'bold 18px sans-serif';
+                    ctx.fillText(c.name, 105, y + 26);
+
+                    ctx.font = '12px sans-serif';
+                    if (isEquipped) {
+                        ctx.fillText('Equipped', 105, y + 46);
+                    } else if (isUnlocked) {
+                        ctx.fillText('Tap to Equip', 105, y + 46);
+                    } else {
+                        ctx.fillText('Cost: 💰 ' + c.cost, 105, y + 46);
+                    }
+
+                    // Cost / Status right side
+                    ctx.textAlign = 'right';
+                    ctx.font = 'bold 16px sans-serif';
+                    if (isEquipped) {
+                        ctx.fillText('✅', canvas.width - 45, y + 38);
+                    } else if (isUnlocked) {
+                        ctx.fillText('EQUIP', canvas.width - 45, y + 38);
+                    } else {
+                        ctx.fillStyle = affordable ? '#ffd700' : '#ff9999';
+                        ctx.fillText('BUY', canvas.width - 45, y + 38);
+                    }
+
+                    y += 75;
+                });
+
+                // Back Button
+                ctx.fillStyle = '#ff5252';
+                roundRect(ctx, 100, canvas.height - 70, canvas.width - 200, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = '18px sans-serif';
+                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 42);
+
+                ctx.restore();
+            }
+
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                roundRect(ctx, 30, 260, canvas.width - 60, 200, 16);
+                roundRect(ctx, 30, 260, canvas.width - 60, 270, 16);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
@@ -1652,6 +1769,14 @@
                 ctx.fillStyle = '#fff';
                 ctx.font = '18px sans-serif';
                 ctx.fillText('Logros / Achiev.', canvas.width / 2, 550);
+
+                // Cosmetics Button
+                ctx.fillStyle = '#e91e63';
+                roundRect(ctx, 110, 590, canvas.width - 220, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = '18px sans-serif';
+                ctx.fillText('Cosmetics / Cosmet.', canvas.width / 2, 620);
 
                 ctx.restore();
             }
@@ -2480,6 +2605,7 @@
                 if (state === STATE.TITLE) drawTitleScreen();
                 else if (state === STATE.SHOP) drawShop();
                 else if (state === STATE.ACHIEVEMENTS) drawAchievements();
+                else if (state === STATE.COSMETICS) drawCosmetics();
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
@@ -2526,6 +2652,11 @@
                     else if (pos.y >= 520 && pos.y <= 566 && pos.x >= 110 && pos.x <= canvas.width - 110) {
                         setDirectionsVisible(false);
                         state = STATE.ACHIEVEMENTS;
+                    }
+                    // Check Cosmetics Button (110, 590, w, 46)
+                    else if (pos.y >= 590 && pos.y <= 636 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.COSMETICS;
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
@@ -2578,6 +2709,38 @@
                         setDirectionsVisible(true);
                         state = STATE.TITLE;
                     }
+                } else if (state === STATE.COSMETICS) {
+                    let y = 120;
+                    for (let c of COSMETICS_LIST) {
+                        if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+                            const isUnlocked = gameData.cosmetics.includes(c.id);
+                            if (isUnlocked) {
+                                // Equip / Unequip
+                                if (gameData.currentHat === c.id) {
+                                    gameData.currentHat = null;
+                                } else {
+                                    gameData.currentHat = c.id;
+                                }
+                                saveGameData();
+                                playSound(1200, 0.1);
+                            } else if (gameData.coins >= c.cost) {
+                                // Buy
+                                gameData.coins -= c.cost;
+                                gameData.cosmetics.push(c.id);
+                                gameData.currentHat = c.id; // Auto-equip on buy
+                                saveGameData();
+                                playSound(1200, 0.1);
+                            } else {
+                                playSound(200, 0.1); // Error
+                            }
+                        }
+                        y += 75;
+                    }
+                    // Check Back Button
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
+                        state = STATE.TITLE;
+                    }
                 } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
                     // Play Again Button (110, 550, w, 50)
                     if (pos.y >= 550 && pos.y <= 600 && pos.x >= 110 && pos.x <= canvas.width - 110) {
@@ -2609,6 +2772,9 @@
                     } else if (pos.y >= 520 && pos.y <= 566 && pos.x >= 110 && pos.x <= canvas.width - 110) {
                         setDirectionsVisible(false);
                         state = STATE.ACHIEVEMENTS;
+                    } else if (pos.y >= 590 && pos.y <= 636 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.COSMETICS;
                     }
                     return;
                 }
@@ -2625,6 +2791,36 @@
                                 gameData.achievements[a.id] = 'claimed';
                                 saveGameData();
                                 playSound(1200, 0.1); // Cha-ching!
+                            }
+                        }
+                        y += 75;
+                    }
+                    // Check Back Button
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
+                        state = STATE.TITLE;
+                    }
+                    return;
+                }
+
+                if (state === STATE.COSMETICS) {
+                    let y = 120;
+                    for (let c of COSMETICS_LIST) {
+                        if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+                            const isUnlocked = gameData.cosmetics.includes(c.id);
+                            if (isUnlocked) {
+                                if (gameData.currentHat === c.id) gameData.currentHat = null;
+                                else gameData.currentHat = c.id;
+                                saveGameData();
+                                playSound(1200, 0.1);
+                            } else if (gameData.coins >= c.cost) {
+                                gameData.coins -= c.cost;
+                                gameData.cosmetics.push(c.id);
+                                gameData.currentHat = c.id;
+                                saveGameData();
+                                playSound(1200, 0.1);
+                            } else {
+                                playSound(200, 0.1);
                             }
                         }
                         y += 75;
