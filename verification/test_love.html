@@ -1177,11 +1177,16 @@
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
+                else if (type === 'golden') emoji = '✨🩴✨';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.rotate(rotation);
+                if (type === 'golden') {
+                    ctx.shadowColor = '#ffd700';
+                    ctx.shadowBlur = 15;
+                }
                 ctx.fillText(emoji, 0, h * 0.2);
                 ctx.restore();
             }
@@ -1695,17 +1700,21 @@
             function spawnChancla() {
                 const isSuper = superEnabled && Math.random() < 0.18;
                 const isFire = isa.enraged && Math.random() < 0.25;
-                const w = isSuper ? 46 : 32;
+                const isGolden = timeElapsed > 25 && Math.random() < 0.05;
+                const w = isSuper ? 46 : (isGolden ? 38 : 32);
                 const h = isSuper ? 26 : 18;
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
+                let vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isFire) type = 'fire';
+                if (isGolden) type = 'golden';
+                else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
+
+                if (isGolden) vy += 100; // Golden is faster!
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -1789,7 +1798,9 @@
                         score += comboCount;
 
                         // Increase special attack bar
-                        specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
+                        let specialGain = c.type === 'golden' ? 50 : (isPerfect ? 25 : 15);
+                        specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + specialGain);
+                        if (c.type === 'golden') score += 50;
 
                         if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
                             specialReadyTriggered = true;
@@ -1814,9 +1825,15 @@
 
                         // Add float text
                         if (isPerfect) {
-                            gameData.coins += 2;
-                            gameData.stats.totalCoinsEarned += 2;
-                            addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
+                            if (c.type === 'golden') {
+                                gameData.coins += 15;
+                                gameData.stats.totalCoinsEarned += 15;
+                                addFloatText('GOLDEN! +15💰' + comboText, c.x, c.y - 10);
+                            } else {
+                                gameData.coins += 2;
+                                gameData.stats.totalCoinsEarned += 2;
+                                addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
+                            }
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.15);
                             triggerShake(6, 0.2);
@@ -1824,9 +1841,15 @@
                             hitStop = 0.15;
                             spawnRoseExplosion(c.x, c.y);
                         } else {
-                            gameData.coins += 1;
-                            gameData.stats.totalCoinsEarned += 1;
-                            addFloatText('SLAP! +1💰' + comboText, c.x, c.y);
+                            if (c.type === 'golden') {
+                                gameData.coins += 15;
+                                gameData.stats.totalCoinsEarned += 15;
+                                addFloatText('GOLDEN! +15💰' + comboText, c.x, c.y);
+                            } else {
+                                gameData.coins += 1;
+                                gameData.stats.totalCoinsEarned += 1;
+                                addFloatText('SLAP! +1💰' + comboText, c.x, c.y);
+                            }
                             spawnImpact(c.x, c.y);
                             playSound(600, 0.1);
                         }
@@ -1973,7 +1996,7 @@
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : (c.type === 'golden' ? 25 : 8));
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -2012,7 +2035,7 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'golden') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'super' ? 15 : (c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
