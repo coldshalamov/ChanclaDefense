@@ -2180,7 +2180,7 @@
                 return Math.abs(a.x - b.x) < (a.w / 2 + b.w / 2) && Math.abs(a.y - b.y) < (a.h / 2 + b.h / 2);
             }
 
-            function spawnPinata() {
+            window.spawnPinata = function() {
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = -40; // Start above screen
                 pinatas.push({ x, y, vy: 50, hits: 0, w: 40, h: 40, offset: Math.random() * 100 });
