@@ -203,7 +203,8 @@
 
             let chanclas = [];
             let pets = [];
-            let powerups = [];
+            let abuela = { active: false, timer: 0, attackTimer: 0, x: 0, y: 0 };
+                                        let powerups = [];
             let floatTexts = [];
             let rosePetals = [];
             let fireParticles = [];
@@ -401,7 +402,8 @@
                 isa.enraged = false;
                 chanclas = [];
                 pets = [];
-                powerups = [];
+                abuela.active = false;
+                                powerups = [];
                 floatTexts = [];
                 rosePetals = [];
                 fireParticles = [];
@@ -1186,6 +1188,24 @@
                 ctx.restore();
             }
 
+                        function drawAbuela() {
+                if (!abuela.active) return;
+                ctx.save();
+                ctx.font = '40px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // Hovering effect
+                const hoverY = abuela.y + Math.sin(Date.now() / 200) * 5;
+                ctx.fillText('👵', abuela.x, hoverY);
+                // Draw a small aura
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.beginPath();
+                ctx.arc(abuela.x, hoverY, 30, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
+                ctx.fill();
+                ctx.restore();
+            }
+
             function drawPets() {
                 pets.forEach(p => {
                     if (p.kind === 'owen') drawOwen(p);
@@ -1787,6 +1807,15 @@
                         slappedAny = true;
                         comboCount++;
                         score += comboCount;
+                        if (comboCount > 0 && comboCount % 15 === 0 && !abuela.active) {
+                            abuela.active = true;
+                            abuela.timer = 10;
+                            abuela.attackTimer = 0.5;
+                            abuela.x = canvas.width / 2;
+                            abuela.y = -50;
+                            addFloatText('¡Con mi nieto no! 👵', canvas.width / 2, 80);
+                            playSound(700, 0.3); // Cheerful trumpet/grandma sound
+                        }
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
@@ -2256,6 +2285,44 @@
                     if (shakeTimer <= 0) wrapper.style.transform = 'none';
                 }
 
+                if (abuela.active) {
+                    abuela.timer -= dt;
+                    abuela.attackTimer -= dt;
+
+                    // Move into position
+                    if (abuela.y < 60) abuela.y += 100 * dt;
+
+                    if (abuela.timer <= 0) {
+                        abuela.active = false;
+                        addFloatText('¡Cuidate mijo! 👵💨', abuela.x, abuela.y);
+                    } else if (abuela.attackTimer <= 0) {
+                        abuela.attackTimer = 1.2; // Attack every 1.2s
+                        // Spawn golden chancla aiming at Isa
+                        const w = 46;
+                        const h = 26;
+                        const vx = (isa.x - abuela.x) * 2;
+                        const vy = (isa.y - abuela.y) * 2;
+                        chanclas.push({
+                            x: abuela.x,
+                            y: abuela.y,
+                            vx: vx,
+                            vy: vy,
+                            w: w,
+                            h: h,
+                            type: 'super',
+                            rotation: 0,
+                            rotSpeed: 30,
+                            slapped: true,
+                            isPerfect: true
+                        });
+                        playSound(600, 0.1);
+                        rosePetals.push({
+                            x: abuela.x, y: abuela.y, vx: (Math.random()-0.5)*50, vy: -50,
+                            rotation: 0, rotSpeed: 2, emoji: '✨', size: 20
+                        });
+                    }
+                }
+
                 if (flash.timer > 0) {
                     flash.timer -= dt;
                 }
@@ -2401,6 +2468,7 @@
                 drawChanclasAll();
                 drawPowerups();
                 drawSpecialProjectiles();
+                drawAbuela();
                 drawPets();
                 drawRosePetals();
                 drawChainEffects();
