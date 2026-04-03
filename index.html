@@ -188,7 +188,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, dashTimer: 0, dashCooldown: 0, dashDir: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
 
             const ACHIEVEMENTS_LIST = [
@@ -230,6 +230,10 @@
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
+
+            let dashTrails = [];
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -409,6 +413,14 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
+
+                dashTrails = [];
+                player.dashTimer = 0;
+                player.dashCooldown = 0;
+                player.dashDir = 0;
+                lastTapLeft = 0;
+                lastTapRight = 0;
+
                 spawnInterval = 1.2;
                 baseSpeed = 140;
                 timeElapsed = 0;
@@ -695,6 +707,19 @@
             }
 
             function drawPlayer() {
+                // Draw dash trails
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    const trail = dashTrails[i];
+                    ctx.save();
+                    ctx.globalAlpha = trail.alpha;
+                    drawPlayerAvatar(ctx, trail.x, player.y, Math.min(player.w, player.h), false, 'normal');
+                    ctx.restore();
+                    trail.alpha -= 0.05;
+                    if (trail.alpha <= 0) {
+                        dashTrails.splice(i, 1);
+                    }
+                }
+
                 const { x, y, w, h } = player;
                 ctx.save();
                 ctx.fillStyle = '#fff';
@@ -2006,7 +2031,17 @@
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
 
-                    if (!c.slapped && rectsOverlap(player, c)) {
+                    // Check dodge (close distance, during dash)
+                    const distToPlayer = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                    if (player.dashTimer > 0 && distToPlayer < 70 && !c.dodged) {
+                        c.dodged = true;
+                        score += 15;
+                        specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 2);
+                        addFloatText("DODGE! +15", player.x, player.y - 40);
+                        playSound(800, 0.1);
+                    }
+
+                    if (!c.slapped && rectsOverlap(player, c) && player.dashTimer <= 0 && player.hitTimer <= 0) {
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2290,11 +2325,26 @@
                     spawnTimer = 0;
                 }
 
-                const speed = player.speed;
+                let currentSpeed = player.speed;
+
+                if (player.dashCooldown > 0) player.dashCooldown -= dt;
+                if (player.dashTimer > 0) {
+                    player.dashTimer -= dt;
+                    currentSpeed *= 2.5;
+                    dashTrails.push({x: player.x, y: player.y, alpha: 0.5});
+                }
+
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+
+                if (player.dashTimer > 0) {
+                    // Force move in dash dir
+                    player.x += player.dashDir * currentSpeed * dt;
+                } else {
+                    if (moveLeft) player.x -= currentSpeed * dt;
+                    if (moveRight) player.x += currentSpeed * dt;
+                }
+
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
@@ -2691,6 +2741,15 @@
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
 
+                if (isDown && e.key === 'Shift' && state === STATE.PLAYING && player.dashCooldown <= 0) {
+                    player.dashTimer = 0.2;
+                    player.dashCooldown = 1.0;
+                    player.dashDir = keys.left ? -1 : (keys.right ? 1 : 0);
+                    if (player.dashDir === 0) player.dashDir = 1; // Default to right if no key
+                    playSound(900, 0.1);
+                    e.preventDefault();
+                }
+
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
                     if (isDown && state === STATE.PLAYING) {
@@ -2721,6 +2780,18 @@
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
                     touch[dir] = true;
+
+                    const now = Date.now();
+                    const lastTap = dir === 'left' ? lastTapLeft : lastTapRight;
+                    if (now - lastTap < 300 && player.dashCooldown <= 0) {
+                        player.dashTimer = 0.2;
+                        player.dashCooldown = 1.0;
+                        player.dashDir = dir === 'left' ? -1 : 1;
+                        playSound(900, 0.1);
+                    }
+                    if (dir === 'left') lastTapLeft = now;
+                    else lastTapRight = now;
+
                     e.preventDefault();
                 }, { passive: false });
                 zone.addEventListener('touchend', () => { touch[dir] = false; });
