@@ -1177,6 +1177,7 @@
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
+                else if (type === 'golden') emoji = '⭐';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
@@ -1695,16 +1696,19 @@
             function spawnChancla() {
                 const isSuper = superEnabled && Math.random() < 0.18;
                 const isFire = isa.enraged && Math.random() < 0.25;
+                const isGolden = superEnabled && Math.random() < 0.05;
+
                 const w = isSuper ? 46 : 32;
                 const h = isSuper ? 26 : 18;
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
+                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0) + (isGolden ? 120 : 0);
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isFire) type = 'fire';
+                if (isGolden) type = 'golden';
+                else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
@@ -1814,9 +1818,11 @@
 
                         // Add float text
                         if (isPerfect) {
-                            gameData.coins += 2;
-                            gameData.stats.totalCoinsEarned += 2;
-                            addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
+                            let coinsEarned = c.type === 'golden' ? 15 : 2;
+                            gameData.coins += coinsEarned;
+                            gameData.stats.totalCoinsEarned += coinsEarned;
+                            let text = c.type === 'golden' ? `GOLDEN PERFECT! +${coinsEarned}💰` : `PERFECT! +${coinsEarned}💰`;
+                            addFloatText(text + comboText, c.x, c.y - 10);
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.15);
                             triggerShake(6, 0.2);
@@ -1824,9 +1830,11 @@
                             hitStop = 0.15;
                             spawnRoseExplosion(c.x, c.y);
                         } else {
-                            gameData.coins += 1;
-                            gameData.stats.totalCoinsEarned += 1;
-                            addFloatText('SLAP! +1💰' + comboText, c.x, c.y);
+                            let coinsEarned = c.type === 'golden' ? 5 : 1;
+                            gameData.coins += coinsEarned;
+                            gameData.stats.totalCoinsEarned += coinsEarned;
+                            let text = c.type === 'golden' ? `GOLDEN SLAP! +${coinsEarned}💰` : `SLAP! +${coinsEarned}💰`;
+                            addFloatText(text + comboText, c.x, c.y);
                             spawnImpact(c.x, c.y);
                             playSound(600, 0.1);
                         }
@@ -1973,7 +1981,7 @@
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : (c.type === 'golden' ? 20 : 8));
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -2012,7 +2020,7 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'golden') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'super' ? 15 : (c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
