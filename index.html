@@ -215,6 +215,7 @@
             let chanclas = [];
             let pets = [];
             let powerups = [];
+            let pinatas = [];
             let floatTexts = [];
             let rosePetals = [];
             let fireParticles = [];
@@ -413,6 +414,7 @@
                 chanclas = [];
                 pets = [];
                 powerups = [];
+                pinatas = [];
                 floatTexts = [];
                 rosePetals = [];
                 fireParticles = [];
@@ -1870,6 +1872,44 @@
                 const perfectRange = 50;
                 let slappedAny = false;
 
+                for (let i = pinatas.length - 1; i >= 0; i--) {
+                    const p = pinatas[i];
+                    const dist = Math.sqrt(Math.pow(p.x - player.x, 2) + Math.pow(p.y - player.y, 2));
+
+                    if (dist < slapRange) {
+                        p.hits++;
+                        p.vy = -350; // Bounce up
+                        p.rotSpeed = (Math.random() - 0.5) * 15;
+                        slappedAny = true;
+
+                        spawnImpact(p.x, p.y);
+                        playSound(600, 0.1);
+                        slapEffect.type = 'hit';
+
+                        if (p.hits >= 3) {
+                            gameData.coins += 15;
+                            gameData.stats.totalCoinsEarned += 15;
+                            addFloatText('PIÑATA BONUS! +15💰', p.x, p.y);
+                            playSound(1200, 0.25);
+                            triggerShake(8, 0.3);
+
+                            // Confetti
+                            for (let k = 0; k < 20; k++) {
+                                const angle = (Math.PI * 2 * k) / 20;
+                                const speed = 100 + Math.random() * 200;
+                                const emojis = ['🍬', '🍭', '🎊', '💵', '✨'];
+                                rosePetals.push({
+                                    x: p.x, y: p.y,
+                                    vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                                    rotation: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 10,
+                                    emoji: emojis[Math.floor(Math.random() * emojis.length)], size: 20
+                                });
+                            }
+                            pinatas.splice(i, 1);
+                        }
+                    }
+                }
+
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
                     const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
@@ -2341,6 +2381,40 @@
                 });
             }
 
+
+            function spawnPinata() {
+                const x = 40 + Math.random() * (canvas.width - 80);
+                const y = -50;
+                pinatas.push({ x, y, vy: 60, w: 40, h: 40, hits: 0, rotation: 0, rotSpeed: (Math.random() - 0.5) * 2 });
+            }
+
+            function updatePinatas(dt) {
+                for (let i = pinatas.length - 1; i >= 0; i--) {
+                    const p = pinatas[i];
+                    p.vy += 200 * dt; // Gravity
+                    p.y += p.vy * dt;
+                    p.x += Math.sin(timeElapsed * 2) * 20 * dt; // slight sway
+                    p.rotation += p.rotSpeed * dt;
+
+                    if (p.y > canvas.height + 50) {
+                        pinatas.splice(i, 1);
+                    }
+                }
+            }
+
+            function drawPinatas() {
+                pinatas.forEach(p => {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.font = '40px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🪅', 0, 0);
+                    ctx.restore();
+                });
+            }
+
             function endGame() {
                 state = STATE.GAMEOVER;
                 const earned = Math.floor(score / 10);
@@ -2410,12 +2484,17 @@
                     spawnRita();
                 }
 
+                if (pinatas.length === 0 && Math.random() < 0.0005) {
+                    spawnPinata();
+                }
+
                 updateChanclas(dt);
                 updatePets(dt);
                 updatePowerups(dt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
+                updatePinatas(dt);
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -2506,6 +2585,7 @@
                 drawFireParticles();
                 drawChanclasAll();
                 drawPowerups();
+                drawPinatas();
                 drawSpecialProjectiles();
                 drawPets();
                 drawRosePetals();
