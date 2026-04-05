@@ -213,6 +213,7 @@
 
 
             let chanclas = [];
+            let pinatas = [];
             let pets = [];
             let powerups = [];
             let floatTexts = [];
@@ -411,6 +412,7 @@
                 isa.y = 70;
                 isa.enraged = false;
                 chanclas = [];
+                pinatas = [];
                 pets = [];
                 powerups = [];
                 floatTexts = [];
@@ -599,6 +601,39 @@
 
             function spawnChainEffect(x1, y1, x2, y2) {
                 chainEffects.push({ x1, y1, x2, y2, timer: 0.2, maxTime: 0.2 });
+            }
+
+
+            function spawnPinata() {
+                const x = 40 + Math.random() * (canvas.width - 80);
+                const y = -40;
+                const vy = 100 + Math.random() * 50;
+                pinatas.push({ x, y, vy, vx: (Math.random() - 0.5) * 50, hits: 0, rotation: 0, w: 40, h: 40 });
+            }
+
+            function updatePinatas(dt) {
+                for (let i = pinatas.length - 1; i >= 0; i--) {
+                    const p = pinatas[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.vy += 200 * dt; // gravity
+                    p.rotation += dt * 2;
+                    if (p.x < 20 || p.x > canvas.width - 20) p.vx *= -1;
+                    if (p.y > canvas.height + 50) pinatas.splice(i, 1);
+                }
+            }
+
+            function drawPinatas() {
+                pinatas.forEach(p => {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.font = '40px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🪅', 0, 0);
+                    ctx.restore();
+                });
             }
 
             function updateChainEffects(dt) {
@@ -1870,6 +1905,36 @@
                 const perfectRange = 50;
                 let slappedAny = false;
 
+                for (let i = pinatas.length - 1; i >= 0; i--) {
+                    const p = pinatas[i];
+                    const dist = Math.sqrt(Math.pow(p.x - player.x, 2) + Math.pow(p.y - player.y, 2));
+                    if (dist < slapRange) {
+                        p.vy = -400;
+                        p.vx = (p.x - player.x) * 5;
+                        p.hits++;
+                        slappedAny = true;
+                        if (p.hits >= 3) {
+                            pinatas.splice(i, 1);
+                            gameData.coins += 25;
+                            gameData.stats.totalCoinsEarned += 25;
+                            addFloatText('PIÑATA! +25💰', p.x, p.y);
+                            playSound(1200, 0.2);
+                            for (let k = 0; k < 12; k++) {
+                                rosePetals.push({
+                                    x: p.x, y: p.y,
+                                    vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200,
+                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+                                    emoji: ['✨', '🎉', '💰'][Math.floor(Math.random() * 3)], size: 24
+                                });
+                            }
+                        } else {
+                            playSound(600, 0.1);
+                            addFloatText('BOUNCE!', p.x, p.y);
+                            spawnImpact(p.x, p.y);
+                        }
+                    }
+                }
+
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
                     const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
@@ -2411,6 +2476,8 @@
                 }
 
                 updateChanclas(dt);
+                updatePinatas(dt);
+                if (Math.random() < 0.001) spawnPinata();
                 updatePets(dt);
                 updatePowerups(dt);
                 updateSpecialProjectiles(dt);
@@ -2505,6 +2572,7 @@
                 drawIsa();
                 drawFireParticles();
                 drawChanclasAll();
+                drawPinatas();
                 drawPowerups();
                 drawSpecialProjectiles();
                 drawPets();
