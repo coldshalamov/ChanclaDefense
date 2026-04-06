@@ -180,7 +180,8 @@
                 if (gameData.upgrades.speed === undefined) gameData.upgrades.speed = 0;
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 0 };
+                if (gameData.stats.wins === undefined) gameData.stats.wins = 0;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -385,6 +386,18 @@
                 dialogueTimer = dialogueDuration;
             }
 
+            function triggerWin() {
+                if (state === STATE.WIN) return;
+                state = STATE.WIN;
+                if (gameData.stats.wins === undefined) gameData.stats.wins = 0;
+                const bonus = 50 + (gameData.stats.wins * 50);
+                gameData.coins += bonus;
+                gameData.stats.totalCoinsEarned += bonus;
+                gameData.stats.wins++;
+                saveGameData();
+                sayRandom('win');
+            }
+
             function triggerShake(intensity, duration) {
                 shakeIntensity = intensity;
                 shakeTimer = duration;
@@ -397,7 +410,8 @@
             }
 
             function resetGame() {
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 0 };
+                if (gameData.stats.wins === undefined) gameData.stats.wins = 0;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
@@ -407,6 +421,7 @@
                 player.lives = 3 + (gameData.upgrades.lives || 0);
                 player.shield = (gameData.upgrades.shield || 0) > 0;
                 player.hitTimer = 0;
+                isa.maxAnger = 100 + (gameData.stats.wins || 0) * 20;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -422,8 +437,9 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
-                spawnInterval = 1.2;
-                baseSpeed = 140;
+                const wins = gameData.stats.wins || 0;
+                spawnInterval = Math.max(0.5, 1.2 - wins * 0.05);
+                baseSpeed = 140 + wins * 5;
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1724,6 +1740,13 @@
                 ctx.textAlign = 'center';
                 ctx.font = '24px sans-serif';
                 ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
+
+                const bossLevel = (gameData.stats.wins || 0) + 1;
+                ctx.fillStyle = '#ff4d4d';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText(`Boss Level: ${bossLevel}`, canvas.width / 2, 280);
+
+                ctx.fillStyle = '#fff';
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
@@ -2174,8 +2197,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                triggerWin();
                             }
                             continue;
                         }
@@ -2395,8 +2417,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            state = STATE.WIN;
-                            sayRandom('win');
+                            triggerWin();
                         }
                         continue;
                     }
@@ -2659,6 +2680,11 @@
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
                 ctx.font = '20px sans-serif';
                 ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+
+                const wins = gameData.stats.wins || 1;
+                const bonus = 50 + ((wins - 1) * 50);
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText(`Boss Defeated! +${bonus} Coins`, canvas.width / 2, 280);
 
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';
