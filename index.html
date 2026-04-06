@@ -190,7 +190,7 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, dashTimer: 0, dashCooldown: 0, isDashing: false, dashDir: 0, dashSpeed: 800 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
 
             const COSMETICS_LIST = [
@@ -242,6 +242,10 @@
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
+
+            let dashTrails = [];
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -407,6 +411,12 @@
                 player.lives = 3 + (gameData.upgrades.lives || 0);
                 player.shield = (gameData.upgrades.shield || 0) > 0;
                 player.hitTimer = 0;
+                player.dashTimer = 0;
+                player.dashCooldown = 0;
+                player.isDashing = false;
+                dashTrails = [];
+                lastTapLeft = 0;
+                lastTapRight = 0;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -705,6 +715,33 @@
                 ctx.fillText('✋', 0, 0);
 
                 ctx.restore();
+            }
+
+
+            function drawDashTrails() {
+                dashTrails.forEach(trail => {
+                    ctx.save();
+                    ctx.globalAlpha = trail.alpha;
+                    // Slightly tint the trail cyan
+                    ctx.filter = 'drop-shadow(0 0 5px #00e5ff) hue-rotate(180deg)';
+                    drawPlayerAvatar(ctx, trail.x, trail.y, Math.min(trail.w, trail.h), specialAttackBar >= maxSpecialAttack, trail.expression);
+                    ctx.restore();
+                });
+            }
+
+            function triggerDash(dir) {
+                if (player.dashCooldown > 0 || player.isDashing) return;
+
+                player.isDashing = true;
+                player.dashDir = dir; // 1 for right, -1 for left
+                player.dashTimer = 0.15; // 150ms dash duration
+                player.dashCooldown = 0.8; // 800ms cooldown before next dash
+
+                // Grant brief invulnerability during dash
+                player.hitTimer = Math.max(player.hitTimer, 0.2);
+
+                playSound(800, 0.1); // Quick whoosh sound
+                triggerShake(3, 0.1); // Small screen shake for impact
             }
 
             function drawPlayer() {
@@ -2477,9 +2514,33 @@
                 const speed = player.speed;
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+
+                if (player.dashCooldown > 0) player.dashCooldown -= dt;
+
+                if (player.isDashing) {
+                    player.dashTimer -= dt;
+                    player.x += player.dashDir * player.dashSpeed * dt;
+
+                    // Spawn trail every frame while dashing
+                    dashTrails.push({ x: player.x, y: player.y, w: player.w, h: player.h, alpha: 0.6, expression: 'normal' });
+
+                    if (player.dashTimer <= 0) {
+                        player.isDashing = false;
+                    }
+                } else {
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
+
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
+
+                // Update dash trails
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].alpha -= dt * 2.5; // Fade out quickly
+                    if (dashTrails[i].alpha <= 0) {
+                        dashTrails.splice(i, 1);
+                    }
+                }
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
                     spawnOwen();
@@ -2591,6 +2652,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawDashTrails();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
@@ -2955,8 +3017,29 @@
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {
-                if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
-                if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+                if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
+                    if (isDown && !keys.left) {
+                        const now = Date.now();
+                        if (now - lastTapLeft < 250) triggerDash(-1);
+                        lastTapLeft = now;
+                    }
+                    keys.left = isDown;
+                    e.preventDefault();
+                }
+                if (['ArrowRight', 'd', 'D'].includes(e.key)) {
+                    if (isDown && !keys.right) {
+                        const now = Date.now();
+                        if (now - lastTapRight < 250) triggerDash(1);
+                        lastTapRight = now;
+                    }
+                    keys.right = isDown;
+                    e.preventDefault();
+                }
+                if (isDown && e.key === 'Shift') {
+                    if (keys.left) triggerDash(-1);
+                    else if (keys.right) triggerDash(1);
+                    e.preventDefault();
+                }
 
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
@@ -2987,6 +3070,16 @@
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+
+                    const now = Date.now();
+                    if (dir === 'left') {
+                        if (now - lastTapLeft < 250) triggerDash(-1);
+                        lastTapLeft = now;
+                    } else if (dir === 'right') {
+                        if (now - lastTapRight < 250) triggerDash(1);
+                        lastTapRight = now;
+                    }
+
                     touch[dir] = true;
                     e.preventDefault();
                 }, { passive: false });
