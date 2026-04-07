@@ -1,154 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chancla Bomb: Isa vs. Su Gringo Para Siempre</title>
-    <!-- Force high-quality emoji font for consistent looks across PC and iPhone -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-top: #0d1b2a;
-            --bg-bottom: #192f43;
-            --accent: #ff79c6;
-            --super: #ffb347;
-            --text: #f8f8f2;
-            --dialog: #1f4068;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: radial-gradient(circle at 20% 20%, #1c2f4a 0%, #0b1726 50%, #050910 100%);
-            color: var(--text);
-            font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-        }
-
-        .wrapper {
-            text-align: center;
-        }
-
-        canvas {
-            background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
-            border-radius: 16px;
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
-            width: min(95vw, 420px);
-            aspect-ratio: 4 / 7;
-            height: auto;
-            touch-action: none;
-            display: block;
-            margin: 0 auto;
-        }
-
-        .mobile-hint {
-            color: #d7e8ff;
-            font-size: 14px;
-            margin-top: 6px;
-            letter-spacing: 0.3px;
-        }
-
-        #mobile-controls {
-            position: relative;
-            width: min(95vw, 420px);
-            aspect-ratio: 4 / 7;
-            margin: 0 auto;
-            transform: translateY(-100%);
-            pointer-events: none;
-        }
-
-        .touch-zone {
-            position: absolute;
-            bottom: 0;
-            width: 50%;
-            height: 40%;
-            pointer-events: auto;
-        }
-
-        .touch-left {
-            left: 0;
-        }
-
-        .touch-right {
-            right: 0;
-        }
-
-        .touch-overlay {
-            position: absolute;
-            inset: 0;
-            border-radius: 16px;
-            pointer-events: none;
-        }
-
-        .touch-visual {
-            position: absolute;
-            bottom: 16px;
-            width: 42%;
-            height: 70px;
-            border-radius: 18px;
-            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05));
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fdf5ff;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            pointer-events: none;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .touch-visual span {
-            font-size: 18px;
-            display: block;
-        }
-
-        .touch-visual-left {
-            left: 10px;
-        }
-
-        .touch-visual-right {
-            right: 10px;
-        }
-
-        .touch-visual,
-        .mobile-hint {
-            transition: transform 0.35s ease, opacity 0.35s ease;
-        }
-
-        .hide-directions .touch-visual {
-            transform: translateY(140%);
-            opacity: 0;
-        }
-
-        .hide-directions .mobile-hint {
-            transform: translateY(12px);
-            opacity: 0;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="wrapper">
-        <canvas id="game" width="400" height="700"></canvas>
-        <div id="mobile-controls">
-            <div class="touch-zone touch-left"></div>
-            <div class="touch-zone touch-right"></div>
-            <div class="touch-overlay" id="overlay-left"></div>
-            <div class="touch-overlay" id="overlay-right"></div>
-            <div class="touch-visual touch-visual-left"><span>⬅️ Drag aquí</span></div>
-            <div class="touch-visual touch-visual-right"><span>➡️ Drag aquí</span></div>
-        </div>
-        <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
-    </div>
-    <script>
         (() => {
             const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
@@ -251,13 +101,6 @@
 
             const keys = { left: false, right: false };
             const touch = { left: false, right: false };
-
-            let dashTimer = 0;
-            let dashCooldown = 0;
-            let dashDir = 0;
-            let dashTrails = [];
-            let lastTapLeft = 0;
-            let lastTapRight = 0;
 
             // Audio context for sound effects (reuse to avoid browser limits)
             let audioContext = null;
@@ -442,11 +285,6 @@
                 flash.timer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
-                dashTimer = 0;
-                dashCooldown = 0;
-                dashTrails = [];
-                lastTapLeft = 0;
-                lastTapRight = 0;
                 wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -719,21 +557,7 @@
                 ctx.restore();
             }
 
-
-            function drawDashTrails() {
-                dashTrails.forEach(t => {
-                    ctx.save();
-                    ctx.globalAlpha = t.timer / 0.2; // Fade out quickly
-                    ctx.fillStyle = '#00e5ff'; // Cyan trail
-                    ctx.shadowColor = '#00e5ff';
-                    ctx.shadowBlur = 10;
-                    ctx.beginPath();
-                    ctx.arc(t.x, t.y - t.h/2, t.w/2, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.restore();
-                });
-            }
-function drawPlayer() {
+            function drawPlayer() {
                 const { x, y, w, h } = player;
                 ctx.save();
                 ctx.fillStyle = '#fff';
@@ -1741,7 +1565,6 @@ function drawPlayer() {
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
-                drawDashTrails();
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -2504,27 +2327,9 @@ function drawPlayer() {
                 const speed = player.speed;
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-
-                if (dashTimer > 0) {
-                    player.x += 800 * dashDir * dt;
-                    dashTimer -= dt;
-                    player.hitTimer = 0.2; // I-frames
-
-                    // Add trail particle
-                    dashTrails.push({ x: player.x, y: player.y, w: player.w, h: player.h, timer: 0.2 });
-                } else {
-                    if (moveLeft) player.x -= speed * dt;
-                    if (moveRight) player.x += speed * dt;
-                }
+                if (moveLeft) player.x -= speed * dt;
+                if (moveRight) player.x += speed * dt;
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
-
-                if (dashCooldown > 0) dashCooldown -= dt;
-
-                // Update trails
-                for (let i = dashTrails.length - 1; i >= 0; i--) {
-                    dashTrails[i].timer -= dt;
-                    if (dashTrails[i].timer <= 0) dashTrails.splice(i, 1);
-                }
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
                     spawnOwen();
@@ -2636,7 +2441,6 @@ function drawPlayer() {
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
-                drawDashTrails();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
@@ -2994,57 +2798,15 @@ function drawPlayer() {
                         }
                     } else {
                         // Movement controls for bottom area
-                        const now = Date.now();
-                        if (pos.x < canvas.width / 2) {
-                            touch.left = true;
-                            if (dashCooldown <= 0 && state === STATE.PLAYING) {
-                                if (now - lastTapLeft < 250) {
-                                    dashTimer = 0.15; dashCooldown = 0.8; dashDir = -1; playSound(600, 0.1);
-                                }
-                                lastTapLeft = now;
-                            }
-                        } else {
-                            touch.right = true;
-                            if (dashCooldown <= 0 && state === STATE.PLAYING) {
-                                if (now - lastTapRight < 250) {
-                                    dashTimer = 0.15; dashCooldown = 0.8; dashDir = 1; playSound(600, 0.1);
-                                }
-                                lastTapRight = now;
-                            }
-                        }
+                        if (pos.x < canvas.width / 2) touch.left = true; else touch.right = true;
                     }
                 }
             }, { passive: false });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {
-                const now = Date.now();
-                if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
-                    keys.left = isDown;
-                    if (isDown && state === STATE.PLAYING && dashCooldown <= 0) {
-                        if (now - lastTapLeft < 250) {
-                            dashTimer = 0.15;
-                            dashCooldown = 0.8;
-                            dashDir = -1;
-                            playSound(600, 0.1);
-                        }
-                        lastTapLeft = now;
-                    }
-                    e.preventDefault();
-                }
-                if (['ArrowRight', 'd', 'D'].includes(e.key)) {
-                    keys.right = isDown;
-                    if (isDown && state === STATE.PLAYING && dashCooldown <= 0) {
-                        if (now - lastTapRight < 250) {
-                            dashTimer = 0.15;
-                            dashCooldown = 0.8;
-                            dashDir = 1;
-                            playSound(600, 0.1);
-                        }
-                        lastTapRight = now;
-                    }
-                    e.preventDefault();
-                }
+                if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
+                if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
 
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
@@ -3076,26 +2838,6 @@ function drawPlayer() {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
                     touch[dir] = true;
-                    const now = Date.now();
-                    if (dashCooldown <= 0) {
-                        if (dir === 'left') {
-                            if (now - lastTapLeft < 250) {
-                                dashTimer = 0.15;
-                                dashCooldown = 0.8;
-                                dashDir = -1;
-                                playSound(600, 0.1);
-                            }
-                            lastTapLeft = now;
-                        } else if (dir === 'right') {
-                            if (now - lastTapRight < 250) {
-                                dashTimer = 0.15;
-                                dashCooldown = 0.8;
-                                dashDir = 1;
-                                playSound(600, 0.1);
-                            }
-                            lastTapRight = now;
-                        }
-                    }
                     e.preventDefault();
                 }, { passive: false });
                 zone.addEventListener('touchend', () => { touch[dir] = false; });
@@ -3128,7 +2870,3 @@ function drawPlayer() {
             }
             initTitle();
         })();
-    </script>
-</body>
-
-</html>
