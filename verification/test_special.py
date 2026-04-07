@@ -10,7 +10,7 @@ def run():
         page = context.new_page()
 
         cwd = os.getcwd()
-        page.goto(f"file://{cwd}/index.html")
+        page.goto(f"file://{cwd}/../index.html")
 
         # Inject globals
         content = page.content()

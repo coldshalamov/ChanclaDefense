@@ -9,7 +9,7 @@ def run():
         page = context.new_page()
 
         cwd = os.getcwd()
-        page.goto(f"file://{cwd}/index.html")
+        page.goto(f"file://{cwd}/../index.html")
 
         # Give it 1000 coins to buy stuff
         page.evaluate("localStorage.setItem('chancla_bomb_save', JSON.stringify({ coins: 1000, upgrades: {}, bestScore: 0 }))")

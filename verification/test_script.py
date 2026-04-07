@@ -11,7 +11,7 @@ def run():
 
         # Load the HTML file directly
         cwd = os.getcwd()
-        page.goto(f"file://{cwd}/index.html")
+        page.goto(f"file://{cwd}/../index.html")
 
         # Inject script to max out special attack bar and trigger it
         page.evaluate("""
