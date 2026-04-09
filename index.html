@@ -1815,7 +1815,7 @@
                 if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, rallyCount: 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1928,8 +1928,10 @@
                         if (isPerfect) slapEffect.type = 'perfect';
                         else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
 
+                        c.rallyCount = c.rallyCount || 0;
                         c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
-                        c.vy = isPerfect ? -550 : -300;
+                        let baseVy = isPerfect ? -550 : -300;
+                        c.vy = baseVy - (c.rallyCount * 150); // Shoot back up much faster if rallied
                         c.slapped = true;
                         c.isPerfect = isPerfect;
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
@@ -2156,26 +2158,49 @@
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
-                            // Hit Isa
-                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
-                            if (c.isPerfect) damage += 7;
+                            // Chance for Isa to parry
+                            c.rallyCount = c.rallyCount || 0;
+                            const parryChance = isa.enraged ? 0.65 : 0.35;
+                            // Reduce parry chance as rally count goes up to avoid infinite loops
+                            const effectiveParryChance = Math.max(0, parryChance - (c.rallyCount * 0.1));
 
-                            isa.anger = Math.max(0, isa.anger - damage);
-                            isa.hitTimer = 0.5;
+                            if (Math.random() < effectiveParryChance) {
+                                // PARRY!
+                                c.slapped = false; // Now it's falling towards the player again
+                                c.rallyCount++;
+                                c.vy = Math.abs(c.vy) * 1.3 + 100; // Speed it up downwards
+                                c.vx = (c.x - isa.x) * 5; // Send it somewhat towards where the player might be
+                                c.type = 'fire'; // Make it scary
+                                c.w = Math.min(60, c.w * 1.2); // Make it bigger
+                                c.h = Math.min(35, c.h * 1.2);
 
-                            if (c.isPerfect) {
-                                addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
-                                hitStop = 0.1;
-                            }
-                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+                                spawnImpact(isa.x, isa.y + 20, true);
+                                addFloatText('PARRY! ⚡', isa.x, isa.y + 30);
+                                triggerShake(5, 0.2);
+                                playSound(1100, 0.15); // sharp sound
+                            } else {
+                                // Hit Isa
+                                let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                                if (c.isPerfect) damage += 7;
+                                damage += (c.rallyCount * 10); // Massive bonus damage for rallying
 
-                            playSound(900, 0.1); // Higher pitch for success
-                            chanclas.splice(i, 1);
+                                isa.anger = Math.max(0, isa.anger - damage);
+                                isa.hitTimer = 0.5;
 
-                            // Check win
-                            if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                if (c.isPerfect || c.rallyCount > 0) {
+                                    addFloatText(c.rallyCount > 0 ? 'MEGA HIT! 💥' : 'CRITICAL! 💥', isa.x, isa.y + 30);
+                                    hitStop = 0.1;
+                                }
+                                addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+
+                                playSound(900, 0.1); // Higher pitch for success
+                                chanclas.splice(i, 1);
+
+                                // Check win
+                                if (isa.anger <= 0) {
+                                    state = STATE.WIN;
+                                    sayRandom('win');
+                                }
                             }
                             continue;
                         }
@@ -2196,7 +2221,8 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
+                        let dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
+                        if (c.rallyCount > 0) dmg += 1; // Extra damage if the player fails a rally
                         comboCount = 0;
                         const shakeAmt = c.type === 'super' ? 15 : (c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
