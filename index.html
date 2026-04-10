@@ -220,6 +220,7 @@
             let rosePetals = [];
             let fireParticles = [];
             let specialProjectiles = [];
+            let shockwaves = [];
             let score = 0;
             let bestScore = 0;
             let spawnInterval = 1.2;
@@ -559,12 +560,69 @@
                 impacts.push({ x, y, timer: 0.25, maxTime: 0.25, rotation: Math.random() * Math.PI, isBig });
             }
 
+            function updateShockwaves(dt) {
+                for (let i = shockwaves.length - 1; i >= 0; i--) {
+                    const sw = shockwaves[i];
+                    sw.life -= dt;
+                    sw.radius = sw.maxRadius * (1 - (sw.life / sw.maxLife));
+
+                    if (sw.life <= 0) {
+                        shockwaves.splice(i, 1);
+                        continue;
+                    }
+
+                    // Check collision with chanclas
+                    for (let j = 0; j < chanclas.length; j++) {
+                        const c = chanclas[j];
+                        if (!c.slapped) {
+                            const dist = Math.sqrt(Math.pow(c.x - sw.x, 2) + Math.pow(c.y - sw.y, 2));
+                            if (dist < sw.radius + c.w/2) {
+                                c.slapped = true;
+                                c.vy = -400;
+                                let pushX = c.x - sw.x;
+                                if (Math.abs(pushX) < 1) pushX = (Math.random() - 0.5) * 10;
+                                c.vx = pushX * 6;
+                                c.rotSpeed = (Math.random() - 0.5) * 20;
+
+                                comboCount++;
+                                score += 2 + comboCount;
+                                gameData.coins += 1;
+                                gameData.stats.totalCoinsEarned += 1;
+
+                                addFloatText('SHOCKWAVE! +1💰', c.x, c.y);
+                                spawnImpact(c.x, c.y);
+                                playSound(500, 0.1);
+                            }
+                        }
+                    }
+                }
+            }
+
             function updateImpacts(dt) {
                 for (let i = impacts.length - 1; i >= 0; i--) {
                     const imp = impacts[i];
                     imp.timer -= dt;
                     if (imp.timer <= 0) impacts.splice(i, 1);
                 }
+            }
+
+            function drawShockwaves() {
+                shockwaves.forEach(sw => {
+                    ctx.save();
+                    const p = sw.life / sw.maxLife;
+                    ctx.globalAlpha = p * 0.7; // Fade out
+
+                    ctx.beginPath();
+                    ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+                    ctx.lineWidth = 4 + (p * 4);
+                    ctx.strokeStyle = '#00e5ff'; // Cyan
+                    ctx.stroke();
+
+                    ctx.fillStyle = 'rgba(0, 229, 255, 0.1)';
+                    ctx.fill();
+
+                    ctx.restore();
+                });
             }
 
             function drawImpacts() {
@@ -1972,6 +2030,7 @@
                             triggerFlash(0.15, '#fff');
                             hitStop = 0.15;
                             spawnRoseExplosion(c.x, c.y);
+                            shockwaves.push({ x: c.x, y: c.y, radius: 0, maxRadius: 140, life: 0.25, maxLife: 0.25 });
                         } else {
                             gameData.coins += 1;
                             gameData.stats.totalCoinsEarned += 1;
@@ -2494,6 +2553,7 @@
                 updatePowerups(dt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
+                updateShockwaves(dt);
                 updateChainEffects(dt);
 
                 // Update rose petals
@@ -2591,6 +2651,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawShockwaves();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
