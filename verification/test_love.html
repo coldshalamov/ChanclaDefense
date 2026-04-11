@@ -162,7 +162,7 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
             let state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -180,7 +180,8 @@
                 if (gameData.upgrades.speed === undefined) gameData.upgrades.speed = 0;
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 0 };
+                if (gameData.stats.wins === undefined) gameData.stats.wins = 0;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -215,6 +216,7 @@
             let chanclas = [];
             let pets = [];
             let powerups = [];
+            let pinatas = [];
             let floatTexts = [];
             let rosePetals = [];
             let fireParticles = [];
@@ -395,8 +397,23 @@
                 flash.color = color;
             }
 
+
+            function triggerWin() {
+                state = STATE.WIN;
+
+                // Base 50 + (wins * 50) as bonus based on current boss level
+                let bonus = 50 + (gameData.stats.wins * 50);
+                gameData.coins += bonus;
+                gameData.stats.totalCoinsEarned += bonus;
+
+                gameData.stats.wins++;
+
+                saveGameData();
+                sayRandom('win');
+            }
             function resetGame() {
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 0 };
+                if (gameData.stats.wins === undefined) gameData.stats.wins = 0;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
@@ -406,6 +423,7 @@
                 player.lives = 3 + (gameData.upgrades.lives || 0);
                 player.shield = (gameData.upgrades.shield || 0) > 0;
                 player.hitTimer = 0;
+                isa.maxAnger = 100 + (gameData.stats.wins * 20);
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -413,6 +431,7 @@
                 chanclas = [];
                 pets = [];
                 powerups = [];
+                pinatas = [];
                 floatTexts = [];
                 rosePetals = [];
                 fireParticles = [];
@@ -420,8 +439,8 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
-                spawnInterval = 1.2;
-                baseSpeed = 140;
+                spawnInterval = Math.max(0.5, 1.2 - (gameData.stats.wins * 0.1));
+                baseSpeed = 140 + (gameData.stats.wins * 5);
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1721,6 +1740,9 @@
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
                 ctx.font = '24px sans-serif';
+                                ctx.fillStyle = '#ffb347';
+                ctx.fillText(`Boss Level: ${gameData.stats.wins + 1}`, canvas.width / 2, 280);
+                ctx.fillStyle = '#fff';
                 ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
@@ -1869,6 +1891,47 @@
                 const slapRange = 80;
                 const perfectRange = 50;
                 let slappedAny = false;
+
+                for (let i = pinatas.length - 1; i >= 0; i--) {
+                    const p = pinatas[i];
+                    const dist = Math.sqrt(Math.pow(p.x - player.x, 2) + Math.pow(p.y - player.y, 2));
+
+                    if (dist < slapRange) {
+                        slappedAny = true;
+                        p.hits++;
+                        p.vy = -400; // Bounce up
+                        p.vx += (p.x - player.x) * 5; // Impart momentum
+                        p.rotSpeed = (Math.random() - 0.5) * 15;
+                        slapEffect.type = 'hit';
+
+                        spawnImpact(p.x, p.y);
+                        playSound(400, 0.1);
+
+                        if (p.hits >= 3) {
+                            // Pop piñata
+                            playSound(600, 0.2);
+                            addFloatText('PIÑATA POP! +20💰', p.x, p.y - 20);
+                            score += 50;
+                            gameData.coins += 20;
+                            gameData.stats.totalCoinsEarned += 20;
+
+                            // Confetti
+                            for (let k = 0; k < 15; k++) {
+                                rosePetals.push({
+                                    x: p.x, y: p.y,
+                                    vx: (Math.random() - 0.5) * 300, vy: (Math.random() - 0.5) * 300,
+                                    rotation: Math.random() * 6, rotSpeed: (Math.random() - 0.5) * 10,
+                                    emoji: ['🍬', '🎉', '✨', '💰'][Math.floor(Math.random() * 4)],
+                                    size: 15 + Math.random() * 10
+                                });
+                            }
+                            pinatas.splice(i, 1);
+                        } else {
+                            addFloatText('BOING!', p.x, p.y);
+                        }
+                    }
+                }
+
 
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
@@ -2036,6 +2099,41 @@
                 }
             }
 
+
+            function updatePinatas(dt) {
+                // Rare spawn chance
+                if (Math.random() < 0.001) {
+                    pinatas.push({
+                        x: 50 + Math.random() * (canvas.width - 100),
+                        y: -50,
+                        vx: (Math.random() - 0.5) * 50,
+                        vy: 0,
+                        hits: 0,
+                        rotation: 0,
+                        rotSpeed: (Math.random() - 0.5) * 2,
+                        size: 40
+                    });
+                }
+
+                for (let i = pinatas.length - 1; i >= 0; i--) {
+                    const p = pinatas[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.vy += 300 * dt; // Gravity
+
+                    // Bounce off walls
+                    if (p.x < 20) { p.x = 20; p.vx *= -0.8; }
+                    if (p.x > canvas.width - 20) { p.x = canvas.width - 20; p.vx *= -0.8; }
+
+                    p.rotation += p.rotSpeed * dt;
+
+                    // Remove if it falls off screen
+                    if (p.y > canvas.height + 50) {
+                        pinatas.splice(i, 1);
+                    }
+                }
+            }
+
             function updateChanclas(dt) {
                 const slowFactor = slowEffect.timer > 0 ? slowEffect.factor : 1;
                 for (let i = chanclas.length - 1; i >= 0; i--) {
@@ -2096,8 +2194,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                triggerWin();
                             }
                             continue;
                         }
@@ -2317,8 +2414,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            state = STATE.WIN;
-                            sayRandom('win');
+                            triggerWin();
                         }
                         continue;
                     }
@@ -2410,6 +2506,7 @@
                     spawnRita();
                 }
 
+                updatePinatas(dt);
                 updateChanclas(dt);
                 updatePets(dt);
                 updatePowerups(dt);
@@ -2504,6 +2601,7 @@
                 drawBackground();
                 drawIsa();
                 drawFireParticles();
+                drawPinatas();
                 drawChanclasAll();
                 drawPowerups();
                 drawSpecialProjectiles();
@@ -2520,6 +2618,20 @@
                 drawFloatTexts();
                 drawDialogue();
                 drawPlayerDialogue();
+            }
+
+
+            function drawPinatas() {
+                for (const p of pinatas) {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.font = `${p.size}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🪅', 0, 0);
+                    ctx.restore();
+                }
             }
 
             function drawChanclasAll() {
