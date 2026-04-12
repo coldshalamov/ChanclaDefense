@@ -1930,6 +1930,9 @@
 
                         c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
                         c.vy = isPerfect ? -550 : -300;
+                        if (c.rallyCount && c.rallyCount > 0) {
+                            c.vy -= c.rallyCount * 150; // Extra speed for rally
+                        }
                         c.slapped = true;
                         c.isPerfect = isPerfect;
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
@@ -2156,14 +2159,39 @@
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
+
+                            c.rallyCount = c.rallyCount || 0;
+                            const parryChance = isa.enraged ? 0.35 : 0.15;
+
+                            if (c.rallyCount < 3 && Math.random() < parryChance) {
+                                // Isa parries it back! (Dead Man's Volley)
+                                c.slapped = false;
+                                c.type = 'fire';
+                                c.rallyCount++;
+                                c.vy = 400 + (c.rallyCount * 100);
+                                c.vx = (c.x - isa.x) * 5;
+                                addFloatText('PARRY! ⚡', isa.x, isa.y + 30);
+                                triggerShake(10, 0.2);
+                                playSound(300, 0.2);
+                                continue;
+                            }
+
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.isPerfect) damage += 7;
 
+                            // Apply massive bonus for a successful rally
+                            if (c.rallyCount > 0) {
+                                damage += c.rallyCount * 15;
+                                addFloatText('MEGA HIT! 💥', isa.x, isa.y - 30);
+                                triggerShake(15, 0.3);
+                                hitStop = 0.2;
+                            }
+
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
-                            if (c.isPerfect) {
+                            if (c.isPerfect && c.rallyCount === 0) {
                                 addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
                                 hitStop = 0.1;
                             }
