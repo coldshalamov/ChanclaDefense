@@ -1929,7 +1929,8 @@
                         else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
 
                         c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
-                        c.vy = isPerfect ? -550 : -300;
+                        const baseVy = isPerfect ? -550 : -300;
+                        c.vy = baseVy - ((c.rallyCount || 0) * 100);
                         c.slapped = true;
                         c.isPerfect = isPerfect;
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
@@ -2156,9 +2157,33 @@
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
+                            // Isa has a chance to parry the chancla back
+                            const parryChance = isa.enraged ? 0.4 : 0.3;
+                            if (Math.random() < parryChance) {
+                                c.slapped = false;
+                                c.rallyCount = (c.rallyCount || 0) + 1;
+                                c.type = 'fire';
+                                c.vy = 400 + (c.rallyCount * 100);
+
+                                // aim back at player
+                                const dx = player.x - c.x;
+                                const dy = player.y - c.y;
+                                const len = Math.sqrt(dx*dx + dy*dy);
+                                c.vx = (dx / len) * Math.abs(c.vy);
+
+                                addFloatText('PARRY! ⚡', isa.x, isa.y + 30);
+                                playSound(800, 0.2);
+                                continue;
+                            }
+
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.isPerfect) damage += 7;
+
+                            if (c.rallyCount > 0) {
+                                damage += 10 * c.rallyCount;
+                                addFloatText('MEGA HIT! 💥', isa.x, isa.y + 50);
+                            }
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
