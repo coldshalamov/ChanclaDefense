@@ -242,6 +242,12 @@
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
+            let dashTrails = [];
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
+            let dashTimer = 0;
+            let dashCooldown = 0;
+            let dashDir = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -435,6 +441,12 @@
                 flash.timer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
+                dashTrails = [];
+                lastTapLeft = 0;
+                lastTapRight = 0;
+                dashTimer = 0;
+                dashCooldown = 0;
+                dashDir = 0;
                 wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -705,6 +717,19 @@
                 ctx.fillText('✋', 0, 0);
 
                 ctx.restore();
+            }
+
+            function drawDashTrails() {
+                dashTrails.forEach(t => {
+                    ctx.save();
+                    const p = t.timer / t.maxTime;
+                    ctx.globalAlpha = p * 0.5;
+                    ctx.fillStyle = '#00e5ff';
+                    ctx.translate(t.x, t.y);
+                    roundRect(ctx, -t.w * 0.55, -t.h * 0.45, t.w * 1.1, t.h * 0.9, 10);
+                    ctx.fill();
+                    ctx.restore();
+                });
             }
 
             function drawPlayer() {
@@ -2475,10 +2500,32 @@
                 }
 
                 const speed = player.speed;
+                if (dashCooldown > 0) dashCooldown -= dt;
+
+                if (dashTimer > 0) {
+                    dashTimer -= dt;
+                    player.x += dashDir * 800 * dt;
+                    dashTrails.push({
+                        x: player.x,
+                        y: player.y,
+                        w: player.w,
+                        h: player.h,
+                        timer: 0.2,
+                        maxTime: 0.2
+                    });
+                }
+
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].timer -= dt;
+                    if (dashTrails[i].timer <= 0) dashTrails.splice(i, 1);
+                }
+
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+                if (dashTimer <= 0) {
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
@@ -2590,6 +2637,7 @@
                 drawPets();
                 drawRosePetals();
                 drawChainEffects();
+                drawDashTrails();
                 drawImpacts();
                 drawPlayer();
                 drawSlapEffect();
@@ -2955,8 +3003,33 @@
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {
-                if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
-                if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+                const now = performance.now();
+                if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
+                    if (isDown && !keys.left) {
+                        if (now - lastTapLeft < 250 && dashCooldown <= 0) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = -1;
+                            player.hitTimer = Math.max(player.hitTimer, 0.2);
+                        }
+                        lastTapLeft = now;
+                    }
+                    keys.left = isDown;
+                    e.preventDefault();
+                }
+                if (['ArrowRight', 'd', 'D'].includes(e.key)) {
+                    if (isDown && !keys.right) {
+                        if (now - lastTapRight < 250 && dashCooldown <= 0) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = 1;
+                            player.hitTimer = Math.max(player.hitTimer, 0.2);
+                        }
+                        lastTapRight = now;
+                    }
+                    keys.right = isDown;
+                    e.preventDefault();
+                }
 
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
@@ -2987,6 +3060,26 @@
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+
+                    const now = performance.now();
+                    if (dir === 'left') {
+                        if (now - lastTapLeft < 250 && dashCooldown <= 0) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = -1;
+                            player.hitTimer = Math.max(player.hitTimer, 0.2);
+                        }
+                        lastTapLeft = now;
+                    } else if (dir === 'right') {
+                        if (now - lastTapRight < 250 && dashCooldown <= 0) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = 1;
+                            player.hitTimer = Math.max(player.hitTimer, 0.2);
+                        }
+                        lastTapRight = now;
+                    }
+
                     touch[dir] = true;
                     e.preventDefault();
                 }, { passive: false });
