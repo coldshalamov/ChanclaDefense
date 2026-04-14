@@ -1201,6 +1201,7 @@
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
+                else if (type === 'bomb') emoji = '💣';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
@@ -1801,18 +1802,20 @@
             }
 
             function spawnChancla() {
-                const isSuper = superEnabled && Math.random() < 0.18;
-                const isFire = isa.enraged && Math.random() < 0.25;
-                const w = isSuper ? 46 : 32;
-                const h = isSuper ? 26 : 18;
+                const isBomb = Math.random() < 0.08;
+                const isSuper = !isBomb && superEnabled && Math.random() < 0.18;
+                const isFire = !isBomb && isa.enraged && Math.random() < 0.25;
+                const w = isBomb ? 38 : (isSuper ? 46 : 32);
+                const h = isBomb ? 38 : (isSuper ? 26 : 18);
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
+                const vy = (isBomb ? baseSpeed * 0.8 : baseSpeed) + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isFire) type = 'fire';
+                if (isBomb) type = 'bomb';
+                else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
@@ -2157,17 +2160,33 @@
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                            let damage = c.type === 'bomb' ? 20 : (c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8));
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
-                            if (c.isPerfect) {
+                            if (c.type === 'bomb') {
+                                triggerShake(20, 0.5);
+                                triggerFlash(0.3, '#ffcc00');
+                                addFloatText('BOOM! 💥', isa.x, isa.y + 30);
+                                for (let k = 0; k < 10; k++) {
+                                    fireParticles.push({
+                                        x: c.x + (Math.random() - 0.5) * 40,
+                                        y: c.y + (Math.random() - 0.5) * 40,
+                                        vx: (Math.random() - 0.5) * 150,
+                                        vy: (Math.random() - 0.5) * 150,
+                                        life: 0.5 + Math.random() * 0.5,
+                                        maxLife: 1.0,
+                                        size: 15 + Math.random() * 20
+                                    });
+                                }
+                            } else if (c.isPerfect) {
                                 addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
                                 hitStop = 0.1;
+                            } else {
+                                addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
                             }
-                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
 
                             playSound(900, 0.1); // Higher pitch for success
                             chanclas.splice(i, 1);
@@ -2196,9 +2215,9 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
                         comboCount = 0;
-                        const shakeAmt = c.type === 'super' ? 15 : (c.type === 'fire' ? 15 : 8);
+                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' ? 15 : (c.type === 'fire' ? 15 : 8));
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
@@ -2211,13 +2230,32 @@
                             return;
                         }
                     } else if (c.y > canvas.height + c.h) {
-                        score += 1;
-                        const prevBest = bestScore;
-                        bestScore = Math.max(bestScore, score);
-                        if (score > prevBest && score % 10 === 0) sayRandom('highScore');
-                        if (Math.random() < 0.2) sayRandom('nearMiss');
-                        if (Math.random() < 0.25) sayPlayer('nearMiss');
-                        chanclas.splice(i, 1);
+                        if (c.type === 'bomb') {
+                            triggerShake(10, 0.4);
+                            playSound(900, 0.1);
+                            for (let k = 0; k < 3; k++) {
+                                chanclas.push({
+                                    x: c.x,
+                                    y: canvas.height,
+                                    vx: (Math.random() - 0.5) * 100,
+                                    vy: -200 - Math.random() * 100,
+                                    w: 32,
+                                    h: 18,
+                                    type: 'fire',
+                                    rotation: 0,
+                                    rotSpeed: (Math.random() - 0.5) * 10
+                                });
+                            }
+                            chanclas.splice(i, 1);
+                        } else {
+                            score += 1;
+                            const prevBest = bestScore;
+                            bestScore = Math.max(bestScore, score);
+                            if (score > prevBest && score % 10 === 0) sayRandom('highScore');
+                            if (Math.random() < 0.2) sayRandom('nearMiss');
+                            if (Math.random() < 0.25) sayPlayer('nearMiss');
+                            chanclas.splice(i, 1);
+                        }
                     }
                 }
             }
