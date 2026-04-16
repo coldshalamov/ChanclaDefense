@@ -6,7 +6,7 @@ def test_taco():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
-        url = "file://" + os.path.abspath("index.html")
+        url = "file://" + os.path.abspath("../index.html")
         page.goto(url)
 
         # Wait for the game canvas to load
