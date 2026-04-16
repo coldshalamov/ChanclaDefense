@@ -243,6 +243,13 @@
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
 
+            let dashTrails = [];
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
+            let dashTimer = 0;
+            let dashCooldown = 0;
+            let dashDir = 0;
+
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
             let dialogueText = '';
@@ -705,6 +712,24 @@
                 ctx.fillText('✋', 0, 0);
 
                 ctx.restore();
+            }
+
+            function drawDashTrails() {
+                dashTrails.forEach(t => {
+                    ctx.save();
+                    const alpha = Math.max(0, t.timer / t.maxTimer) * 0.5;
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = '#00e5ff';
+
+                    // Simple silhouette
+                    ctx.beginPath();
+                    const headW = t.w * 1.1;
+                    const headH = t.w * 0.9;
+                    ctx.rect(t.x - headW / 2, t.y - headH / 2 - 10, headW, headH);
+                    ctx.fill();
+
+                    ctx.restore();
+                });
             }
 
             function drawPlayer() {
@@ -1715,6 +1740,7 @@
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
+                drawDashTrails();
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -1859,6 +1885,30 @@
                     addFloatText('Cerveza chill 🍺', p.x, p.y);
                 }
 
+            }
+
+            function tryDash(dir) {
+                if (dashCooldown > 0) return;
+                const now = timeElapsed; // use timeElapsed for game time
+
+                // fallback to Date.now() if timeElapsed isn't appropriate but it's what we have
+                const timestamp = Date.now();
+                let lastTap = dir === 'left' ? lastTapLeft : lastTapRight;
+
+                if (timestamp - lastTap < 250) {
+                    dashTimer = 0.15;
+                    dashCooldown = 0.8;
+                    dashDir = dir === 'left' ? -1 : 1;
+                    player.hitTimer = Math.max(player.hitTimer, 0.2); // invulnerability frames
+                    playWhoosh();
+
+                    // Reset tap timer so triple tap doesn't double dash
+                    if (dir === 'left') lastTapLeft = 0;
+                    else lastTapRight = 0;
+                } else {
+                    if (dir === 'left') lastTapLeft = timestamp;
+                    else lastTapRight = timestamp;
+                }
             }
 
             function trySlap() {
@@ -2477,8 +2527,14 @@
                 const speed = player.speed;
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+
+                if (dashTimer > 0) {
+                    player.x += 800 * dashDir * dt;
+                    dashTrails.push({ x: player.x, y: player.y, w: player.w, h: player.h, timer: 0.15, maxTimer: 0.15, shield: player.shield, special: specialAttackBar >= maxSpecialAttack });
+                } else {
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
@@ -2556,6 +2612,12 @@
                 }
 
                 if (slowEffect.timer > 0) slowEffect.timer -= dt;
+                if (dashTimer > 0) dashTimer -= dt;
+                if (dashCooldown > 0) dashCooldown -= dt;
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].timer -= dt;
+                    if (dashTrails[i].timer <= 0) dashTrails.splice(i, 1);
+                }
                 if (slapCooldown > 0) slapCooldown -= dt;
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
@@ -2591,6 +2653,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawDashTrails();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
@@ -2948,15 +3011,27 @@
                         }
                     } else {
                         // Movement controls for bottom area
-                        if (pos.x < canvas.width / 2) touch.left = true; else touch.right = true;
+                        if (pos.x < canvas.width / 2) {
+                            tryDash('left');
+                            touch.left = true;
+                        } else {
+                            tryDash('right');
+                            touch.right = true;
+                        }
                     }
                 }
             }, { passive: false });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {
-                if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
-                if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+                if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
+                    if (isDown && !keys.left) tryDash('left');
+                    keys.left = isDown; e.preventDefault();
+                }
+                if (['ArrowRight', 'd', 'D'].includes(e.key)) {
+                    if (isDown && !keys.right) tryDash('right');
+                    keys.right = isDown; e.preventDefault();
+                }
 
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
@@ -2987,6 +3062,7 @@
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+                    tryDash(dir);
                     touch[dir] = true;
                     e.preventDefault();
                 }, { passive: false });
