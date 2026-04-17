@@ -1,4 +1,3 @@
-
 from playwright.sync_api import sync_playwright
 import time
 import os
@@ -10,6 +9,9 @@ def run():
         page = context.new_page()
 
         cwd = os.getcwd()
+        if not cwd.endswith('/app'):
+            cwd = os.path.dirname(cwd)
+
         page.goto(f'file://{cwd}/index.html')
         page.click('#game')
         time.sleep(1)
