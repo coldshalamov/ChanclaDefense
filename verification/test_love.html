@@ -215,6 +215,7 @@
             let chanclas = [];
             let pets = [];
             let powerups = [];
+            let pinatas = [];
             let floatTexts = [];
             let rosePetals = [];
             let fireParticles = [];
@@ -241,6 +242,12 @@
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
+            let dashTimer = 0;
+            let dashCooldown = 0;
+            let dashDir = 0;
+            let dashTrails = [];
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -413,6 +420,7 @@
                 chanclas = [];
                 pets = [];
                 powerups = [];
+                pinatas = [];
                 floatTexts = [];
                 rosePetals = [];
                 fireParticles = [];
@@ -432,6 +440,9 @@
                 hitStop = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
+                dashTimer = 0;
+                dashCooldown = 0;
+                dashTrails = [];
                 chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
@@ -1870,6 +1881,47 @@
                 const perfectRange = 50;
                 let slappedAny = false;
 
+                for (let i = pinatas.length - 1; i >= 0; i--) {
+                    const p = pinatas[i];
+                    const dist = Math.sqrt(Math.pow(p.x - player.x, 2) + Math.pow(p.y - player.y, 2));
+
+                    if (dist < slapRange) {
+                        slappedAny = true;
+                        p.hits++;
+                        p.vy = -400; // Bounce up
+                        p.vx += (p.x - player.x) * 5; // Impart momentum
+                        p.rotSpeed = (Math.random() - 0.5) * 15;
+                        slapEffect.type = 'hit';
+
+                        spawnImpact(p.x, p.y);
+                        playSound(400, 0.1);
+
+                        if (p.hits >= 3) {
+                            // Pop piñata
+                            playSound(600, 0.2);
+                            addFloatText('PIÑATA POP! +20💰', p.x, p.y - 20);
+                            score += 50;
+                            gameData.coins += 20;
+                            gameData.stats.totalCoinsEarned += 20;
+
+                            // Confetti
+                            for (let k = 0; k < 15; k++) {
+                                rosePetals.push({
+                                    x: p.x, y: p.y,
+                                    vx: (Math.random() - 0.5) * 300, vy: (Math.random() - 0.5) * 300,
+                                    rotation: Math.random() * 6, rotSpeed: (Math.random() - 0.5) * 10,
+                                    emoji: ['🍬', '🎉', '✨', '💰'][Math.floor(Math.random() * 4)],
+                                    size: 15 + Math.random() * 10
+                                });
+                            }
+                            pinatas.splice(i, 1);
+                        } else {
+                            addFloatText('BOING!', p.x, p.y);
+                        }
+                    }
+                }
+
+
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
                     const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
@@ -2033,6 +2085,41 @@
                     oscillator.stop(audioCtx.currentTime + duration);
                 } catch (e) {
                     // Silent fail if audio not supported
+                }
+            }
+
+
+            function updatePinatas(dt) {
+                // Rare spawn chance
+                if (Math.random() < 0.001) {
+                    pinatas.push({
+                        x: 50 + Math.random() * (canvas.width - 100),
+                        y: -50,
+                        vx: (Math.random() - 0.5) * 50,
+                        vy: 0,
+                        hits: 0,
+                        rotation: 0,
+                        rotSpeed: (Math.random() - 0.5) * 2,
+                        size: 40
+                    });
+                }
+
+                for (let i = pinatas.length - 1; i >= 0; i--) {
+                    const p = pinatas[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.vy += 300 * dt; // Gravity
+
+                    // Bounce off walls
+                    if (p.x < 20) { p.x = 20; p.vx *= -0.8; }
+                    if (p.x > canvas.width - 20) { p.x = canvas.width - 20; p.vx *= -0.8; }
+
+                    p.rotation += p.rotSpeed * dt;
+
+                    // Remove if it falls off screen
+                    if (p.y > canvas.height + 50) {
+                        pinatas.splice(i, 1);
+                    }
                 }
             }
 
@@ -2399,8 +2486,13 @@
                 const speed = player.speed;
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+                if (dashTimer > 0) {
+                    player.x += dashDir * 800 * dt;
+                    dashTrails.push({ x: player.x, y: player.y, w: player.w, h: player.h, timer: 0.15, maxTime: 0.15 });
+                } else {
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
@@ -2410,6 +2502,7 @@
                     spawnRita();
                 }
 
+                updatePinatas(dt);
                 updateChanclas(dt);
                 updatePets(dt);
                 updatePowerups(dt);
@@ -2482,6 +2575,16 @@
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
                 if (player.hitTimer > 0) player.hitTimer -= dt;
 
+                if (dashTimer > 0) dashTimer -= dt;
+                if (dashCooldown > 0) dashCooldown -= dt;
+
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].timer -= dt;
+                    if (dashTrails[i].timer <= 0) {
+                        dashTrails.splice(i, 1);
+                    }
+                }
+
                 if (dialogueTimer > 0) dialogueTimer -= dt;
                 if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
                 if (Math.random() < 0.002) sayPlayer('idle');
@@ -2500,10 +2603,22 @@
                 ctx.restore();
             }
 
+            function drawDashTrails() {
+                dashTrails.forEach(t => {
+                    ctx.save();
+                    ctx.globalAlpha = (t.timer / t.maxTime) * 0.5;
+                    ctx.fillStyle = '#00e5ff';
+                    roundRect(ctx, t.x - t.w / 2 * 1.1, t.y - t.h / 2 * 0.9, t.w * 1.1, t.h * 0.9, t.w * 0.2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+
             function draw() {
                 drawBackground();
                 drawIsa();
                 drawFireParticles();
+                drawPinatas();
                 drawChanclasAll();
                 drawPowerups();
                 drawSpecialProjectiles();
@@ -2511,6 +2626,7 @@
                 drawRosePetals();
                 drawChainEffects();
                 drawImpacts();
+                drawDashTrails();
                 drawPlayer();
                 drawSlapEffect();
                 drawPetsOverlay();
@@ -2520,6 +2636,20 @@
                 drawFloatTexts();
                 drawDialogue();
                 drawPlayerDialogue();
+            }
+
+
+            function drawPinatas() {
+                for (const p of pinatas) {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.font = `${p.size}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🪅', 0, 0);
+                    ctx.restore();
+                }
             }
 
             function drawChanclasAll() {
@@ -2854,15 +2984,43 @@
                         }
                     } else {
                         // Movement controls for bottom area
-                        if (pos.x < canvas.width / 2) touch.left = true; else touch.right = true;
+                        if (pos.x < canvas.width / 2) {
+                            touch.left = true;
+                            if (Date.now() - lastTapLeft < 250 && dashCooldown <= 0) {
+                                dashTimer = 0.15; dashCooldown = 0.8; dashDir = -1; player.hitTimer = 0.2;
+                            }
+                            lastTapLeft = Date.now();
+                        } else {
+                            touch.right = true;
+                            if (Date.now() - lastTapRight < 250 && dashCooldown <= 0) {
+                                dashTimer = 0.15; dashCooldown = 0.8; dashDir = 1; player.hitTimer = 0.2;
+                            }
+                            lastTapRight = Date.now();
+                        }
                     }
                 }
             }, { passive: false });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {
-                if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
-                if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+                if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
+                    if (isDown && !keys.left) {
+                        if (Date.now() - lastTapLeft < 250 && dashCooldown <= 0 && state === STATE.PLAYING) {
+                            dashTimer = 0.15; dashCooldown = 0.8; dashDir = -1; player.hitTimer = 0.2;
+                        }
+                        lastTapLeft = Date.now();
+                    }
+                    keys.left = isDown; e.preventDefault();
+                }
+                if (['ArrowRight', 'd', 'D'].includes(e.key)) {
+                    if (isDown && !keys.right) {
+                        if (Date.now() - lastTapRight < 250 && dashCooldown <= 0 && state === STATE.PLAYING) {
+                            dashTimer = 0.15; dashCooldown = 0.8; dashDir = 1; player.hitTimer = 0.2;
+                        }
+                        lastTapRight = Date.now();
+                    }
+                    keys.right = isDown; e.preventDefault();
+                }
 
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
@@ -2894,6 +3052,11 @@
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
                     touch[dir] = true;
+                    let lastTap = dir === 'left' ? lastTapLeft : lastTapRight;
+                    if (Date.now() - lastTap < 250 && dashCooldown <= 0) {
+                        dashTimer = 0.15; dashCooldown = 0.8; dashDir = dir === 'left' ? -1 : 1; player.hitTimer = 0.2;
+                    }
+                    if (dir === 'left') lastTapLeft = Date.now(); else lastTapRight = Date.now();
                     e.preventDefault();
                 }, { passive: false });
                 zone.addEventListener('touchend', () => { touch[dir] = false; });
