@@ -8,7 +8,7 @@ def verify_chill_mode():
         page = browser.new_page()
 
         # Load the game from the file directly using absolute path
-        cwd = os.getcwd()
+        cwd = os.path.dirname(os.getcwd())
         page.goto('file://' + cwd + '/index.html')
 
         # Start game by clicking (simulate touch/click)
@@ -64,7 +64,7 @@ def verify_chill_mode():
         # Let's write a python script that reads index.html, injects a setter, writes to a temp file,
         # and tests that temp file.
 
-        with open('index.html', 'r') as f:
+        with open('../index.html', 'r') as f:
             content = f.read()
 
         # Inject a way to set slowEffect

@@ -215,6 +215,7 @@
             let chanclas = [];
             let pets = [];
             let powerups = [];
+            let pinatas = [];
             let floatTexts = [];
             let rosePetals = [];
             let fireParticles = [];
@@ -225,7 +226,7 @@
             let minSpawnInterval = 0.45;
             let spawnTimer = 0;
             let baseSpeed = 140;
-            const slowEffect = { timer: 0, factor: 0.62 };
+            const slowEffect = { timer: 0, factor: 0.62 }; window.setChill = () => { slowEffect.timer = 5; };
             let timeElapsed = 0;
             let superEnabled = false;
             let specialAttackBar = 0;
@@ -413,6 +414,7 @@
                 chanclas = [];
                 pets = [];
                 powerups = [];
+                pinatas = [];
                 floatTexts = [];
                 rosePetals = [];
                 fireParticles = [];
@@ -1199,6 +1201,7 @@
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
+                else if (type === 'bomb') emoji = '💣';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
@@ -1799,18 +1802,25 @@
             }
 
             function spawnChancla() {
-                const isSuper = superEnabled && Math.random() < 0.18;
-                const isFire = isa.enraged && Math.random() < 0.25;
-                const w = isSuper ? 46 : 32;
-                const h = isSuper ? 26 : 18;
+                const isBomb = Math.random() < 0.08;
+                const isSuper = !isBomb && superEnabled && Math.random() < 0.18;
+                const isFire = !isBomb && !isSuper && isa.enraged && Math.random() < 0.25;
+
+                let w = 32;
+                let h = 18;
+                if (isSuper) { w = 46; h = 26; }
+                else if (isBomb) { w = 38; h = 38; }
+
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
+                let vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
+                if (isBomb) vy -= 40; // bomb is slower
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isFire) type = 'fire';
+                if (isBomb) type = 'bomb';
+                else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
@@ -1869,6 +1879,47 @@
                 const slapRange = 80;
                 const perfectRange = 50;
                 let slappedAny = false;
+
+                for (let i = pinatas.length - 1; i >= 0; i--) {
+                    const p = pinatas[i];
+                    const dist = Math.sqrt(Math.pow(p.x - player.x, 2) + Math.pow(p.y - player.y, 2));
+
+                    if (dist < slapRange) {
+                        slappedAny = true;
+                        p.hits++;
+                        p.vy = -400; // Bounce up
+                        p.vx += (p.x - player.x) * 5; // Impart momentum
+                        p.rotSpeed = (Math.random() - 0.5) * 15;
+                        slapEffect.type = 'hit';
+
+                        spawnImpact(p.x, p.y);
+                        playSound(400, 0.1);
+
+                        if (p.hits >= 3) {
+                            // Pop piñata
+                            playSound(600, 0.2);
+                            addFloatText('PIÑATA POP! +20💰', p.x, p.y - 20);
+                            score += 50;
+                            gameData.coins += 20;
+                            gameData.stats.totalCoinsEarned += 20;
+
+                            // Confetti
+                            for (let k = 0; k < 15; k++) {
+                                rosePetals.push({
+                                    x: p.x, y: p.y,
+                                    vx: (Math.random() - 0.5) * 300, vy: (Math.random() - 0.5) * 300,
+                                    rotation: Math.random() * 6, rotSpeed: (Math.random() - 0.5) * 10,
+                                    emoji: ['🍬', '🎉', '✨', '💰'][Math.floor(Math.random() * 4)],
+                                    size: 15 + Math.random() * 10
+                                });
+                            }
+                            pinatas.splice(i, 1);
+                        } else {
+                            addFloatText('BOING!', p.x, p.y);
+                        }
+                    }
+                }
+
 
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
@@ -2036,6 +2087,41 @@
                 }
             }
 
+
+            function updatePinatas(dt) {
+                // Rare spawn chance
+                if (Math.random() < 0.001) {
+                    pinatas.push({
+                        x: 50 + Math.random() * (canvas.width - 100),
+                        y: -50,
+                        vx: (Math.random() - 0.5) * 50,
+                        vy: 0,
+                        hits: 0,
+                        rotation: 0,
+                        rotSpeed: (Math.random() - 0.5) * 2,
+                        size: 40
+                    });
+                }
+
+                for (let i = pinatas.length - 1; i >= 0; i--) {
+                    const p = pinatas[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.vy += 300 * dt; // Gravity
+
+                    // Bounce off walls
+                    if (p.x < 20) { p.x = 20; p.vx *= -0.8; }
+                    if (p.x > canvas.width - 20) { p.x = canvas.width - 20; p.vx *= -0.8; }
+
+                    p.rotation += p.rotSpeed * dt;
+
+                    // Remove if it falls off screen
+                    if (p.y > canvas.height + 50) {
+                        pinatas.splice(i, 1);
+                    }
+                }
+            }
+
             function updateChanclas(dt) {
                 const slowFactor = slowEffect.timer > 0 ? slowEffect.factor : 1;
                 for (let i = chanclas.length - 1; i >= 0; i--) {
@@ -2079,11 +2165,27 @@
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : (c.type === 'bomb' ? 20 : 8));
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
+
+                            if (c.type === 'bomb') {
+                                triggerShake(25, 0.6);
+                                flash = { timer: 0.2, maxTime: 0.2, color: '#ffcc00' };
+                                for (let k = 0; k < 10; k++) {
+                                    fireParticles.push({
+                                        x: isa.x + (Math.random() - 0.5) * 60,
+                                        y: isa.y + (Math.random() - 0.5) * 60,
+                                        vx: (Math.random() - 0.5) * 200,
+                                        vy: -50 - Math.random() * 200,
+                                        life: 0.5 + Math.random() * 0.5,
+                                        maxLife: 1.0,
+                                        size: 15 + Math.random() * 20
+                                    });
+                                }
+                            }
 
                             if (c.isPerfect) {
                                 addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
@@ -2118,9 +2220,9 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
                         comboCount = 0;
-                        const shakeAmt = c.type === 'super' ? 15 : (c.type === 'fire' ? 15 : 8);
+                        const shakeAmt = c.type === 'super' ? 15 : ((c.type === 'fire' || c.type === 'bomb') ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
@@ -2133,6 +2235,20 @@
                             return;
                         }
                     } else if (c.y > canvas.height + c.h) {
+                        if (c.type === 'bomb' && !c.slapped) {
+                            // Detonate off-screen
+                            triggerShake(10, 0.3);
+                            for (let k = 0; k < 3; k++) {
+                                chanclas.push({
+                                    x: c.x + (Math.random() - 0.5) * 40,
+                                    y: canvas.height,
+                                    vx: (Math.random() - 0.5) * 150,
+                                    vy: -200 - Math.random() * 150,
+                                    w: 32, h: 18, type: 'fire',
+                                    rotation: 0, rotSpeed: (Math.random() - 0.5) * 10
+                                });
+                            }
+                        }
                         score += 1;
                         const prevBest = bestScore;
                         bestScore = Math.max(bestScore, score);
@@ -2410,6 +2526,7 @@
                     spawnRita();
                 }
 
+                updatePinatas(dt);
                 updateChanclas(dt);
                 updatePets(dt);
                 updatePowerups(dt);
@@ -2504,6 +2621,7 @@
                 drawBackground();
                 drawIsa();
                 drawFireParticles();
+                drawPinatas();
                 drawChanclasAll();
                 drawPowerups();
                 drawSpecialProjectiles();
@@ -2520,6 +2638,20 @@
                 drawFloatTexts();
                 drawDialogue();
                 drawPlayerDialogue();
+            }
+
+
+            function drawPinatas() {
+                for (const p of pinatas) {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.font = `${p.size}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🪅', 0, 0);
+                    ctx.restore();
+                }
             }
 
             function drawChanclasAll() {
@@ -2924,16 +3056,7 @@
                 sayRandom('start');
                 setDirectionsVisible(true);
             }
-
-            window.debug_spawnHeart = () => {
-                state = STATE.PLAYING;
-                // Reset to ensure clean state
-                resetGame();
-                // Spawn heart directly on player
-                spawnPowerup('heart', player.x, player.y);
-            };
             initTitle();
-
         })();
     </script>
 </body>
