@@ -1,0 +1,3026 @@
+     1	<!DOCTYPE html>
+     2	<html lang="en">
+     3
+     4	<head>
+     5	    <meta charset="UTF-8">
+     6	    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     7	    <title>Chancla Bomb: Isa vs. Su Gringo Para Siempre</title>
+     8	    <!-- Force high-quality emoji font for consistent looks across PC and iPhone -->
+     9	    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+    10	    <style>
+    11	        :root {
+    12	            --bg-top: #0d1b2a;
+    13	            --bg-bottom: #192f43;
+    14	            --accent: #ff79c6;
+    15	            --super: #ffb347;
+    16	            --text: #f8f8f2;
+    17	            --dialog: #1f4068;
+    18	        }
+    19
+    20	        * {
+    21	            box-sizing: border-box;
+    22	        }
+    23
+    24	        body {
+    25	            margin: 0;
+    26	            min-height: 100vh;
+    27	            display: flex;
+    28	            align-items: center;
+    29	            justify-content: center;
+    30	            background: radial-gradient(circle at 20% 20%, #1c2f4a 0%, #0b1726 50%, #050910 100%);
+    31	            color: var(--text);
+    32	            font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    33	        }
+    34
+    35	        .wrapper {
+    36	            text-align: center;
+    37	        }
+    38
+    39	        canvas {
+    40	            background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    41	            border-radius: 16px;
+    42	            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+    43	            width: min(95vw, 420px);
+    44	            aspect-ratio: 4 / 7;
+    45	            height: auto;
+    46	            touch-action: none;
+    47	            display: block;
+    48	            margin: 0 auto;
+    49	        }
+    50
+    51	        .mobile-hint {
+    52	            color: #d7e8ff;
+    53	            font-size: 14px;
+    54	            margin-top: 6px;
+    55	            letter-spacing: 0.3px;
+    56	        }
+    57
+    58	        #mobile-controls {
+    59	            position: relative;
+    60	            width: min(95vw, 420px);
+    61	            aspect-ratio: 4 / 7;
+    62	            margin: 0 auto;
+    63	            transform: translateY(-100%);
+    64	            pointer-events: none;
+    65	        }
+    66
+    67	        .touch-zone {
+    68	            position: absolute;
+    69	            bottom: 0;
+    70	            width: 50%;
+    71	            height: 40%;
+    72	            pointer-events: auto;
+    73	        }
+    74
+    75	        .touch-left {
+    76	            left: 0;
+    77	        }
+    78
+    79	        .touch-right {
+    80	            right: 0;
+    81	        }
+    82
+    83	        .touch-overlay {
+    84	            position: absolute;
+    85	            inset: 0;
+    86	            border-radius: 16px;
+    87	            pointer-events: none;
+    88	        }
+    89
+    90	        .touch-visual {
+    91	            position: absolute;
+    92	            bottom: 16px;
+    93	            width: 42%;
+    94	            height: 70px;
+    95	            border-radius: 18px;
+    96	            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05));
+    97	            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    98	            display: flex;
+    99	            align-items: center;
+   100	            justify-content: center;
+   101	            color: #fdf5ff;
+   102	            font-weight: 700;
+   103	            letter-spacing: 0.5px;
+   104	            pointer-events: none;
+   105	            border: 1px solid rgba(255, 255, 255, 0.08);
+   106	        }
+   107
+   108	        .touch-visual span {
+   109	            font-size: 18px;
+   110	            display: block;
+   111	        }
+   112
+   113	        .touch-visual-left {
+   114	            left: 10px;
+   115	        }
+   116
+   117	        .touch-visual-right {
+   118	            right: 10px;
+   119	        }
+   120
+   121	        .touch-visual,
+   122	        .mobile-hint {
+   123	            transition: transform 0.35s ease, opacity 0.35s ease;
+   124	        }
+   125
+   126	        .hide-directions .touch-visual {
+   127	            transform: translateY(140%);
+   128	            opacity: 0;
+   129	        }
+   130
+   131	        .hide-directions .mobile-hint {
+   132	            transform: translateY(12px);
+   133	            opacity: 0;
+   134	        }
+   135	    </style>
+   136	</head>
+   137
+   138	<body>
+   139	    <div class="wrapper">
+   140	        <canvas id="game" width="400" height="700"></canvas>
+   141	        <div id="mobile-controls">
+   142	            <div class="touch-zone touch-left"></div>
+   143	            <div class="touch-zone touch-right"></div>
+   144	            <div class="touch-overlay" id="overlay-left"></div>
+   145	            <div class="touch-overlay" id="overlay-right"></div>
+   146	            <div class="touch-visual touch-visual-left"><span>⬅️ Drag aquí</span></div>
+   147	            <div class="touch-visual touch-visual-right"><span>➡️ Drag aquí</span></div>
+   148	        </div>
+   149	        <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
+   150	    </div>
+   151	    <script>
+   152	        (() => {
+   153	            const canvas = document.getElementById('game');
+   154	            const ctx = canvas.getContext('2d');
+   155	            const overlayLeft = document.getElementById('overlay-left');
+   156	            const overlayRight = document.getElementById('overlay-right');
+   157	            const touchLeft = document.querySelector('.touch-left');
+   158	            const touchRight = document.querySelector('.touch-right');
+   159	            const body = document.body;
+   160	            const wrapper = document.querySelector('.wrapper');
+   161
+   162	            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
+   163	            let state = STATE.TITLE;
+   164
+   165	            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
+   166	            try {
+   167	                const saved = localStorage.getItem('chancla_bomb_save');
+   168	                if (saved) {
+   169	                    gameData = JSON.parse(saved);
+   170	                    // Backward compatibility for old boolean saves and missing speed
+   171	                    if (gameData.upgrades) {
+   172	                        for (let key in gameData.upgrades) {
+   173	                            if (typeof gameData.upgrades[key] === 'boolean') {
+   174	                                gameData.upgrades[key] = gameData.upgrades[key] ? 1 : 0;
+   175	                            }
+   176	                        }
+   177	                    }
+   178	                }
+   179	                if (!gameData.upgrades) gameData.upgrades = { lives: 0, shield: 0, cooldown: 0, speed: 0 };
+   180	                if (gameData.upgrades.speed === undefined) gameData.upgrades.speed = 0;
+   181	                if (gameData.coins === undefined) gameData.coins = 0;
+   182	                if (gameData.bestScore === undefined) gameData.bestScore = 0;
+   183	                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+   184	                if (!gameData.achievements) gameData.achievements = {};
+   185	                if (!gameData.cosmetics) gameData.cosmetics = ['none'];
+   186	                if (!gameData.currentHat) gameData.currentHat = 'none';
+   187	            } catch (e) { console.error(e); }
+   188
+   189	            function saveGameData() {
+   190	                localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
+   191	            }
+   192
+   193	            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+   194	            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
+   195
+   196	            const COSMETICS_LIST = [
+   197	                { id: 'none', name: 'No Hat', icon: '', cost: 0 },
+   198	                { id: 'cap', name: 'Baseball Cap', icon: '🧢', cost: 100 },
+   199	                { id: 'cowboy', name: 'Cowboy Hat', icon: '🤠', cost: 250 },
+   200	                { id: 'crown', name: 'Crown', icon: '👑', cost: 500 },
+   201	                { id: 'party', name: 'Party Hat', icon: '🥳', cost: 150 },
+   202	                { id: 'tophat', name: 'Top Hat', icon: '🎩', cost: 300 }
+   203	            ];
+   204
+   205	            const ACHIEVEMENTS_LIST = [
+   206	                { id: 'first_slap', name: 'First Slap', desc: 'Slap your first chancla', reward: 10, check: () => gameData.stats.totalSlaps >= 1 },
+   207	                { id: 'slap_master', name: 'Slap Master', desc: 'Slap 500 chanclas', reward: 100, check: () => gameData.stats.totalSlaps >= 500 },
+   208	                { id: 'perfect_timing', name: 'Perfect Timing', desc: 'Get 50 perfect slaps', reward: 50, check: () => gameData.stats.perfectSlaps >= 50 },
+   209	                { id: 'high_roller', name: 'High Roller', desc: 'Score 1000 in one game', reward: 150, check: () => gameData.bestScore >= 1000 },
+   210	                { id: 'rich_gringo', name: 'Rich Gringo', desc: 'Earn 1000 total coins', reward: 200, check: () => gameData.stats.totalCoinsEarned >= 1000 },
+   211	                { id: 'veteran', name: 'Veteran', desc: 'Play 50 games', reward: 75, check: () => gameData.stats.gamesPlayed >= 50 }
+   212	            ];
+   213
+   214
+   215	            let chanclas = [];
+   216	            let pets = [];
+   217	            let powerups = [];
+   218	            let pinatas = [];
+   219	            let floatTexts = [];
+   220	            let rosePetals = [];
+   221	            let fireParticles = [];
+   222	            let specialProjectiles = [];
+   223	            let score = 0;
+   224	            let bestScore = 0;
+   225	            let spawnInterval = 1.2;
+   226	            let minSpawnInterval = 0.45;
+   227	            let spawnTimer = 0;
+   228	            let baseSpeed = 140;
+   229	            const slowEffect = { timer: 0, factor: 0.62 };
+   230	            let timeElapsed = 0;
+   231	            let superEnabled = false;
+   232	            let specialAttackBar = 0;
+   233	            const maxSpecialAttack = 100;
+   234	            let slapCooldown = 0;
+   235	            const slapEffect = { timer: 0, duration: 0.15 };
+   236	            let winAnimationStart = 0;
+   237	            let shakeTimer = 0;
+   238	            let shakeIntensity = 0;
+   239	            let hitStop = 0;
+   240	            let impacts = [];
+   241	            let chainEffects = [];
+   242	            let comboCount = 0;
+   243	            const flash = { timer: 0, maxTime: 0, color: '#fff' };
+   244	            let specialReadyTriggered = false;
+   245
+   246	            let dialogueTimer = 0;
+   247	            let playerDialogueTimer = 0;
+   248	            let dialogueText = '';
+   249	            let playerDialogueText = '';
+   250	            const dialogueDuration = 3.3;
+   251
+   252	            const keys = { left: false, right: false };
+   253	            const touch = { left: false, right: false };
+   254
+   255	            // Audio context for sound effects (reuse to avoid browser limits)
+   256	            let audioContext = null;
+   257	            function getAudioContext() {
+   258	                if (!audioContext) {
+   259	                    try {
+   260	                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+   261	                    } catch (e) {
+   262	                        // Audio not supported
+   263	                    }
+   264	                }
+   265	                return audioContext;
+   266	            }
+   267
+   268	            const dialogue = {
+   269	                start: [
+   270	                    "Ya no me amas, verdad?!",
+   271	                    "¡Ya sé que lo hiciste en la ducha sin grabarlo para mí!",
+   272	                    "¡Le voy a dar tu cuerpo a mis gatos, gringo!"
+   273	                ],
+   274	                hitBySpecial: [
+   275	                    "Oh!",
+   276	                    "Papi!",
+   277	                    "OoOoOoH!"
+   278	                ],
+   279	                hitNormal: [
+   280	                    "¡Eso te pasa por andar dando like a otras, eh! 😈",
+   281	                    "Te dije, mi vida, la chancla siempre encuentra tu cara.",
+   282	                    "Ay, gringo, ni esquivar sabes… ven pa’ acá.",
+   283	                    "Mira nomás, directo en tu carita bonita, jajaja.",
+   284	                    "¡Eso te pasa por andar dando like a otras, eh! 😈",
+   285	                    "Te dije, mi vida, la chancla siempre encuentra tu cara.",
+   286	                    "Ay, gringo, ni esquivar sabes… ven pa’ acá.",
+   287	                    "Mira nomás, directo en tu carita bonita, jajaja.",
+   288	                    "Solo lo hago porque te amo gringo, ¡me haces enojar TANTO!"
+   289	                ],
+   290	                hitSuper: [
+   291	                    "Esta es la de 15 centímetros, para que respetes a tu reina. 💥",
+   292	                    "Chancla XL activada… F por tu carita, mi vida.",
+   293	                    "Te advertí de la chancla deluxe, ¿no?"
+   294	                ],
+   295	                nearMiss: [
+   296	                    "Te salvaste por las pestañas, ¿eh?",
+   297	                    "Uy, casi te acomodo la nariz, gringuito.",
+   298	                    "Te salvaste por las pestañas, ¿eh?",
+   299	                    "Uy, casi te acomodo la nariz, gringuito.",
+   300	                    "¡YO NO ESTOY LOCA!"
+   301	                ],
+   302	                lowHealth: [
+   303	                    "¡NUNCA VES MIS REELS!",
+   304	                    "Última vida, mi amor… igual que mi paciencia cuando me dejas en visto.",
+   305	                    "Ya casi te mando directo a ‘Game Over, mi vida’."
+   306	                ],
+   307	                gameOver: [
+   308	                    "Isa ganó, como siempre. 😏",
+   309	                    "Game over, mi gringo. ¿Otra vez o ya te rindes?",
+   310	                    "Te lo dije: con chancla no se juega.",
+   311	                    "Perdiste, pero igual te amo poquito… muy poquito."
+   312	                ],
+   313	                highScore: [
+   314	                    "Ok, estoy impresionada… sí sabes esquivar, ¿eh?",
+   315	                    "Mi gringo pro player, qué miedo y qué ganas.",
+   316	                    "Está bien… hoy guardo la chancla. Pero solo hoy."
+   317	                ],
+   318	                petOwen: [
+   319	                    "Ay, Alecito te protege solo por hojuelas de salmón, qué suerte tienes.",
+   320	                    "Mira, hasta Owen te defiende de mis chanclas.",
+   321	                    "Si sobrevives es por Owen, no por tus reflejos, ¿eh?"
+   322	                ],
+   323	                petRita: [
+   324	                    "Rita Cat-Alina dice miau y te regala una vida. 🐱",
+   325	                    "La reina Rita canceló una chancla por ti, da las gracias.",
+   326	                    "Hasta la gata te cuida… yo solo te aviento chancla."
+   327	                ],
+   328	                win: [
+   329	                    "Te amo, Papi. I only hit you because I love you."
+   330	                ],
+   331	                slapSuccess: [
+   332	                    "¿Cómo te atreves a manotear mis chanclas?!",
+   333	                    "Eso no es justo, gringo!",
+   334	                    "¡Ay! Esa es mi chancla favorita!"
+   335	                ]
+   336	            };
+   337
+   338	            const gringoLines = {
+   339	                fireSpecial: [
+   340	                    "I got something that will calm you down!",
+   341	                    "Hora del jamón, cariño!",
+   342	            "Baby, I'm sorry!"
+   343	                ],
+   344	                idle: [
+   345	                    "Woah, woah chill, alright? Chill!",
+   346	                    "Ok, I promise I won't say it again just calm down!",
+   347	                    "I don't even know her, I was just ordering a coffee!",
+   348	                    "Please just relax, I'm sorry!",
+   349	                    "Baby, I love you!",
+   350	                    "No mas chanclas, mi cielo!"
+   351	                ],
+   352	                hit: [
+   353	                    "SHIT!",
+   354	                    "FUCK that hurt!"
+   355	                ],
+   356	                super: [
+   357	                    "Oh my god, what the fuck is that?!",
+   358	                    "Not the big shoe! FUCK"
+   359	                ],
+   360	                nearMiss: [
+   361	                    "Ay Dios Mio!",
+   362	                    "HOLY SHIT!",
+   363	                    "YOU'RE CRAZY!"
+   364	                ]
+   365	            };
+   366
+   367	            function sayPlayer(category) {
+   368	                const lines = gringoLines[category];
+   369	                if (!lines || !lines.length) return;
+   370	                playerDialogueText = lines[Math.floor(Math.random() * lines.length)];
+   371	                playerDialogueTimer = 2.5;
+   372
+   373	                if (playerDialogueText === "YOU'RE CRAZY!") {
+   374	                    setTimeout(() => {
+   375	                        dialogueText = "I'll SHOW YOU CRAZY!";
+   376	                        dialogueTimer = 3.0;
+   377	                    }, 600);
+   378	                }
+   379	            }
+   380
+   381	            function sayRandom(category) {
+   382	                const lines = dialogue[category];
+   383	                if (!lines || !lines.length) return;
+   384	                dialogueText = lines[Math.floor(Math.random() * lines.length)];
+   385	                dialogueTimer = dialogueDuration;
+   386	            }
+   387
+   388	            function triggerShake(intensity, duration) {
+   389	                shakeIntensity = intensity;
+   390	                shakeTimer = duration;
+   391	            }
+   392
+   393	            function triggerFlash(duration, color = '#fff') {
+   394	                flash.timer = duration;
+   395	                flash.maxTime = duration;
+   396	                flash.color = color;
+   397	            }
+   398
+   399	            function resetGame() {
+   400	                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+   401	                gameData.stats.gamesPlayed++;
+   402	                saveGameData();
+   403
+   404	                player.x = canvas.width / 2;
+   405	                player.y = canvas.height - 70;
+   406	                player.speed = 230 + 15 * (gameData.upgrades.speed || 0);
+   407	                player.lives = 3 + (gameData.upgrades.lives || 0);
+   408	                player.shield = (gameData.upgrades.shield || 0) > 0;
+   409	                player.hitTimer = 0;
+   410	                isa.anger = isa.maxAnger;
+   411	                isa.x = canvas.width / 2;
+   412	                isa.y = 70;
+   413	                isa.enraged = false;
+   414	                chanclas = [];
+   415	                pets = [];
+   416	                powerups = [];
+   417	                pinatas = [];
+   418	                floatTexts = [];
+   419	                rosePetals = [];
+   420	                fireParticles = [];
+   421	                specialProjectiles = [];
+   422	                impacts = [];
+   423	                score = 0;
+   424	                comboCount = 0;
+   425	                spawnInterval = 1.2;
+   426	                baseSpeed = 140;
+   427	                timeElapsed = 0;
+   428	                superEnabled = false;
+   429	                specialAttackBar = 0;
+   430	                slapCooldown = 0;
+   431	                winAnimationStart = 0;
+   432	                slowEffect.timer = 0;
+   433	                shakeTimer = 0;
+   434	                hitStop = 0;
+   435	                flash.timer = 0;
+   436	                specialReadyTriggered = false;
+   437	                chainEffects = [];
+   438	                wrapper.style.transform = 'none';
+   439	                sayRandom('start');
+   440	                playerDialogueTimer = 0;
+   441	                state = STATE.PLAYING;
+   442	                setDirectionsVisible(false);
+   443	            }
+   444
+   445	            function getComboPhrase(c) {
+   446	                if (c >= 25) return "LEGEND! 👑";
+   447	                if (c >= 15) return "IMPOSSIBLE! 🤯";
+   448	                if (c >= 10) return "DIOS MIO! 😱";
+   449	                if (c >= 6) return "FUEGO! 🔥";
+   450	                if (c >= 3) return "SPICY! 🌶️";
+   451	                return "";
+   452	            }
+   453
+   454	            const cityShapes = [];
+   455	            const cactusShapes = [];
+   456	            const starDots = [];
+   457
+   458	            function buildBackgroundElements() {
+   459	                cityShapes.length = 0;
+   460	                cactusShapes.length = 0;
+   461	                starDots.length = 0;
+   462	                for (let i = 0; i < 6; i++) {
+   463	                    const w = 40 + Math.random() * 30;
+   464	                    const h = 60 + Math.random() * 80;
+   465	                    const x = (canvas.width / 6) * i + Math.random() * 20;
+   466	                    const y = canvas.height - h - 20;
+   467	                    cityShapes.push({ x, y, w, h });
+   468	                }
+   469	                for (let i = 0; i < 3; i++) {
+   470	                    const baseX = 60 + i * 120 + Math.random() * 40;
+   471	                    const baseY = canvas.height - 30;
+   472	                    cactusShapes.push({ baseX, baseY });
+   473	                }
+   474	                for (let i = 0; i < 30; i++) {
+   475	                    starDots.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.6 });
+   476	                }
+   477	            }
+   478
+   479	            function drawBackground() {
+   480	                const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+   481	                if (isa.enraged) {
+   482	                    grad.addColorStop(0, '#3a0f14');
+   483	                    grad.addColorStop(1, '#52131b');
+   484	                } else {
+   485	                    grad.addColorStop(0, '#0b1930');
+   486	                    grad.addColorStop(1, '#0f243a');
+   487	                }
+   488	                ctx.fillStyle = grad;
+   489	                ctx.fillRect(0, 0, canvas.width, canvas.height);
+   490
+   491	                ctx.fillStyle = isa.enraged ? '#1a0508' : '#0a1527';
+   492	                cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+   493
+   494	                ctx.fillStyle = '#1b8c6e';
+   495	                cactusShapes.forEach(c => {
+   496	                    ctx.beginPath();
+   497	                    ctx.moveTo(c.baseX, c.baseY);
+   498	                    ctx.lineTo(c.baseX + 20, c.baseY - 70);
+   499	                    ctx.lineTo(c.baseX + 40, c.baseY);
+   500	                    ctx.fill();
+   501	                });
+   502
+   503	                ctx.fillStyle = '#ffe066';
+   504	                starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+   505	            }
+   506
+   507	            function drawFlash() {
+   508	                if (flash.timer <= 0) return;
+   509	                const alpha = (flash.timer / flash.maxTime) * 0.45;
+   510	                ctx.save();
+   511	                ctx.fillStyle = flash.color;
+   512	                ctx.globalAlpha = alpha;
+   513	                ctx.fillRect(0, 0, canvas.width, canvas.height);
+   514	                ctx.restore();
+   515	            }
+   516
+   517	            function drawRosePetals() {
+   518	                rosePetals.forEach(p => {
+   519	                    ctx.save();
+   520	                    ctx.translate(p.x, p.y);
+   521	                    ctx.rotate(p.rotation);
+   522	                    if (p.emoji) {
+   523	                        ctx.font = (p.size || 20) + 'px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+   524	                        ctx.textAlign = 'center';
+   525	                        ctx.textBaseline = 'middle';
+   526	                        ctx.fillText(p.emoji, 0, 0);
+   527	                    } else {
+   528	                        ctx.fillStyle = '#ff4d6d'; // Rose petal pink/red
+   529	                        ctx.beginPath();
+   530	                        // Simple petal shape
+   531	                        ctx.moveTo(0, 0);
+   532	                        ctx.bezierCurveTo(5, -5, 10, 0, 10, 5);
+   533	                        ctx.bezierCurveTo(10, 10, 0, 15, 0, 10);
+   534	                        ctx.bezierCurveTo(-5, 15, -10, 10, -10, 5);
+   535	                        ctx.bezierCurveTo(-10, 0, -5, -5, 0, 0);
+   536	                        ctx.fill();
+   537	                    }
+   538	                    ctx.restore();
+   539	                });
+   540	            }
+   541
+   542	            function spawnRoseExplosion(x, y) {
+   543	                for (let i = 0; i < 12; i++) {
+   544	                    const angle = (Math.PI * 2 * i) / 12;
+   545	                    const speed = 150 + Math.random() * 100;
+   546	                    rosePetals.push({
+   547	                        x: x,
+   548	                        y: y,
+   549	                        vx: Math.cos(angle) * speed,
+   550	                        vy: Math.sin(angle) * speed,
+   551	                        rotation: Math.random() * Math.PI * 2,
+   552	                        rotSpeed: (Math.random() - 0.5) * 10,
+   553	                        offset: Math.random() * 10
+   554	                    });
+   555	                }
+   556	            }
+   557
+   558	            function spawnImpact(x, y, isBig = false) {
+   559	                impacts.push({ x, y, timer: 0.25, maxTime: 0.25, rotation: Math.random() * Math.PI, isBig });
+   560	            }
+   561
+   562	            function updateImpacts(dt) {
+   563	                for (let i = impacts.length - 1; i >= 0; i--) {
+   564	                    const imp = impacts[i];
+   565	                    imp.timer -= dt;
+   566	                    if (imp.timer <= 0) impacts.splice(i, 1);
+   567	                }
+   568	            }
+   569
+   570	            function drawImpacts() {
+   571	                impacts.forEach(imp => {
+   572	                    ctx.save();
+   573	                    ctx.translate(imp.x, imp.y);
+   574	                    ctx.rotate(imp.rotation);
+   575	                    const p = imp.timer / imp.maxTime;
+   576	                    const scale = (0.5 + (1 - p) * 1.5) * (imp.isBig ? 1.4 : 1); // Expand quickly
+   577	                    ctx.scale(scale, scale);
+   578	                    ctx.globalAlpha = p;
+   579
+   580	                    // Draw a jagged hit shape (starburst)
+   581	                    ctx.fillStyle = imp.isBig ? '#fffce0' : '#fff';
+   582	                    ctx.beginPath();
+   583	                    const spikes = 8;
+   584	                    const outerRadius = 30;
+   585	                    const innerRadius = 12;
+   586	                    for (let i = 0; i < spikes * 2; i++) {
+   587	                        const r = (i % 2 === 0) ? outerRadius : innerRadius;
+   588	                        const a = (Math.PI * i) / spikes;
+   589	                        ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+   590	                    }
+   591	                    ctx.closePath();
+   592	                    ctx.fill();
+   593
+   594	                    ctx.strokeStyle = imp.isBig ? '#00e5ff' : '#ffb347'; // Cyan for perfect, Orange normal
+   595	                    ctx.lineWidth = 3;
+   596	                    ctx.stroke();
+   597
+   598	                    ctx.restore();
+   599	                });
+   600	            }
+   601
+   602	            function spawnChainEffect(x1, y1, x2, y2) {
+   603	                chainEffects.push({ x1, y1, x2, y2, timer: 0.2, maxTime: 0.2 });
+   604	            }
+   605
+   606	            function updateChainEffects(dt) {
+   607	                for (let i = chainEffects.length - 1; i >= 0; i--) {
+   608	                    chainEffects[i].timer -= dt;
+   609	                    if (chainEffects[i].timer <= 0) chainEffects.splice(i, 1);
+   610	                }
+   611	            }
+   612
+   613	            function drawChainEffects() {
+   614	                chainEffects.forEach(eff => {
+   615	                    ctx.save();
+   616	                    const p = eff.timer / eff.maxTime;
+   617	                    ctx.globalAlpha = p;
+   618	                    // Cyan electricity glow
+   619	                    ctx.shadowColor = '#00e5ff';
+   620	                    ctx.shadowBlur = 10;
+   621	                    ctx.strokeStyle = '#00e5ff';
+   622	                    ctx.lineWidth = 3;
+   623	                    ctx.lineCap = 'round';
+   624	                    ctx.lineJoin = 'round';
+   625
+   626	                    const segments = 6;
+   627	                    ctx.beginPath();
+   628	                    ctx.moveTo(eff.x1, eff.y1);
+   629
+   630	                    const dx = (eff.x2 - eff.x1) / segments;
+   631	                    const dy = (eff.y2 - eff.y1) / segments;
+   632
+   633	                    // Vector for jitter direction (perpendicular)
+   634	                    const len = Math.sqrt(dx * dx + dy * dy);
+   635	                    const nx = -dy / (len || 1);
+   636	                    const ny = dx / (len || 1);
+   637
+   638	                    for (let i = 1; i < segments; i++) {
+   639	                        // More jitter in the middle, less at ends
+   640	                        const midFactor = 1 - Math.abs(i - segments / 2) / (segments / 2);
+   641	                        const jitter = (Math.random() - 0.5) * 40 * midFactor;
+   642	                        const tx = eff.x1 + dx * i + nx * jitter;
+   643	                        const ty = eff.y1 + dy * i + ny * jitter;
+   644	                        ctx.lineTo(tx, ty);
+   645	                    }
+   646	                    ctx.lineTo(eff.x2, eff.y2);
+   647	                    ctx.stroke();
+   648
+   649	                    // White hot core
+   650	                    ctx.strokeStyle = '#fff';
+   651	                    ctx.lineWidth = 1.5;
+   652	                    ctx.shadowBlur = 0;
+   653	                    ctx.stroke();
+   654
+   655	                    ctx.restore();
+   656	                });
+   657	            }
+   658
+   659	            function drawSlapEffect() {
+   660	                if (slapEffect.timer <= 0) return;
+   661
+   662	                ctx.save();
+   663	                ctx.translate(player.x, player.y - 15);
+   664
+   665	                const p = 1 - (slapEffect.timer / slapEffect.duration);
+   666	                const dir = slapEffect.swipeDir || 1;
+   667	                let color = '255, 255, 255';
+   668	                let width = 4;
+   669	                const alpha = Math.max(0, 1.0 - Math.pow(p, 3));
+   670
+   671	                if (slapEffect.type === 'hit') {
+   672	                    color = '255, 179, 71'; // #ffb347 orange
+   673	                    width = 6;
+   674	                } else if (slapEffect.type === 'perfect') {
+   675	                    color = '0, 229, 255'; // #00e5ff cyan
+   676	                    width = 8;
+   677	                    ctx.shadowColor = '#00e5ff';
+   678	                    ctx.shadowBlur = 10;
+   679	                }
+   680
+   681	                ctx.strokeStyle = 'rgba(' + color + ', ' + alpha + ')';
+   682	                ctx.lineWidth = width;
+   683	                ctx.lineCap = 'round';
+   684
+   685	                const baseAngle = 1.5 * Math.PI;
+   686	                const sweep = 0.7 * Math.PI;
+   687	                const centerAngle = baseAngle + (p - 0.5) * sweep * dir;
+   688	                const arcWidth = 0.25 * Math.PI;
+   689
+   690	                ctx.beginPath();
+   691	                ctx.arc(0, 0, 75, centerAngle - arcWidth / 2, centerAngle + arcWidth / 2);
+   692	                ctx.stroke();
+   693
+   694	                // Draw Hand
+   695	                const handAngle = dir === 1 ? centerAngle + arcWidth / 2 : centerAngle - arcWidth / 2;
+   696	                const handX = Math.cos(handAngle) * 75;
+   697	                const handY = Math.sin(handAngle) * 75;
+   698
+   699	                ctx.translate(handX, handY);
+   700	                ctx.rotate(handAngle + Math.PI / 2);
+   701	                ctx.font = '30px "Noto Color Emoji", sans-serif';
+   702	                ctx.textAlign = 'center';
+   703	                ctx.textBaseline = 'middle';
+   704	                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+   705	                ctx.fillText('✋', 0, 0);
+   706
+   707	                ctx.restore();
+   708	            }
+   709
+   710	            function drawPlayer() {
+   711	                const { x, y, w, h } = player;
+   712	                ctx.save();
+   713	                ctx.fillStyle = '#fff';
+   714	                ctx.font = '14px sans-serif';
+   715	                ctx.textAlign = 'center';
+   716	                ctx.fillText('GRINGO', x, y - h / 2 - 10);
+   717
+   718	                // Determine expression
+   719	                let expression = 'normal';
+   720	                if (player.hitTimer > 0) expression = 'hit';
+   721	                else if (slapEffect.timer > 0) expression = 'slap';
+   722	                else if (slowEffect.timer > 0) expression = 'chill';
+   723	                else if (comboCount >= 5) expression = 'cocky';
+   724
+   725	                drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
+   726	                if (player.shield) {
+   727	                    ctx.strokeStyle = '#9bfffa';
+   728	                    ctx.lineWidth = 3;
+   729	                    ctx.beginPath();
+   730	                    ctx.arc(x, y, w * 0.65, 0, Math.PI * 2);
+   731	                    ctx.stroke();
+   732	                }
+   733	                ctx.restore();
+   734	            }
+   735
+   736	            function drawIsa() {
+   737	                ctx.save();
+   738	                let drawX = isa.x;
+   739	                let drawY = isa.y;
+   740	                if (isa.hitTimer > 0) {
+   741	                    drawX += (Math.random() - 0.5) * 12;
+   742	                    drawY += (Math.random() - 0.5) * 12;
+   743	                }
+   744
+   745	                if (isa.enraged) {
+   746	                    ctx.shadowColor = '#ff4d4d';
+   747	                    ctx.shadowBlur = 20 + Math.sin(timeElapsed * 10) * 10;
+   748	                }
+   749
+   750	                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
+   751
+   752	                ctx.restore();
+   753	            }
+   754
+   755	            function roundRect(ctx, x, y, w, h, r) {
+   756	                ctx.beginPath();
+   757	                ctx.moveTo(x + r, y);
+   758	                ctx.lineTo(x + w - r, y);
+   759	                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+   760	                ctx.lineTo(x + w, y + h - r);
+   761	                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+   762	                ctx.lineTo(x + r, y + h);
+   763	                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+   764	                ctx.lineTo(x, y + r);
+   765	                ctx.quadraticCurveTo(x, y, x + r, y);
+   766	                ctx.closePath();
+   767	            }
+   768
+   769	            function drawIsaAvatar(ctx, x, y, size, isHit) {
+   770	                ctx.save();
+   771	                ctx.translate(x, y);
+   772	                const faceW = size * 0.72;
+   773	                const faceH = size * 0.82;
+   774	                const hairColor = '#3a2522';
+   775	                const skin = '#e7b28f';
+   776
+   777	                // Flowing hair and bun
+   778	                ctx.fillStyle = hairColor;
+   779	                ctx.beginPath();
+   780	                ctx.moveTo(-faceW / 2 - 14, -faceH / 2 + 16);
+   781	                ctx.quadraticCurveTo(-faceW / 2 - 24, -faceH / 2, -faceW / 2 - 6, -faceH / 2 - 12);
+   782	                ctx.quadraticCurveTo(-2, -faceH / 2 - 22, faceW / 2 + 10, -faceH / 2 - 6);
+   783	                ctx.quadraticCurveTo(faceW / 2 + 20, -faceH / 2 + 12, faceW / 2 + 6, -faceH / 2 + 22);
+   784	                ctx.lineTo(faceW / 2 + 10, faceH / 2 - 10);
+   785	                ctx.quadraticCurveTo(0, faceH / 2 + 26, -faceW / 2 - 10, faceH / 3);
+   786	                ctx.closePath();
+   787	                ctx.fill();
+   788
+   789	                // Bun
+   790	                ctx.fillStyle = '#2c1a18';
+   791	                ctx.beginPath();
+   792	                ctx.ellipse(0, -faceH / 2 - 12, faceW * 0.32, faceH * 0.16, 0, 0, Math.PI * 2);
+   793	                ctx.fill();
+   794
+   795	                ctx.fillStyle = skin;
+   796	                ctx.beginPath();
+   797	                ctx.moveTo(-faceW / 2, -faceH / 2 + 6);
+   798	                ctx.quadraticCurveTo(-faceW * 0.55, -faceH * 0.05, -faceW * 0.28, faceH * 0.3);
+   799	                ctx.quadraticCurveTo(0, faceH * 0.52, faceW * 0.28, faceH * 0.3);
+   800	                ctx.quadraticCurveTo(faceW * 0.55, -faceH * 0.05, faceW / 2, -faceH / 2 + 6);
+   801	                ctx.closePath();
+   802	                ctx.fill();
+   803
+   804	                // Cheeks
+   805	                ctx.fillStyle = 'rgba(255,126,171,0.55)';
+   806	                ctx.beginPath();
+   807	                ctx.ellipse(-faceW * 0.22, faceH * 0.1, faceW * 0.12, faceH * 0.08, 0, 0, Math.PI * 2);
+   808	                ctx.ellipse(faceW * 0.22, faceH * 0.1, faceW * 0.12, faceH * 0.08, 0, 0, Math.PI * 2);
+   809	                ctx.fill();
+   810
+   811	                // Eyes
+   812	                if (isHit) {
+   813	                    // X Eyes
+   814	                    ctx.strokeStyle = '#1d1411';
+   815	                    ctx.lineWidth = 3;
+   816	                    const drawXEye = (centerX, centerY) => {
+   817	                        const r = faceW * 0.09;
+   818	                        ctx.beginPath();
+   819	                        ctx.moveTo(centerX - r, centerY - r);
+   820	                        ctx.lineTo(centerX + r, centerY + r);
+   821	                        ctx.moveTo(centerX + r, centerY - r);
+   822	                        ctx.lineTo(centerX - r, centerY + r);
+   823	                        ctx.stroke();
+   824	                    };
+   825	                    drawXEye(-faceW * 0.2, -faceH * 0.05);
+   826	                    drawXEye(faceW * 0.2, -faceH * 0.05);
+   827	                } else {
+   828	                    // Normal eyes with lashes
+   829	                    ctx.fillStyle = '#1d1411';
+   830	                    ctx.beginPath();
+   831	                    ctx.arc(-faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+   832	                    ctx.arc(faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+   833	                    ctx.fill();
+   834	                    ctx.strokeStyle = '#1d1411';
+   835	                    ctx.lineWidth = 2.2;
+   836	                    const lash = (sx, dir) => {
+   837	                        ctx.beginPath();
+   838	                        ctx.moveTo(sx, -faceH * 0.15);
+   839	                        ctx.quadraticCurveTo(sx + dir * 6, -faceH * 0.18, sx + dir * 12, -faceH * 0.16);
+   840	                        ctx.stroke();
+   841	                    };
+   842	                    lash(-faceW * 0.2, -1);
+   843	                    lash(faceW * 0.2, 1);
+   844
+   845	                    ctx.fillStyle = '#fff';
+   846	                    ctx.beginPath();
+   847	                    ctx.arc(-faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
+   848	                    ctx.arc(faceW * 0.2 + 2, -faceH * 0.07, faceW * 0.03, 0, Math.PI * 2);
+   849	                    ctx.fill();
+   850	                }
+   851
+   852	                // Mouth
+   853	                if (isHit) {
+   854	                    // O mouth
+   855	                    ctx.strokeStyle = '#d93c7a';
+   856	                    ctx.lineWidth = 3;
+   857	                    ctx.beginPath();
+   858	                    ctx.ellipse(0, faceH * 0.2, faceW * 0.1, faceH * 0.12, 0, 0, Math.PI * 2);
+   859	                    ctx.stroke();
+   860	                } else {
+   861	                    // Smile and lips
+   862	                    ctx.strokeStyle = '#d93c7a';
+   863	                    ctx.lineWidth = 2.4;
+   864	                    ctx.beginPath();
+   865	                    ctx.arc(0, faceH * 0.15, faceW * 0.2, Math.PI * 0.2, Math.PI * 0.8, false);
+   866	                    ctx.stroke();
+   867	                    ctx.beginPath();
+   868	                    ctx.moveTo(-faceW * 0.12, faceH * 0.17);
+   869	                    ctx.quadraticCurveTo(0, faceH * 0.22, faceW * 0.12, faceH * 0.17);
+   870	                    ctx.stroke();
+   871	                }
+   872
+   873	                // Earrings
+   874	                ctx.fillStyle = '#ffef9f';
+   875	                ctx.beginPath();
+   876	                ctx.arc(-faceW / 2 + 6, faceH * 0.15, faceW * 0.04, 0, Math.PI * 2);
+   877	                ctx.arc(faceW / 2 - 6, faceH * 0.15, faceW * 0.04, 0, Math.PI * 2);
+   878	                ctx.fill();
+   879
+   880	                // Headband label
+   881	                const labelW = faceW * 0.76;
+   882	                const labelH = 20;
+   883	                ctx.fillStyle = '#ff7fb6';
+   884	                roundRect(ctx, -labelW / 2, -faceH / 2 - labelH - 2, labelW, labelH, 10);
+   885	                ctx.fill();
+   886	                ctx.strokeStyle = '#c7437e';
+   887	                ctx.lineWidth = 1.4;
+   888	                ctx.stroke();
+   889
+   890	                ctx.fillStyle = '#fff';
+   891	                ctx.font = '16px sans-serif';
+   892	                ctx.textAlign = 'center';
+   893	                ctx.fillText('ISA', 0, -faceH / 2 - 6);
+   894	                ctx.restore();
+   895	            }
+   896
+   897	            function drawPlayerAvatar(ctx, x, y, size, hasRose, expression = 'normal') {
+   898	                ctx.save();
+   899	                ctx.translate(x, y);
+   900
+   901	                // Add shake/rotate for hit
+   902	                if (expression === 'hit') {
+   903	                    ctx.rotate((Math.random() - 0.5) * 0.25);
+   904	                } else if (expression === 'chill') {
+   905	                    ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
+   906	                } else if (expression === 'cocky') {
+   907	                    ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
+   908	                } else if (expression === 'dead') {
+   909	                    ctx.rotate(Math.PI / 20); // Slight tilt
+   910	                }
+   911
+   912	                // Draw Halo if dead
+   913	                if (expression === 'dead') {
+   914	                    ctx.save();
+   915	                    ctx.strokeStyle = '#ffd700'; // Gold
+   916	                    ctx.lineWidth = 4;
+   917	                    ctx.shadowColor = '#ffd700';
+   918	                    ctx.shadowBlur = 10;
+   919	                    ctx.beginPath();
+   920	                    ctx.ellipse(0, -size * 0.7, size * 0.35, size * 0.1, 0, 0, Math.PI * 2);
+   921	                    ctx.stroke();
+   922	                    ctx.restore();
+   923	                }
+   924
+   925	                const headW = size * 1.1;
+   926	                const headH = size * 0.9;
+   927	                const skin = '#f3d9bf';
+   928	                const hair = '#362417';
+   929	                const beard = '#3b2418';
+   930
+   931	                ctx.fillStyle = skin;
+   932	                roundRect(ctx, -headW / 2, -headH / 2, headW, headH, headW * 0.2);
+   933	                ctx.fill();
+   934
+   935	                // Draw Hat
+   936	                const hat = COSMETICS_LIST.find(h => h.id === gameData.currentHat);
+   937	                if (hat && hat.icon) {
+   938	                    ctx.save();
+   939	                    ctx.font = '36px Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji, sans-serif';
+   940	                    ctx.textAlign = 'center';
+   941	                    ctx.textBaseline = 'bottom';
+   942	                    ctx.fillText(hat.icon, 0, -headH / 2 + 10);
+   943	                    ctx.restore();
+   944	                }
+   945
+   946	                ctx.fillStyle = hair;
+   947	                ctx.beginPath();
+   948	                ctx.moveTo(-headW / 2 - 6, -headH / 2 + 16);
+   949	                ctx.quadraticCurveTo(-headW / 4, -headH / 2 - 14, headW / 4, -headH / 2 + 4);
+   950	                ctx.quadraticCurveTo(headW / 2 + 8, -headH / 4, headW / 2 - 4, -headH / 8);
+   951	                ctx.lineTo(headW / 2 - 2, headH / 10);
+   952	                ctx.quadraticCurveTo(-headW / 4, 0, -headW / 2 + 4, headH / 10);
+   953	                ctx.closePath();
+   954	                ctx.fill();
+   955
+   956	                // Glasses frame
+   957	                ctx.strokeStyle = '#1e130c';
+   958	                ctx.lineWidth = 2.4;
+   959
+   960	                // Left lens
+   961	                roundRect(ctx, -headW * 0.32, -headH * 0.1, headW * 0.24, headH * 0.18, 6);
+   962	                if (expression === 'chill') {
+   963	                    ctx.fillStyle = '#111';
+   964	                    ctx.fill();
+   965	                }
+   966	                ctx.stroke();
+   967
+   968	                // Right lens
+   969	                roundRect(ctx, headW * 0.08, -headH * 0.1, headW * 0.24, headH * 0.18, 6);
+   970	                if (expression === 'chill') {
+   971	                    ctx.fillStyle = '#111';
+   972	                    ctx.fill();
+   973	                }
+   974	                ctx.stroke();
+   975
+   976	                ctx.beginPath();
+   977	                ctx.moveTo(-headW * 0.08, -headH * 0.02);
+   978	                ctx.lineTo(headW * 0.08, -headH * 0.02);
+   979	                ctx.stroke();
+   980
+   981	                // Eyes
+   982	                if (expression === 'chill') {
+   983	                    // Reflection on sunglasses
+   984	                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+   985	                    ctx.beginPath();
+   986	                    ctx.moveTo(-headW * 0.28, -headH * 0.08);
+   987	                    ctx.lineTo(-headW * 0.18, -headH * 0.08);
+   988	                    ctx.lineTo(-headW * 0.28, 0);
+   989	                    ctx.fill();
+   990
+   991	                    ctx.beginPath();
+   992	                    ctx.moveTo(headW * 0.12, -headH * 0.08);
+   993	                    ctx.lineTo(headW * 0.22, -headH * 0.08);
+   994	                    ctx.lineTo(headW * 0.12, 0);
+   995	                    ctx.fill();
+   996	                } else if (expression === 'hit') {
+   997	                    // Wincing/Shut eyes
+   998	                    ctx.strokeStyle = '#2a1b12';
+   999	                    ctx.lineWidth = 2.5;
+  1000	                    ctx.beginPath();
+  1001	                    // Left eye (shut > <)
+  1002	                    ctx.moveTo(-headW * 0.25, -headH * 0.06);
+  1003	                    ctx.lineTo(-headW * 0.15, -headH * 0.02);
+  1004	                    ctx.moveTo(-headW * 0.15, -headH * 0.06);
+  1005	                    ctx.lineTo(-headW * 0.25, -headH * 0.02);
+  1006
+  1007	                    // Right eye
+  1008	                    ctx.moveTo(headW * 0.15, -headH * 0.06);
+  1009	                    ctx.lineTo(headW * 0.25, -headH * 0.02);
+  1010	                    ctx.moveTo(headW * 0.25, -headH * 0.06);
+  1011	                    ctx.lineTo(headW * 0.15, -headH * 0.02);
+  1012	                    ctx.stroke();
+  1013	                } else if (expression === 'dead') {
+  1014	                    // X Eyes
+  1015	                    ctx.strokeStyle = '#2a1b12';
+  1016	                    ctx.lineWidth = 2.5;
+  1017	                    const drawXEye = (cx, cy) => {
+  1018	                        const r = headW * 0.08;
+  1019	                        ctx.beginPath();
+  1020	                        ctx.moveTo(cx - r, cy - r);
+  1021	                        ctx.lineTo(cx + r, cy + r);
+  1022	                        ctx.moveTo(cx + r, cy - r);
+  1023	                        ctx.lineTo(cx - r, cy + r);
+  1024	                        ctx.stroke();
+  1025	                    };
+  1026	                    drawXEye(-headW * 0.2, -headH * 0.04);
+  1027	                    drawXEye(headW * 0.2, -headH * 0.04);
+  1028	                } else if (expression === 'slap') {
+  1029	                    // Focused eyes (slightly squinted or angry brows)
+  1030	                    ctx.fillStyle = '#2a1b12';
+  1031	                    ctx.beginPath();
+  1032	                    ctx.ellipse(-headW * 0.2, -headH * 0.03, headW * 0.055, headH * 0.04, 0, 0, Math.PI * 2);
+  1033	                    ctx.ellipse(headW * 0.2, -headH * 0.03, headW * 0.055, headH * 0.04, 0, 0, Math.PI * 2);
+  1034	                    ctx.fill();
+  1035	                    // Eyebrows
+  1036	                    ctx.strokeStyle = '#2f1d12';
+  1037	                    ctx.lineWidth = 2;
+  1038	                    ctx.beginPath();
+  1039	                    ctx.moveTo(-headW * 0.28, -headH * 0.12);
+  1040	                    ctx.lineTo(-headW * 0.12, -headH * 0.08);
+  1041	                    ctx.moveTo(headW * 0.28, -headH * 0.12);
+  1042	                    ctx.lineTo(headW * 0.12, -headH * 0.08);
+  1043	                    ctx.stroke();
+  1044	                } else if (expression === 'cocky') {
+  1045	                    // Confident eyes with eyebrow raise
+  1046	                    ctx.fillStyle = '#2a1b12';
+  1047	                    // Eyes
+  1048	                    ctx.beginPath();
+  1049	                    ctx.arc(-headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
+  1050	                    ctx.arc(headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
+  1051	                    ctx.fill();
+  1052	                    // Eyebrows (One high, one low)
+  1053	                    ctx.strokeStyle = '#2f1d12';
+  1054	                    ctx.lineWidth = 2;
+  1055	                    ctx.beginPath();
+  1056	                    // Left (Raised)
+  1057	                    ctx.moveTo(-headW * 0.28, -headH * 0.15);
+  1058	                    ctx.quadraticCurveTo(-headW * 0.2, -headH * 0.20, -headW * 0.12, -headH * 0.15);
+  1059	                    // Right (Lower/Furrowed)
+  1060	                    ctx.moveTo(headW * 0.12, -headH * 0.08);
+  1061	                    ctx.quadraticCurveTo(headW * 0.2, -headH * 0.06, headW * 0.28, -headH * 0.08);
+  1062	                    ctx.stroke();
+  1063	                } else {
+  1064	                    // Normal eyes
+  1065	                    ctx.fillStyle = '#2a1b12';
+  1066	                    ctx.beginPath();
+  1067	                    ctx.arc(-headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
+  1068	                    ctx.arc(headW * 0.2, -headH * 0.03, headW * 0.055, 0, Math.PI * 2);
+  1069	                    ctx.fill();
+  1070	                    ctx.fillStyle = '#fff';
+  1071	                    ctx.beginPath();
+  1072	                    ctx.arc(-headW * 0.19, -headH * 0.05, headW * 0.025, 0, Math.PI * 2);
+  1073	                    ctx.arc(headW * 0.21, -headH * 0.05, headW * 0.025, 0, Math.PI * 2);
+  1074	                    ctx.fill();
+  1075	                }
+  1076
+  1077	                // Beard fade
+  1078	                ctx.fillStyle = beard;
+  1079	                roundRect(ctx, -headW / 2 + 4, headH / 9, headW - 8, headH / 2.1, headW * 0.2);
+  1080	                ctx.fillStyle = '#2a1a10';
+  1081	                ctx.beginPath();
+  1082	                ctx.moveTo(-headW * 0.18, headH * 0.12);
+  1083	                ctx.quadraticCurveTo(-headW * 0.06, headH * 0.26, 0, headH * 0.24);
+  1084	                ctx.quadraticCurveTo(headW * 0.06, headH * 0.26, headW * 0.18, headH * 0.12);
+  1085	                ctx.fill();
+  1086	                // Mustache
+  1087	                ctx.fillStyle = '#2f1d12';
+  1088	                ctx.beginPath();
+  1089	                ctx.moveTo(-headW * 0.16, headH * 0.1);
+  1090	                ctx.quadraticCurveTo(-headW * 0.05, headH * 0.16, 0, headH * 0.12);
+  1091	                ctx.quadraticCurveTo(headW * 0.05, headH * 0.16, headW * 0.16, headH * 0.1);
+  1092	                ctx.fill();
+  1093
+  1094	                // Mouth/Expression
+  1095	                if (expression === 'hit') {
+  1096	                    // Grimace / Wavy mouth
+  1097	                    ctx.strokeStyle = '#2f1d12'; // Dark brown
+  1098	                    ctx.lineWidth = 2;
+  1099	                    ctx.beginPath();
+  1100	                    ctx.moveTo(-headW * 0.12, headH * 0.24);
+  1101	                    ctx.lineTo(-headW * 0.04, headH * 0.20);
+  1102	                    ctx.lineTo(headW * 0.04, headH * 0.24);
+  1103	                    ctx.lineTo(headW * 0.12, headH * 0.20);
+  1104	                    ctx.stroke();
+  1105	                } else if (expression === 'dead') {
+  1106	                    // Dead tongue out
+  1107	                    ctx.fillStyle = '#e57373';
+  1108	                    ctx.strokeStyle = '#2f1d12';
+  1109	                    ctx.lineWidth = 1;
+  1110	                    ctx.beginPath();
+  1111	                    ctx.moveTo(-headW * 0.08, headH * 0.22);
+  1112	                    ctx.quadraticCurveTo(headW * 0.05, headH * 0.35, headW * 0.15, headH * 0.25);
+  1113	                    ctx.quadraticCurveTo(headW * 0.1, headH * 0.22, -headW * 0.08, headH * 0.22);
+  1114	                    ctx.fill();
+  1115	                    ctx.stroke();
+  1116	                } else if (expression === 'slap') {
+  1117	                    // Open mouth yelling
+  1118	                    ctx.fillStyle = '#4a2c22'; // Darker inside mouth
+  1119	                    ctx.beginPath();
+  1120	                    ctx.ellipse(0, headH * 0.24, headW * 0.12, headH * 0.08, 0, 0, Math.PI * 2);
+  1121	                    ctx.fill();
+  1122	                } else if (expression === 'chill') {
+  1123	                    // Cool smirk
+  1124	                    ctx.strokeStyle = '#1e130c';
+  1125	                    ctx.lineWidth = 1.6;
+  1126	                    ctx.beginPath();
+  1127	                    ctx.moveTo(-headW * 0.1, headH * 0.24);
+  1128	                    ctx.quadraticCurveTo(0, headH * 0.26, headW * 0.12, headH * 0.22);
+  1129	                    ctx.stroke();
+  1130	                } else if (expression === 'cocky') {
+  1131	                    // Confident smirk
+  1132	                    ctx.strokeStyle = '#1e130c';
+  1133	                    ctx.lineWidth = 1.6;
+  1134	                    ctx.beginPath();
+  1135	                    // Asymmetrical smile
+  1136	                    ctx.moveTo(-headW * 0.1, headH * 0.24);
+  1137	                    ctx.quadraticCurveTo(0, headH * 0.28, headW * 0.12, headH * 0.20);
+  1138	                    ctx.stroke();
+  1139	                } else {
+  1140	                    // Smile
+  1141	                    ctx.strokeStyle = '#1e130c'; // Ensure color is set
+  1142	                    ctx.lineWidth = 1.6; // Ensure width is set
+  1143	                    ctx.beginPath();
+  1144	                    ctx.moveTo(-headW * 0.1, headH * 0.22);
+  1145	                    ctx.quadraticCurveTo(0, headH * 0.3, headW * 0.1, headH * 0.22);
+  1146	                    ctx.stroke();
+  1147	                }
+  1148
+  1149	                // Rose in mouth (Tango style)
+  1150	                if (hasRose) {
+  1151	                    const roseX = headW * 0.15;
+  1152	                    const roseY = headH * 0.22;
+  1153	                    // Stem
+  1154	                    ctx.strokeStyle = '#2d6a4f';
+  1155	                    ctx.lineWidth = 1.5;
+  1156	                    ctx.beginPath();
+  1157	                    ctx.moveTo(roseX, roseY);
+  1158	                    ctx.quadraticCurveTo(roseX + 15, roseY + 2, roseX + 25, roseY - 5);
+  1159	                    ctx.stroke();
+  1160	                    // Leaf
+  1161	                    ctx.fillStyle = '#2d6a4f';
+  1162	                    ctx.beginPath();
+  1163	                    ctx.ellipse(roseX + 12, roseY + 2, 4, 2, Math.PI / 4, 0, Math.PI * 2);
+  1164	                    ctx.fill();
+  1165	                    // Flower
+  1166	                    ctx.fillStyle = '#d00000';
+  1167	                    ctx.beginPath();
+  1168	                    ctx.arc(roseX + 25, roseY - 5, 5, 0, Math.PI * 2);
+  1169	                    ctx.fill();
+  1170	                    ctx.strokeStyle = '#9d0208';
+  1171	                    ctx.lineWidth = 1;
+  1172	                    ctx.beginPath();
+  1173	                    ctx.arc(roseX + 25, roseY - 5, 2, 0, Math.PI * 2);
+  1174	                    ctx.stroke();
+  1175	                }
+  1176
+  1177	                // Jaw highlight
+  1178	                ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  1179	                ctx.lineWidth = 1.6;
+  1180	                ctx.beginPath();
+  1181	                ctx.moveTo(-headW * 0.18, headH / 2);
+  1182	                ctx.quadraticCurveTo(0, headH * 0.46, headW * 0.18, headH / 2);
+  1183	                ctx.stroke();
+  1184
+  1185	                // Sparkle for cocky
+  1186	                if (expression === 'cocky') {
+  1187	                    ctx.font = '20px "Noto Color Emoji", sans-serif';
+  1188	                    ctx.textAlign = 'center';
+  1189	                    ctx.textBaseline = 'middle';
+  1190	                    ctx.fillText('✨', headW * 0.6, -headH * 0.4);
+  1191	                }
+  1192
+  1193	                ctx.restore();
+  1194	            }
+  1195
+  1196	            function drawChancla(ctx, x, y, w, h, type, rotation) {
+  1197	                ctx.save();
+  1198	                ctx.translate(x, y);
+  1199
+  1200	                // Use the thong sandal emoji for the classic "Chancla" look
+  1201	                let emoji = '🩴💨';
+  1202	                if (type === 'super') emoji = '🩴💥';
+  1203	                else if (type === 'fire') emoji = '🔥';
+  1204
+  1205	                // Prioritize Noto Color Emoji and system emoji fonts
+  1206	                ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+  1207	                ctx.textAlign = 'center';
+  1208	                ctx.rotate(rotation);
+  1209	                ctx.fillText(emoji, 0, h * 0.2);
+  1210	                ctx.restore();
+  1211	            }
+  1212
+  1213	            function drawPets() {
+  1214	                pets.forEach(p => {
+  1215	                    if (p.kind === 'owen') drawOwen(p);
+  1216	                    if (p.kind === 'rita') drawRita(p);
+  1217	                });
+  1218	            }
+  1219
+  1220	            function drawOwen(p) {
+  1221	                ctx.save();
+  1222	                ctx.fillStyle = '#444';
+  1223	                roundRect(ctx, p.x - 25, p.y - 15, 50, 30, 10);
+  1224	                ctx.fill();
+  1225	                ctx.beginPath();
+  1226	                ctx.moveTo(p.x - 20, p.y - 15);
+  1227	                ctx.lineTo(p.x - 10, p.y - 35);
+  1228	                ctx.lineTo(p.x, p.y - 15);
+  1229	                ctx.fill();
+  1230	                ctx.beginPath();
+  1231	                ctx.moveTo(p.x + 20, p.y - 15);
+  1232	                ctx.lineTo(p.x + 10, p.y - 35);
+  1233	                ctx.lineTo(p.x, p.y - 15);
+  1234	                ctx.fill();
+  1235	                ctx.fillStyle = '#eee';
+  1236	                ctx.beginPath();
+  1237	                ctx.arc(p.x - 8, p.y - 2, 4, 0, Math.PI * 2);
+  1238	                ctx.arc(p.x + 8, p.y - 2, 4, 0, Math.PI * 2);
+  1239	                ctx.fill();
+  1240	                ctx.strokeStyle = '#eee';
+  1241	                ctx.beginPath();
+  1242	                ctx.arc(p.x, p.y + 6, 10, 0.2 * Math.PI, 0.8 * Math.PI);
+  1243	                ctx.stroke();
+  1244	                ctx.fillStyle = '#fff';
+  1245	                ctx.font = '12px sans-serif';
+  1246	                ctx.textAlign = 'center';
+  1247	                ctx.fillText('Owen Alejandro', p.x, p.y - 24);
+  1248	                ctx.restore();
+  1249	            }
+  1250
+  1251	            function drawRita(p) {
+  1252	                ctx.save();
+  1253	                ctx.fillStyle = '#f2c6de';
+  1254	                roundRect(ctx, p.x - 23, p.y - 13, 46, 26, 9);
+  1255	                ctx.fill();
+  1256	                ctx.fillStyle = '#f7e463';
+  1257	                ctx.beginPath();
+  1258	                ctx.moveTo(p.x - 8, p.y - 18);
+  1259	                ctx.lineTo(p.x - 2, p.y - 30);
+  1260	                ctx.lineTo(p.x + 4, p.y - 18);
+  1261	                ctx.closePath();
+  1262	                ctx.fill();
+  1263	                ctx.fillStyle = '#222';
+  1264	                ctx.beginPath();
+  1265	                ctx.arc(p.x - 6, p.y - 2, 3.5, 0, Math.PI * 2);
+  1266	                ctx.arc(p.x + 6, p.y - 2, 3.5, 0, Math.PI * 2);
+  1267	                ctx.fill();
+  1268	                ctx.strokeStyle = '#222';
+  1269	                ctx.beginPath();
+  1270	                ctx.arc(p.x, p.y + 5, 9, 0.2 * Math.PI, 0.8 * Math.PI);
+  1271	                ctx.stroke();
+  1272	                ctx.fillStyle = '#fff';
+  1273	                ctx.font = '12px sans-serif';
+  1274	                ctx.textAlign = 'center';
+  1275	                ctx.fillText('Rita Cat-Alina', p.x, p.y - 22);
+  1276	                ctx.restore();
+  1277	            }
+  1278
+  1279	            function drawDialogue() {
+  1280	                if (dialogueTimer <= 0 || !dialogueText) return;
+  1281	                const bubbleWidth = 280;
+  1282	                const x = isa.x - bubbleWidth / 2;
+  1283	                const y = isa.y + 30;
+  1284	                ctx.save();
+  1285	                ctx.fillStyle = 'rgba(31,64,104,0.9)';
+  1286	                roundRect(ctx, x, y, bubbleWidth, 70, 12);
+  1287	                ctx.fill();
+  1288	                ctx.strokeStyle = '#6dd3ff';
+  1289	                ctx.lineWidth = 2;
+  1290	                roundRect(ctx, x, y, bubbleWidth, 70, 12);
+  1291	                ctx.stroke();
+  1292	                ctx.fillStyle = '#fff';
+  1293	                ctx.font = '14px sans-serif';
+  1294	                ctx.textAlign = 'center';
+  1295	                ctx.textBaseline = 'middle';
+  1296	                wrapText(ctx, dialogueText, isa.x, y + 35, bubbleWidth - 14, 16);
+  1297	                ctx.restore();
+  1298	            }
+  1299
+  1300	            function drawPlayerDialogue() {
+  1301	                if (playerDialogueTimer <= 0 || !playerDialogueText) return;
+  1302	                const bubbleWidth = 220;
+  1303	                const x = player.x - bubbleWidth / 2;
+  1304	                const y = player.y - player.h - 80;
+  1305	                ctx.save();
+  1306	                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  1307	                roundRect(ctx, x, y, bubbleWidth, 60, 12);
+  1308	                ctx.fill();
+  1309	                ctx.strokeStyle = '#333';
+  1310	                ctx.lineWidth = 2;
+  1311	                roundRect(ctx, x, y, bubbleWidth, 60, 12);
+  1312	                ctx.stroke();
+  1313
+  1314	                // Triangle tail
+  1315	                ctx.beginPath();
+  1316	                ctx.moveTo(player.x - 10, y + 60);
+  1317	                ctx.lineTo(player.x, y + 70);
+  1318	                ctx.lineTo(player.x + 10, y + 60);
+  1319	                ctx.fill();
+  1320	                ctx.stroke();
+  1321
+  1322	                ctx.fillStyle = '#111';
+  1323	                ctx.font = '13px sans-serif';
+  1324	                ctx.textAlign = 'center';
+  1325	                ctx.textBaseline = 'middle';
+  1326	                wrapText(ctx, playerDialogueText, player.x, y + 30, bubbleWidth - 14, 16);
+  1327	                ctx.restore();
+  1328	            }
+  1329
+  1330	            function wrapText(context, text, x, y, maxWidth, lineHeight) {
+  1331	                const words = text.split(' ');
+  1332	                let line = '';
+  1333	                let lines = [];
+  1334	                for (let n = 0; n < words.length; n++) {
+  1335	                    const test = line + words[n] + ' ';
+  1336	                    const metrics = context.measureText(test);
+  1337	                    if (metrics.width > maxWidth && n > 0) {
+  1338	                        lines.push(line);
+  1339	                        line = words[n] + ' ';
+  1340	                    } else {
+  1341	                        line = test;
+  1342	                    }
+  1343	                }
+  1344	                lines.push(line);
+  1345	                lines.forEach((l, i) => context.fillText(l.trim(), x, y + i * lineHeight - (lines.length - 1) * lineHeight / 2));
+  1346	            }
+  1347
+  1348	            function drawLowHealthVignette() {
+  1349	                if (player.lives > 1) return;
+  1350
+  1351	                ctx.save();
+  1352	                const pulse = (Math.sin(timeElapsed * 8) + 1) / 2;
+  1353	                const alpha = 0.05 + pulse * 0.25; // Oscillates between 0.05 and 0.3
+  1354
+  1355	                const gradient = ctx.createRadialGradient(
+  1356	                    canvas.width / 2, canvas.height / 2, canvas.width * 0.3,
+  1357	                    canvas.width / 2, canvas.height / 2, canvas.height * 0.8
+  1358	                );
+  1359	                gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
+  1360	                gradient.addColorStop(1, `rgba(220, 20, 60, ${alpha})`);
+  1361
+  1362	                ctx.fillStyle = gradient;
+  1363	                ctx.fillRect(0, 0, canvas.width, canvas.height);
+  1364	                ctx.restore();
+  1365	            }
+  1366
+  1367	            function drawHUD() {
+  1368	                ctx.save();
+  1369	                ctx.fillStyle = '#fff';
+  1370	                ctx.font = '16px sans-serif';
+  1371	                ctx.textAlign = 'left';
+  1372	                ctx.fillText('Score: ' + score, 12, 22);
+  1373	                ctx.textAlign = 'center';
+  1374	                ctx.fillStyle = '#ffd700';
+  1375	                ctx.font = '14px sans-serif';
+  1376	                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 16);
+  1377
+  1378	                ctx.textAlign = 'right';
+  1379	                ctx.fillStyle = '#fff';
+  1380	                ctx.font = '16px sans-serif';
+  1381	                ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width - 12, 22);
+  1382	                if (slowEffect.timer > 0) {
+  1383	                    ctx.fillStyle = '#ffd166';
+  1384	                    ctx.font = '14px sans-serif';
+  1385	                    ctx.textAlign = 'center';
+  1386	                    ctx.fillText('🍺 chill ' + slowEffect.timer.toFixed(1) + 's', canvas.width / 2, 22);
+  1387	                }
+  1388
+  1389	                // Draw special attack bar
+  1390	                const barWidth = 180;
+  1391	                const barHeight = 20;
+  1392	                const barX = canvas.width / 2 - barWidth / 2;
+  1393	                const barY = 40;
+  1394
+  1395	                // Background
+  1396	                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  1397	                roundRect(ctx, barX, barY, barWidth, barHeight, 10);
+  1398	                ctx.fill();
+  1399
+  1400	                // Fill bar with gradient from blue to red
+  1401	                if (specialAttackBar > 0) {
+  1402	                    const progress = specialAttackBar / maxSpecialAttack;
+  1403	                    const fillWidth = barWidth * progress;
+  1404
+  1405	                    const gradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
+  1406	                    gradient.addColorStop(0, '#4a90e2');
+  1407	                    gradient.addColorStop(0.5, progress > 0.5 ? '#9b4ae2' : '#4a90e2');
+  1408	                    gradient.addColorStop(1, progress > 0.7 ? '#e24a4a' : (progress > 0.5 ? '#9b4ae2' : '#4a90e2'));
+  1409
+  1410	                    ctx.fillStyle = gradient;
+  1411	                    ctx.save();
+  1412	                    ctx.beginPath();
+  1413	                    roundRect(ctx, barX, barY, fillWidth, barHeight, 10);
+  1414	                    ctx.clip();
+  1415	                    roundRect(ctx, barX, barY, fillWidth, barHeight, 10);
+  1416	                    ctx.fill();
+  1417	                    ctx.restore();
+  1418	                }
+  1419
+  1420	                // Border
+  1421	                ctx.strokeStyle = '#fff';
+  1422	                ctx.lineWidth = 2;
+  1423	                roundRect(ctx, barX, barY, barWidth, barHeight, 10);
+  1424	                ctx.stroke();
+  1425
+  1426	                const p = Math.min(1, specialAttackBar / maxSpecialAttack);
+  1427
+  1428	                // "READY!" text
+  1429	                if (p >= 1) {
+  1430	                    ctx.save();
+  1431	                    ctx.translate(barX + barWidth / 2, barY + barHeight + 20);
+  1432	                    const textPulse = Math.sin(timeElapsed * 12);
+  1433	                    const scale = 1 + textPulse * 0.1;
+  1434	                    ctx.scale(scale, scale);
+  1435
+  1436	                    ctx.fillStyle = '#ff79c6';
+  1437	                    ctx.font = 'bold 12px sans-serif';
+  1438	                    ctx.textAlign = 'center';
+  1439	                    ctx.shadowColor = '#000';
+  1440	                    ctx.shadowBlur = 4;
+  1441	                    ctx.fillText('READY!', 0, 0);
+  1442	                    ctx.restore();
+  1443	                }
+  1444
+  1445	                // Draw Isa's anger bar
+  1446	                const angerBarWidth = 150;
+  1447	                const angerBarHeight = 15;
+  1448	                const angerBarX = canvas.width / 2 - angerBarWidth / 2;
+  1449	                const angerBarY = 8;
+  1450
+  1451	                // Background
+  1452	                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  1453	                roundRect(ctx, angerBarX, angerBarY, angerBarWidth, angerBarHeight, 8);
+  1454	                ctx.fill();
+  1455
+  1456	                // Fill bar
+  1457	                if (isa.anger > 0) {
+  1458	                    const angerProgress = isa.anger / isa.maxAnger;
+  1459	                    const angerFillWidth = angerBarWidth * angerProgress;
+  1460
+  1461	                    ctx.fillStyle = angerProgress > 0.5 ? '#e24a4a' : '#e2a04a';
+  1462	                    ctx.save();
+  1463	                    ctx.beginPath();
+  1464	                    roundRect(ctx, angerBarX, angerBarY, angerFillWidth, angerBarHeight, 8);
+  1465	                    ctx.clip();
+  1466	                    roundRect(ctx, angerBarX, angerBarY, angerFillWidth, angerBarHeight, 8);
+  1467	                    ctx.fill();
+  1468	                    ctx.restore();
+  1469	                }
+  1470
+  1471	                // Border
+  1472	                ctx.strokeStyle = '#fff';
+  1473	                ctx.lineWidth = 1.5;
+  1474	                roundRect(ctx, angerBarX, angerBarY, angerBarWidth, angerBarHeight, 8);
+  1475	                ctx.stroke();
+  1476
+  1477	                // Label
+  1478	                ctx.fillStyle = '#fff';
+  1479	                ctx.font = '10px sans-serif';
+  1480	                ctx.textAlign = 'center';
+  1481	                ctx.fillText("Isa's Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
+  1482
+  1483	                ctx.restore();
+  1484	            }
+  1485
+  1486
+  1487	            function drawAchievements() {
+  1488	                drawBackground();
+  1489	                drawIsa(); // Background decoration
+  1490
+  1491	                ctx.save();
+  1492	                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  1493	                ctx.fillRect(0, 0, canvas.width, canvas.height);
+  1494
+  1495	                ctx.fillStyle = '#fff';
+  1496	                ctx.textAlign = 'center';
+  1497	                ctx.font = 'bold 32px sans-serif';
+  1498	                ctx.fillText('LOGROS / ACHIEV.', canvas.width / 2, 60);
+  1499
+  1500	                ctx.fillStyle = '#ffd700';
+  1501	                ctx.font = '24px sans-serif';
+  1502	                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 95);
+  1503
+  1504	                let y = 130;
+  1505	                ACHIEVEMENTS_LIST.forEach(a => {
+  1506	                    const status = gameData.achievements[a.id];
+  1507	                    const unlocked = a.check();
+  1508
+  1509	                    let bgColor = '#555'; // Locked
+  1510	                    if (status === 'claimed') bgColor = '#4caf50';
+  1511	                    else if (unlocked) bgColor = '#ff9f1c'; // Unlocked but not claimed
+  1512
+  1513	                    // Button bg
+  1514	                    ctx.fillStyle = bgColor;
+  1515	                    roundRect(ctx, 30, y, canvas.width - 60, 65, 10);
+  1516	                    ctx.fill();
+  1517
+  1518	                    // Border
+  1519	                    ctx.strokeStyle = '#fff';
+  1520	                    ctx.lineWidth = 2;
+  1521	                    roundRect(ctx, 30, y, canvas.width - 60, 65, 10);
+  1522	                    ctx.stroke();
+  1523
+  1524	                    // Text
+  1525	                    ctx.fillStyle = '#fff';
+  1526	                    ctx.textAlign = 'left';
+  1527	                    ctx.font = 'bold 16px sans-serif';
+  1528	                    ctx.fillText(a.name, 45, y + 22);
+  1529
+  1530	                    ctx.font = '12px sans-serif';
+  1531	                    ctx.fillText(a.desc, 45, y + 42);
+  1532
+  1533	                    ctx.textAlign = 'right';
+  1534	                    ctx.font = 'bold 14px sans-serif';
+  1535	                    if (status === 'claimed') {
+  1536	                        ctx.fillText('CLAIMED', canvas.width - 45, y + 35);
+  1537	                    } else if (unlocked) {
+  1538	                        ctx.fillText('CLAIM 💰 ' + a.reward, canvas.width - 45, y + 35);
+  1539	                    } else {
+  1540	                        ctx.fillText('LOCKED 💰 ' + a.reward, canvas.width - 45, y + 35);
+  1541	                    }
+  1542
+  1543	                    y += 75;
+  1544	                });
+  1545
+  1546	                // Back Button
+  1547	                ctx.fillStyle = '#e91e63';
+  1548	                roundRect(ctx, 100, canvas.height - 70, canvas.width - 200, 46, 12);
+  1549	                ctx.fill();
+  1550	                ctx.fillStyle = '#fff';
+  1551	                ctx.textAlign = 'center';
+  1552	                ctx.font = '18px sans-serif';
+  1553	                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 40);
+  1554
+  1555	                ctx.restore();
+  1556	            }
+  1557
+  1558	            function drawShop() {
+  1559	                drawBackground();
+  1560	                drawIsa(); // Background decoration
+  1561
+  1562	                ctx.save();
+  1563	                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  1564	                ctx.fillRect(0, 0, canvas.width, canvas.height);
+  1565
+  1566	                ctx.fillStyle = '#fff';
+  1567	                ctx.textAlign = 'center';
+  1568	                ctx.font = 'bold 32px sans-serif';
+  1569	                ctx.fillText('SHOP / TIENDA', canvas.width / 2, 80);
+  1570
+  1571	                ctx.fillStyle = '#ffd700';
+  1572	                ctx.font = '24px sans-serif';
+  1573	                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 120);
+  1574
+  1575	                const upgrades = [
+  1576	                    { id: 'lives', name: 'Extra Life', icon: '❤️', baseCost: 100, maxLevel: 5, desc: '+1 Life per level' },
+  1577	                    { id: 'shield', name: 'Start Shield', icon: '🛡️', baseCost: 150, maxLevel: 1, desc: 'Start with shield' },
+  1578	                    { id: 'cooldown', name: 'Fast Hands', icon: '⚡', baseCost: 200, maxLevel: 5, desc: '-15ms Cooldown/lvl' },
+  1579	                    { id: 'speed', name: 'Dash Speed', icon: '👟', baseCost: 150, maxLevel: 5, desc: '+15 Speed/lvl' }
+  1580	                ];
+  1581
+  1582	                let y = 160;
+  1583	                upgrades.forEach(u => {
+  1584	                    const level = gameData.upgrades[u.id] || 0;
+  1585	                    const isMax = level >= u.maxLevel;
+  1586	                    const cost = Math.floor(u.baseCost * Math.pow(1.5, level));
+  1587	                    const affordable = gameData.coins >= cost;
+  1588
+  1589	                    // Button bg
+  1590	                    ctx.fillStyle = isMax ? '#4caf50' : (affordable ? '#2196f3' : '#555');
+  1591	                    roundRect(ctx, 40, y, canvas.width - 80, 80, 10);
+  1592	                    ctx.fill();
+  1593
+  1594	                    // Border
+  1595	                    ctx.strokeStyle = '#fff';
+  1596	                    ctx.lineWidth = 2;
+  1597	                    roundRect(ctx, 40, y, canvas.width - 80, 80, 10);
+  1598	                    ctx.stroke();
+  1599
+  1600	                    // Icon
+  1601	                    ctx.font = '30px sans-serif';
+  1602	                    ctx.textAlign = 'left';
+  1603	                    ctx.fillStyle = '#fff';
+  1604	                    ctx.fillText(u.icon, 55, y + 50);
+  1605
+  1606	                    // Text
+  1607	                    ctx.font = 'bold 18px sans-serif';
+  1608	                    ctx.fillText(`${u.name} (Lvl ${level}/${u.maxLevel})`, 100, y + 30);
+  1609	                    ctx.font = '14px sans-serif';
+  1610	                    ctx.fillStyle = '#ddd';
+  1611	                    ctx.fillText(u.desc, 100, y + 55);
+  1612
+  1613	                    // Cost / Status
+  1614	                    ctx.textAlign = 'right';
+  1615	                    ctx.font = 'bold 16px sans-serif';
+  1616	                    ctx.fillStyle = '#fff';
+  1617	                    if (isMax) {
+  1618	                        ctx.fillText('MAX', canvas.width - 55, y + 45);
+  1619	                    } else {
+  1620	                        ctx.fillStyle = affordable ? '#ffd700' : '#ff9999';
+  1621	                        ctx.fillText('💰 ' + cost, canvas.width - 55, y + 45);
+  1622	                    }
+  1623
+  1624	                    y += 100;
+  1625	                });
+  1626
+  1627	                // Back Button
+  1628	                ctx.fillStyle = '#ff5252';
+  1629	                roundRect(ctx, 100, canvas.height - 100, canvas.width - 200, 50, 12);
+  1630	                ctx.fill();
+  1631	                ctx.fillStyle = '#fff';
+  1632	                ctx.textAlign = 'center';
+  1633	                ctx.font = 'bold 20px sans-serif';
+  1634	                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 68);
+  1635
+  1636	                ctx.restore();
+  1637	            }
+  1638
+  1639	            function drawCosmetics() {
+  1640	                drawBackground();
+  1641	                drawIsa(); // Background decoration
+  1642
+  1643	                ctx.save();
+  1644	                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  1645	                ctx.fillRect(0, 0, canvas.width, canvas.height);
+  1646
+  1647	                ctx.fillStyle = '#fff';
+  1648	                ctx.textAlign = 'center';
+  1649	                ctx.font = 'bold 32px sans-serif';
+  1650	                ctx.fillText('COSMETICS', canvas.width / 2, 80);
+  1651
+  1652	                ctx.fillStyle = '#ffd700';
+  1653	                ctx.font = '24px sans-serif';
+  1654	                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 120);
+  1655
+  1656	                let y = 140;
+  1657	                COSMETICS_LIST.forEach(c => {
+  1658	                    const unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
+  1659	                    const equipped = gameData.currentHat === c.id;
+  1660	                    const affordable = gameData.coins >= c.cost;
+  1661
+  1662	                    let bgColor = '#555';
+  1663	                    if (equipped) bgColor = '#4caf50';
+  1664	                    else if (unlocked) bgColor = '#2196f3';
+  1665
+  1666	                    ctx.fillStyle = bgColor;
+  1667	                    roundRect(ctx, 40, y, canvas.width - 80, 70, 10);
+  1668	                    ctx.fill();
+  1669
+  1670	                    ctx.strokeStyle = '#fff';
+  1671	                    ctx.lineWidth = 2;
+  1672	                    roundRect(ctx, 40, y, canvas.width - 80, 70, 10);
+  1673	                    ctx.stroke();
+  1674
+  1675	                    // Icon
+  1676	                    ctx.font = '30px Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji, sans-serif';
+  1677	                    ctx.textAlign = 'left';
+  1678	                    ctx.fillStyle = '#fff';
+  1679	                    ctx.fillText(c.icon || '👤', 55, y + 45);
+  1680
+  1681	                    // Name
+  1682	                    ctx.font = 'bold 18px sans-serif';
+  1683	                    ctx.fillText(c.name, 100, y + 42);
+  1684
+  1685	                    // Cost / Status
+  1686	                    ctx.textAlign = 'right';
+  1687	                    ctx.font = 'bold 16px sans-serif';
+  1688
+  1689	                    if (equipped) {
+  1690	                        ctx.fillStyle = '#fff';
+  1691	                        ctx.fillText('EQUIPPED', canvas.width - 55, y + 42);
+  1692	                    } else if (unlocked) {
+  1693	                        ctx.fillStyle = '#fff';
+  1694	                        ctx.fillText('EQUIP', canvas.width - 55, y + 42);
+  1695	                    } else {
+  1696	                        ctx.fillStyle = affordable ? '#ffd700' : '#ff9999';
+  1697	                        ctx.fillText('💰 ' + c.cost, canvas.width - 55, y + 42);
+  1698	                    }
+  1699
+  1700	                    y += 85;
+  1701	                });
+  1702
+  1703	                // Back Button
+  1704	                ctx.fillStyle = '#ff9f1c';
+  1705	                roundRect(ctx, 100, canvas.height - 80, canvas.width - 200, 50, 12);
+  1706	                ctx.fill();
+  1707	                ctx.fillStyle = '#fff';
+  1708	                ctx.textAlign = 'center';
+  1709	                ctx.font = 'bold 20px sans-serif';
+  1710	                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 48);
+  1711
+  1712	                ctx.restore();
+  1713	            }
+  1714
+  1715	            function drawTitleScreen() {
+  1716	                drawBackground();
+  1717	                drawIsa();
+  1718	                drawPlayer();
+  1719	                ctx.save();
+  1720	                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  1721	                roundRect(ctx, 30, 260, canvas.width - 60, 200, 16);
+  1722	                ctx.fill();
+  1723	                ctx.fillStyle = '#fff';
+  1724	                ctx.textAlign = 'center';
+  1725	                ctx.font = '24px sans-serif';
+  1726	                ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
+  1727	                ctx.font = '16px sans-serif';
+  1728	                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
+  1729	                ctx.font = '14px sans-serif';
+  1730	                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+  1731
+  1732	                // Play Button
+  1733	                ctx.fillStyle = '#ff9f1c';
+  1734	                roundRect(ctx, 110, 380, canvas.width - 220, 46, 12);
+  1735	                ctx.fill();
+  1736	                ctx.fillStyle = '#222';
+  1737	                ctx.font = '18px sans-serif';
+  1738	                ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+  1739
+  1740	                // Shop Button
+  1741	                ctx.fillStyle = '#2196f3';
+  1742	                roundRect(ctx, 110, 440, canvas.width - 220, 46, 12);
+  1743	                ctx.fill();
+  1744	                ctx.fillStyle = '#fff';
+  1745	                ctx.font = '18px sans-serif';
+  1746	                ctx.fillText('Shop / Tienda', canvas.width / 2, 470);
+  1747
+  1748	                // Achievements Button
+  1749	                ctx.fillStyle = '#9c27b0';
+  1750	                roundRect(ctx, 110, 500, canvas.width - 220, 46, 12);
+  1751	                ctx.fill();
+  1752	                ctx.fillStyle = '#fff';
+  1753	                ctx.font = '18px sans-serif';
+  1754	                ctx.fillText('Logros / Achiev.', canvas.width / 2, 530);
+  1755
+  1756	                // Cosmetics Button
+  1757	                ctx.fillStyle = '#e91e63';
+  1758	                roundRect(ctx, 110, 560, canvas.width - 220, 46, 12);
+  1759	                ctx.fill();
+  1760	                ctx.fillStyle = '#fff';
+  1761	                ctx.font = '18px sans-serif';
+  1762	                ctx.fillText('Cosmetics / Cosm.', canvas.width / 2, 590);
+  1763
+  1764	                ctx.restore();
+  1765	            }
+  1766
+  1767	            function drawGameOver() {
+  1768	                ctx.save();
+  1769	                ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  1770	                ctx.fillRect(0, 0, canvas.width, canvas.height);
+  1771
+  1772	                // Draw Dead Player
+  1773	                drawPlayerAvatar(ctx, canvas.width / 2, canvas.height / 2 - 80, 80, false, 'dead');
+  1774
+  1775	                ctx.fillStyle = '#fff';
+  1776	                ctx.textAlign = 'center';
+  1777	                ctx.font = '32px sans-serif';
+  1778	                ctx.fillText('Isa ganó', canvas.width / 2, canvas.height / 2 + 10);
+  1779
+  1780	                ctx.font = '20px sans-serif';
+  1781	                ctx.fillText('Score: ' + score + ' | Best: ' + gameData.bestScore, canvas.width / 2, canvas.height / 2 + 45);
+  1782
+  1783	                ctx.fillStyle = '#ffd700';
+  1784	                ctx.font = '18px sans-serif';
+  1785	                const earned = Math.floor(score / 10);
+  1786	                ctx.fillText(`Coins Earned: +${earned}`, canvas.width / 2, canvas.height / 2 + 70);
+  1787	                ctx.font = '14px sans-serif';
+  1788	                ctx.fillText(`Total Coins: ${gameData.coins}`, canvas.width / 2, canvas.height / 2 + 90);
+  1789
+  1790	                ctx.fillStyle = '#dcdcdc';
+  1791	                ctx.font = 'italic 16px sans-serif';
+  1792	                ctx.fillText(dialogueText || 'Fue un honor, supongo.', canvas.width / 2, canvas.height / 2 + 75);
+  1793
+  1794	                ctx.fillStyle = '#ff9f1c';
+  1795	                roundRect(ctx, 110, canvas.height / 2 + 110, canvas.width - 220, 50, 12);
+  1796	                ctx.fill();
+  1797	                ctx.fillStyle = '#222';
+  1798	                ctx.font = 'bold 20px sans-serif';
+  1799	                ctx.fillText('Play Again', canvas.width / 2, canvas.height / 2 + 142);
+  1800	                ctx.restore();
+  1801	            }
+  1802
+  1803	            function spawnChancla() {
+  1804	                const isSuper = superEnabled && Math.random() < 0.18;
+  1805	                const isFire = isa.enraged && Math.random() < 0.25;
+  1806	                const w = isSuper ? 46 : 32;
+  1807	                const h = isSuper ? 26 : 18;
+  1808	                const x = 40 + Math.random() * (canvas.width - 80);
+  1809	                const y = isa.y + 40;
+  1810	                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
+  1811	                const vx = (Math.random() - 0.5) * 60;
+  1812	                const rotSpeed = (Math.random() - 0.5) * 5;
+  1813
+  1814	                let type = 'normal';
+  1815	                if (isFire) type = 'fire';
+  1816	                else if (isSuper) type = 'super';
+  1817
+  1818	                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+  1819	                if (isSuper) sayPlayer('super');
+  1820	            }
+  1821
+  1822	            function spawnOwen() {
+  1823	                const side = Math.random() < 0.5 ? 'left' : 'right';
+  1824	                const x = side === 'left' ? -40 : canvas.width + 40;
+  1825	                const y = canvas.height - 110;
+  1826	                const vx = side === 'left' ? 180 : -180;
+  1827	                pets.push({ kind: 'owen', x, y, vx, active: true, duration: 6 });
+  1828	                sayRandom('petOwen');
+  1829	            }
+  1830
+  1831	            function spawnRita() {
+  1832	                const x = player.x + (Math.random() * 60 - 30);
+  1833	                const y = player.y - 80;
+  1834	                pets.push({ kind: 'rita', x, y, vx: 0, active: true, duration: 3, alpha: 1, dropped: false });
+  1835	                if (player.lives < player.maxLives) player.lives++;
+  1836	                baseSpeed *= 0.85;
+  1837	                sayRandom('petRita');
+  1838	            }
+  1839
+  1840	            function spawnPowerup(kind, x, y) {
+  1841	                powerups.push({ kind, x, y, vy: 110, w: 38, h: 38 });
+  1842	            }
+  1843
+  1844	            function addFloatText(text, x, y) {
+  1845	                floatTexts.push({ text, x, y, time: 1.8, max: 1.8 });
+  1846	            }
+  1847
+  1848	            function applyPowerup(p) {
+  1849	                if (p.kind === 'heart') {
+  1850	                    if (player.lives < player.maxLives) {
+  1851	                        player.lives++;
+  1852	                        addFloatText('I love you! +1 ❤️', p.x, p.y);
+  1853	                    } else {
+  1854	                        addFloatText('Full corazón', p.x, p.y);
+  1855	                    }
+  1856	                }
+  1857	                if (p.kind === 'beer') {
+  1858	                    slowEffect.timer = 4.5;
+  1859	                    addFloatText('Cerveza chill 🍺', p.x, p.y);
+  1860	                }
+  1861
+  1862	            }
+  1863
+  1864	            function trySlap() {
+  1865	                if (slapCooldown > 0) return;
+  1866
+  1867	                slapEffect.timer = slapEffect.duration;
+  1868	                slapEffect.type = 'miss';
+  1869	                slapEffect.swipeDir = Math.random() < 0.5 ? 1 : -1;
+  1870
+  1871	                const slapRange = 80;
+  1872	                const perfectRange = 50;
+  1873	                let slappedAny = false;
+  1874
+  1875	                for (let i = pinatas.length - 1; i >= 0; i--) {
+  1876	                    const p = pinatas[i];
+  1877	                    const dist = Math.sqrt(Math.pow(p.x - player.x, 2) + Math.pow(p.y - player.y, 2));
+  1878
+  1879	                    if (dist < slapRange) {
+  1880	                        slappedAny = true;
+  1881	                        p.hits++;
+  1882	                        p.vy = -400; // Bounce up
+  1883	                        p.vx += (p.x - player.x) * 5; // Impart momentum
+  1884	                        p.rotSpeed = (Math.random() - 0.5) * 15;
+  1885	                        slapEffect.type = 'hit';
+  1886
+  1887	                        spawnImpact(p.x, p.y);
+  1888	                        playSound(400, 0.1);
+  1889
+  1890	                        if (p.hits >= 3) {
+  1891	                            // Pop piñata
+  1892	                            playSound(600, 0.2);
+  1893	                            addFloatText('PIÑATA POP! +20💰', p.x, p.y - 20);
+  1894	                            score += 50;
+  1895	                            gameData.coins += 20;
+  1896	                            gameData.stats.totalCoinsEarned += 20;
+  1897
+  1898	                            // Confetti
+  1899	                            for (let k = 0; k < 15; k++) {
+  1900	                                rosePetals.push({
+  1901	                                    x: p.x, y: p.y,
+  1902	                                    vx: (Math.random() - 0.5) * 300, vy: (Math.random() - 0.5) * 300,
+  1903	                                    rotation: Math.random() * 6, rotSpeed: (Math.random() - 0.5) * 10,
+  1904	                                    emoji: ['🍬', '🎉', '✨', '💰'][Math.floor(Math.random() * 4)],
+  1905	                                    size: 15 + Math.random() * 10
+  1906	                                });
+  1907	                            }
+  1908	                            pinatas.splice(i, 1);
+  1909	                        } else {
+  1910	                            addFloatText('BOING!', p.x, p.y);
+  1911	                        }
+  1912	                    }
+  1913	                }
+  1914
+  1915
+  1916	                for (let i = chanclas.length - 1; i >= 0; i--) {
+  1917	                    const c = chanclas[i];
+  1918	                    const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+  1919
+  1920	                    if (dist < slapRange) {
+  1921	                        // Slap the chancla away
+  1922	                        const isPerfect = dist < perfectRange;
+  1923
+  1924	                        gameData.stats.totalSlaps++;
+  1925	                        if (isPerfect) gameData.stats.perfectSlaps++;
+  1926
+  1927	                        // Upgrade visual effect
+  1928	                        if (isPerfect) slapEffect.type = 'perfect';
+  1929	                        else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
+  1930
+  1931	                        c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
+  1932	                        c.vy = isPerfect ? -550 : -300;
+  1933	                        c.slapped = true;
+  1934	                        c.isPerfect = isPerfect;
+  1935	                        c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
+  1936	                        slappedAny = true;
+  1937	                        comboCount++;
+  1938	                        score += comboCount;
+  1939
+  1940	                        // Increase special attack bar
+  1941	                        specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
+  1942
+  1943	                        if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
+  1944	                            specialReadyTriggered = true;
+  1945	                            // HUD egg icon approx location
+  1946	                            const eggX = canvas.width / 2;
+  1947	                            const eggY = 50;
+  1948	                            spawnImpact(eggX, eggY, true);
+  1949	                            for (let k = 0; k < 8; k++) {
+  1950	                                rosePetals.push({
+  1951	                                    x: eggX, y: eggY,
+  1952	                                    vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200,
+  1953	                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+  1954	                                    emoji: '✨', size: 20
+  1955	                                });
+  1956	                            }
+  1957	                            playSound(1200, 0.25);
+  1958	                            triggerShake(5, 0.2);
+  1959	                        }
+  1960
+  1961	                        const comboPhrase = getComboPhrase(comboCount);
+  1962	                        const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
+  1963
+  1964	                        // Add float text
+  1965	                        if (isPerfect) {
+  1966	                            gameData.coins += 2;
+  1967	                            gameData.stats.totalCoinsEarned += 2;
+  1968	                            addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
+  1969	                            spawnImpact(c.x, c.y, true);
+  1970	                            playSound(850, 0.15);
+  1971	                            triggerShake(6, 0.2);
+  1972	                            triggerFlash(0.15, '#fff');
+  1973	                            hitStop = 0.15;
+  1974	                            spawnRoseExplosion(c.x, c.y);
+  1975	                        } else {
+  1976	                            gameData.coins += 1;
+  1977	                            gameData.stats.totalCoinsEarned += 1;
+  1978	                            addFloatText('SLAP! +1💰' + comboText, c.x, c.y);
+  1979	                            spawnImpact(c.x, c.y);
+  1980	                            playSound(600, 0.1);
+  1981	                        }
+  1982
+  1983	                        if (Math.random() < 0.3) sayRandom('slapSuccess');
+  1984	                    }
+  1985	                }
+  1986
+  1987	                if (slappedAny) {
+  1988	                    const cdLevel = gameData.upgrades.cooldown || 0;
+  1989	                    slapCooldown = 0.3 - 0.015 * cdLevel;
+  1990	                } else {
+  1991	                    slapCooldown = 0.15;
+  1992	                    comboCount = 0;
+  1993	                    playWhoosh();
+  1994	                    rosePetals.push({
+  1995	                        x: player.x + (Math.random() - 0.5) * 20,
+  1996	                        y: player.y - 40,
+  1997	                        vx: (Math.random() - 0.5) * 50,
+  1998	                        vy: -50,
+  1999	                        rotation: Math.random() * Math.PI * 2,
+  2000	                        rotSpeed: (Math.random() - 0.5) * 5,
+  2001	                        emoji: '💨',
+  2002	                        size: 24
+  2003	                    });
+  2004	                }
+  2005	            }
+  2006
+  2007	            function fireSpecialAttack() {
+  2008	                if (specialAttackBar >= maxSpecialAttack) {
+  2009	                    // Fire bouquet emoji at Isa
+  2010	                    specialProjectiles.push({
+  2011	                        x: player.x,
+  2012	                        y: player.y - 20,
+  2013	                        targetX: isa.x,
+  2014	                        targetY: isa.y,
+  2015	                        speed: 400,
+  2016	                        rotation: 0,
+  2017	                        rotSpeed: 5,
+  2018	                        trailTimer: 0
+  2019	                    });
+  2020
+  2021	                    specialAttackBar = 0;
+  2022	                    specialReadyTriggered = false;
+  2023
+  2024	                    // Play special attack sound
+  2025	                    playSound(800, 0.2);
+  2026
+  2027	                    addFloatText('SPECIAL! 🦵', player.x, player.y - 30);
+  2028	                    sayPlayer('fireSpecial');
+  2029	                }
+  2030	            }
+  2031
+  2032	            function playWhoosh() {
+  2033	                try {
+  2034	                    const audioCtx = getAudioContext();
+  2035	                    if (!audioCtx) return;
+  2036
+  2037	                    const osc = audioCtx.createOscillator();
+  2038	                    const gain = audioCtx.createGain();
+  2039
+  2040	                    osc.connect(gain);
+  2041	                    gain.connect(audioCtx.destination);
+  2042
+  2043	                    // Frequency sweep for whoosh
+  2044	                    const now = audioCtx.currentTime;
+  2045	                    osc.frequency.setValueAtTime(400, now);
+  2046	                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+  2047
+  2048	                    // Volume envelope
+  2049	                    gain.gain.setValueAtTime(0.08, now);
+  2050	                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+  2051
+  2052	                    osc.start(now);
+  2053	                    osc.stop(now + 0.15);
+  2054	                } catch (e) {}
+  2055	            }
+  2056
+  2057	            function playSound(frequency, duration) {
+  2058	                // Simple beep sound using Web Audio API
+  2059	                try {
+  2060	                    const audioCtx = getAudioContext();
+  2061	                    if (!audioCtx) return;
+  2062
+  2063	                    const oscillator = audioCtx.createOscillator();
+  2064	                    const gainNode = audioCtx.createGain();
+  2065
+  2066	                    oscillator.connect(gainNode);
+  2067	                    gainNode.connect(audioCtx.destination);
+  2068
+  2069	                    oscillator.frequency.value = frequency;
+  2070	                    oscillator.type = 'sine';
+  2071
+  2072	                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  2073	                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+  2074
+  2075	                    oscillator.start(audioCtx.currentTime);
+  2076	                    oscillator.stop(audioCtx.currentTime + duration);
+  2077	                } catch (e) {
+  2078	                    // Silent fail if audio not supported
+  2079	                }
+  2080	            }
+  2081
+  2082
+  2083	            function updatePinatas(dt) {
+  2084	                // Rare spawn chance
+  2085	                if (Math.random() < 0.001) {
+  2086	                    pinatas.push({
+  2087	                        x: 50 + Math.random() * (canvas.width - 100),
+  2088	                        y: -50,
+  2089	                        vx: (Math.random() - 0.5) * 50,
+  2090	                        vy: 0,
+  2091	                        hits: 0,
+  2092	                        rotation: 0,
+  2093	                        rotSpeed: (Math.random() - 0.5) * 2,
+  2094	                        size: 40
+  2095	                    });
+  2096	                }
+  2097
+  2098	                for (let i = pinatas.length - 1; i >= 0; i--) {
+  2099	                    const p = pinatas[i];
+  2100	                    p.x += p.vx * dt;
+  2101	                    p.y += p.vy * dt;
+  2102	                    p.vy += 300 * dt; // Gravity
+  2103
+  2104	                    // Bounce off walls
+  2105	                    if (p.x < 20) { p.x = 20; p.vx *= -0.8; }
+  2106	                    if (p.x > canvas.width - 20) { p.x = canvas.width - 20; p.vx *= -0.8; }
+  2107
+  2108	                    p.rotation += p.rotSpeed * dt;
+  2109
+  2110	                    // Remove if it falls off screen
+  2111	                    if (p.y > canvas.height + 50) {
+  2112	                        pinatas.splice(i, 1);
+  2113	                    }
+  2114	                }
+  2115	            }
+  2116
+  2117	            function updateChanclas(dt) {
+  2118	                const slowFactor = slowEffect.timer > 0 ? slowEffect.factor : 1;
+  2119	                for (let i = chanclas.length - 1; i >= 0; i--) {
+  2120	                    const c = chanclas[i];
+  2121	                    c.x += c.vx * dt;
+  2122	                    c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
+  2123	                    c.rotation += c.rotSpeed * dt;
+  2124
+  2125	                    // Remove slapped chanclas that fly off screen
+  2126	                    if (c.slapped) {
+  2127	                        // Check for chain reaction with other chanclas
+  2128	                        for (let j = 0; j < chanclas.length; j++) {
+  2129	                            if (i === j) continue;
+  2130	                            const other = chanclas[j];
+  2131	                            if (!other.slapped) {
+  2132	                                const distToOther = Math.sqrt(Math.pow(c.x - other.x, 2) + Math.pow(c.y - other.y, 2));
+  2133	                                if (distToOther < (c.w + other.w) / 2) {
+  2134	                                    // Chain reaction!
+  2135	                                    other.slapped = true;
+  2136	                                    // Push away from the hitting chancla, plus some transferred momentum
+  2137	                                    let pushX = (other.x - c.x);
+  2138	                                    // Ensure some horizontal movement if perfectly aligned
+  2139	                                    if (Math.abs(pushX) < 1) pushX = (Math.random() - 0.5) * 10;
+  2140
+  2141	                                    other.vx = pushX * 8 + c.vx * 0.3;
+  2142	                                    other.vy = -300 + (Math.random() - 0.5) * 100;
+  2143
+  2144	                                    comboCount++;
+  2145	                                    const comboPhrase = getComboPhrase(comboCount);
+  2146	                                    addFloatText(`CHAIN! x${comboCount} ${comboPhrase}`, other.x, other.y);
+  2147	                                    spawnImpact(other.x, other.y);
+  2148	                                    spawnChainEffect(c.x, c.y, other.x, other.y);
+  2149	                                    playSound(700, 0.1);
+  2150	                                    score += 5 + comboCount; // Bonus score for chaotic skill
+  2151	                                }
+  2152	                            }
+  2153	                        }
+  2154
+  2155	                        // Check collision with Isa for slapped chanclas
+  2156	                        // Isa radius approx 40. c radius approx w/2.
+  2157	                        const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
+  2158	                        if (distToIsa < 40 + c.w / 2) {
+  2159	                            // Hit Isa
+  2160	                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+  2161	                            if (c.isPerfect) damage += 7;
+  2162
+  2163	                            isa.anger = Math.max(0, isa.anger - damage);
+  2164	                            isa.hitTimer = 0.5;
+  2165
+  2166	                            if (c.isPerfect) {
+  2167	                                addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
+  2168	                                hitStop = 0.1;
+  2169	                            }
+  2170	                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+  2171
+  2172	                            playSound(900, 0.1); // Higher pitch for success
+  2173	                            chanclas.splice(i, 1);
+  2174
+  2175	                            // Check win
+  2176	                            if (isa.anger <= 0) {
+  2177	                                state = STATE.WIN;
+  2178	                                sayRandom('win');
+  2179	                            }
+  2180	                            continue;
+  2181	                        }
+  2182
+  2183	                        if (c.x < -50 || c.x > canvas.width + 50 || c.y < -50) {
+  2184	                            chanclas.splice(i, 1);
+  2185	                            continue;
+  2186	                        }
+  2187	                    }
+  2188
+  2189	                    if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
+  2190	                    if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
+  2191
+  2192
+  2193	                    if (!c.slapped && rectsOverlap(player, c)) {
+  2194	                        if (player.shield) {
+  2195	                            player.shield = false;
+  2196	                            chanclas.splice(i, 1);
+  2197	                            continue;
+  2198	                        }
+  2199	                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
+  2200	                        comboCount = 0;
+  2201	                        const shakeAmt = c.type === 'super' ? 15 : (c.type === 'fire' ? 15 : 8);
+  2202	                        triggerShake(shakeAmt, 0.4);
+  2203	                        player.lives -= dmg;
+  2204	                        player.hitTimer = 0.5;
+  2205	                        chanclas.splice(i, 1);
+  2206	                        sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
+  2207	                        sayPlayer('hit');
+  2208	                        if (player.lives === 1) sayRandom('lowHealth');
+  2209	                        if (player.lives <= 0) {
+  2210	                            endGame();
+  2211	                            return;
+  2212	                        }
+  2213	                    } else if (c.y > canvas.height + c.h) {
+  2214	                        score += 1;
+  2215	                        const prevBest = bestScore;
+  2216	                        bestScore = Math.max(bestScore, score);
+  2217	                        if (score > prevBest && score % 10 === 0) sayRandom('highScore');
+  2218	                        if (Math.random() < 0.2) sayRandom('nearMiss');
+  2219	                        if (Math.random() < 0.25) sayPlayer('nearMiss');
+  2220	                        chanclas.splice(i, 1);
+  2221	                    }
+  2222	                }
+  2223	            }
+  2224
+  2225	            function updatePets(dt) {
+  2226	                for (let i = pets.length - 1; i >= 0; i--) {
+  2227	                    const p = pets[i];
+  2228	                    p.duration -= dt;
+  2229	                    if (p.kind === 'owen') {
+  2230	                        p.x += p.vx * dt;
+  2231	                        if (!p.dropped && Math.random() < 0.12 * dt) {
+  2232	                            const r = Math.random();
+  2233	                            spawnPowerup('beer', p.x, p.y - 10);
+  2234	                            p.dropped = true;
+  2235	                        }
+  2236	                        if (p.x < -60 || p.x > canvas.width + 60 || p.duration <= 0) {
+  2237	                            pets.splice(i, 1);
+  2238	                            continue;
+  2239	                        }
+  2240	                        for (let j = chanclas.length - 1; j >= 0; j--) {
+  2241	                            if (rectsOverlap({ x: p.x, y: p.y, w: 50, h: 30 }, chanclas[j])) {
+  2242	                                chanclas.splice(j, 1);
+  2243	                            }
+  2244	                        }
+  2245	                    } else if (p.kind === 'rita') {
+  2246	                        p.y += Math.sin(timeElapsed * 3) * 10 * dt;
+  2247	                        p.alpha = Math.max(0, p.duration / 3);
+  2248	                        if (!p.dropped && Math.random() < 0.16 * dt) {
+  2249	                            spawnPowerup('heart', p.x, p.y + 20);
+  2250	                            p.dropped = true;
+  2251	                        }
+  2252	                        if (p.duration <= 0) {
+  2253	                            pets.splice(i, 1);
+  2254	                        }
+  2255	                    }
+  2256	                }
+  2257	            }
+  2258
+  2259	            function drawPetsOverlay() {
+  2260	                pets.forEach(p => {
+  2261	                    if (p.kind === 'rita') {
+  2262	                        ctx.save();
+  2263	                        ctx.globalAlpha = p.alpha;
+  2264	                        drawRita(p);
+  2265	                        ctx.restore();
+  2266	                    }
+  2267	                });
+  2268	            }
+  2269
+  2270	            function drawPowerups() {
+  2271	                powerups.forEach(p => {
+  2272	                    ctx.save();
+  2273	                    ctx.translate(p.x, p.y);
+  2274	                    const scale = p.w / 26;
+  2275	                    ctx.scale(scale, scale);
+  2276	                    if (p.kind === 'heart') {
+  2277	                        ctx.fillStyle = '#ff6fae';
+  2278	                        ctx.beginPath();
+  2279	                        ctx.moveTo(0, 6);
+  2280	                        ctx.bezierCurveTo(-12, -8, -2, -16, 0, -8);
+  2281	                        ctx.bezierCurveTo(2, -16, 12, -8, 0, 6);
+  2282	                        ctx.fill();
+  2283	                        ctx.fillStyle = '#fff';
+  2284	                        ctx.font = '11px sans-serif';
+  2285	                        ctx.textAlign = 'center';
+  2286	                        ctx.fillText('I ❤️ U', 0, 22);
+  2287	                    } else if (p.kind === 'beer') {
+  2288	                        ctx.fillStyle = '#f2c94c';
+  2289	                        roundRect(ctx, -12, -18, 24, 36, 6);
+  2290	                        ctx.fill();
+  2291	                        ctx.fillStyle = '#fff3a3';
+  2292	                        roundRect(ctx, -10, -22, 20, 10, 4);
+  2293	                        ctx.fill();
+  2294	                        ctx.fillStyle = '#5f4b32';
+  2295	                        ctx.font = '12px sans-serif';
+  2296	                        ctx.fillText('🍺', 0, 6);
+  2297	                    }
+  2298	                    ctx.restore();
+  2299	                });
+  2300	            }
+  2301
+  2302	            function drawFloatTexts() {
+  2303	                floatTexts.forEach(f => {
+  2304	                    ctx.save();
+  2305	                    ctx.globalAlpha = Math.max(0, f.time / f.max);
+  2306	                    ctx.fillStyle = '#fff';
+  2307	                    ctx.font = '14px sans-serif';
+  2308	                    ctx.textAlign = 'center';
+  2309	                    ctx.fillText(f.text, f.x, f.y);
+  2310	                    ctx.restore();
+  2311	                });
+  2312	            }
+  2313
+  2314	            function rectsOverlap(a, b) {
+  2315	                return Math.abs(a.x - b.x) < (a.w / 2 + b.w / 2) && Math.abs(a.y - b.y) < (a.h / 2 + b.h / 2);
+  2316	            }
+  2317
+  2318	            function updatePowerups(dt) {
+  2319	                for (let i = powerups.length - 1; i >= 0; i--) {
+  2320	                    const p = powerups[i];
+  2321	                    p.y += p.vy * dt;
+  2322	                    if (rectsOverlap(player, p)) {
+  2323	                        applyPowerup(p);
+  2324	                        powerups.splice(i, 1);
+  2325	                        continue;
+  2326	                    }
+  2327	                    if (p.y > canvas.height + p.h) {
+  2328	                        powerups.splice(i, 1);
+  2329	                    }
+  2330	                }
+  2331	                for (let i = floatTexts.length - 1; i >= 0; i--) {
+  2332	                    const f = floatTexts[i];
+  2333	                    f.y -= 18 * dt;
+  2334	                    f.time -= dt;
+  2335	                    if (f.time <= 0) floatTexts.splice(i, 1);
+  2336	                }
+  2337	            }
+  2338
+  2339	            function updateSpecialProjectiles(dt) {
+  2340	                for (let i = specialProjectiles.length - 1; i >= 0; i--) {
+  2341	                    const proj = specialProjectiles[i];
+  2342
+  2343	                    // Move towards Isa
+  2344	                    const dx = proj.targetX - proj.x;
+  2345	                    const dy = proj.targetY - proj.y;
+  2346	                    const dist = Math.sqrt(dx * dx + dy * dy);
+  2347
+  2348	                    // Rotate projectile
+  2349	                    proj.rotation += proj.rotSpeed * dt;
+  2350
+  2351	                    // Spawn Trail (Hearts/Sparkles)
+  2352	                    proj.trailTimer = (proj.trailTimer || 0) + dt;
+  2353	                    if (proj.trailTimer > 0.05) {
+  2354	                        proj.trailTimer = 0;
+  2355	                        rosePetals.push({
+  2356	                            x: proj.x + (Math.random() - 0.5) * 20,
+  2357	                            y: proj.y + (Math.random() - 0.5) * 20,
+  2358	                            vy: 50, // slowly fall
+  2359	                            rotation: Math.random() * Math.PI * 2,
+  2360	                            rotSpeed: (Math.random() - 0.5) * 2,
+  2361	                            emoji: Math.random() < 0.7 ? '💦' : '✨',
+  2362	                            size: 16
+  2363	                        });
+  2364	                    }
+  2365
+  2366	                    if (dist < 15) {
+  2367	                        // Hit Isa!
+  2368	                        isa.anger = Math.max(0, isa.anger - 20);
+  2369	                        isa.hitTimer = 0.7;
+  2370	                        specialProjectiles.splice(i, 1);
+  2371
+  2372	                        // Play hit sound
+  2373	                        playSound(1000, 0.15);
+  2374
+  2375	                        const hitWords = dialogue.hitBySpecial;
+  2376	                        const word = hitWords[Math.floor(Math.random() * hitWords.length)];
+  2377	                        addFloatText(word + ' ❤️', isa.x, isa.y);
+  2378	                        sayRandom('hitBySpecial');
+  2379
+  2380	                        // Spawn Impact Explosion
+  2381	                        for (let k = 0; k < 15; k++) {
+  2382	                            const angle = (Math.PI * 2 * k) / 15;
+  2383	                            const speed = 150 + Math.random() * 150;
+  2384	                            rosePetals.push({
+  2385	                                x: isa.x,
+  2386	                                y: isa.y,
+  2387	                                vx: Math.cos(angle) * speed,
+  2388	                                vy: Math.sin(angle) * speed,
+  2389	                                rotation: Math.random() * Math.PI * 2,
+  2390	                                rotSpeed: (Math.random() - 0.5) * 10,
+  2391	                                emoji: Math.random() < 0.5 ? '✨' : '💨',
+  2392	                                size: 24
+  2393	                            });
+  2394	                        }
+  2395
+  2396	                        // Check for win
+  2397	                        if (isa.anger <= 0) {
+  2398	                            state = STATE.WIN;
+  2399	                            sayRandom('win');
+  2400	                        }
+  2401	                        continue;
+  2402	                    }
+  2403
+  2404	                    proj.x += (dx / dist) * proj.speed * dt;
+  2405	                    proj.y += (dy / dist) * proj.speed * dt;
+  2406	                }
+  2407	            }
+  2408
+  2409	            function drawSpecialProjectiles() {
+  2410	                specialProjectiles.forEach(proj => {
+  2411	                    ctx.save();
+  2412	                    ctx.translate(proj.x, proj.y);
+  2413	                    ctx.rotate(proj.rotation);
+  2414	                    ctx.font = '70px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+  2415	                    ctx.textAlign = 'center';
+  2416	                    ctx.textBaseline = 'middle';
+  2417	                    ctx.fillText('🦵', 0, 0);
+  2418	                    ctx.restore();
+  2419	                });
+  2420	            }
+  2421
+  2422	            function endGame() {
+  2423	                state = STATE.GAMEOVER;
+  2424	                const earned = Math.floor(score / 10);
+  2425	                gameData.coins += earned;
+  2426	                gameData.stats.totalCoinsEarned += earned;
+  2427	                gameData.bestScore = Math.max(gameData.bestScore, score);
+  2428	                saveGameData();
+  2429	                sayRandom('gameOver');
+  2430	            }
+  2431
+  2432	            function update(dt) {
+  2433	                if (state !== STATE.PLAYING) return;
+  2434
+  2435	                if (shakeTimer > 0) {
+  2436	                    shakeTimer -= dt;
+  2437	                    const dx = (Math.random() - 0.5) * shakeIntensity * 2;
+  2438	                    const dy = (Math.random() - 0.5) * shakeIntensity * 2;
+  2439	                    wrapper.style.transform = `translate(${dx}px, ${dy}px)`;
+  2440	                    if (shakeTimer <= 0) wrapper.style.transform = 'none';
+  2441	                }
+  2442
+  2443	                if (flash.timer > 0) {
+  2444	                    flash.timer -= dt;
+  2445	                }
+  2446
+  2447	                if (hitStop > 0) {
+  2448	                    hitStop -= dt;
+  2449	                    return;
+  2450	                }
+  2451
+  2452	                if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
+  2453	                    isa.enraged = true;
+  2454	                    // Rage phase entry effects
+  2455	                    triggerShake(10, 0.5);
+  2456	                    triggerFlash(0.3, '#ff4d4d');
+  2457	                    playSound(1000, 0.3);
+  2458	                    addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
+  2459	                }
+  2460
+  2461	                timeElapsed += dt;
+  2462	                spawnTimer += dt;
+  2463	                if (timeElapsed > 12) {
+  2464	                    // Ramp up difficulty faster if enraged
+  2465	                    const intervalDec = isa.enraged ? 0.05 : 0.02;
+  2466	                    const speedInc = isa.enraged ? 10 : 5;
+  2467
+  2468	                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
+  2469	                    baseSpeed += dt * speedInc;
+  2470	                }
+  2471	                if (timeElapsed > 18) superEnabled = true;
+  2472	                if (spawnTimer >= spawnInterval) {
+  2473	                    spawnChancla();
+  2474	                    spawnTimer = 0;
+  2475	                }
+  2476
+  2477	                const speed = player.speed;
+  2478	                const moveLeft = keys.left || touch.left;
+  2479	                const moveRight = keys.right || touch.right;
+  2480	                if (moveLeft) player.x -= speed * dt;
+  2481	                if (moveRight) player.x += speed * dt;
+  2482	                player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
+  2483
+  2484	                if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
+  2485	                    spawnOwen();
+  2486	                }
+  2487	                if (!pets.some(p => p.kind === 'rita') && Math.random() < 0.0007) {
+  2488	                    spawnRita();
+  2489	                }
+  2490
+  2491	                updatePinatas(dt);
+  2492	                updateChanclas(dt);
+  2493	                updatePets(dt);
+  2494	                updatePowerups(dt);
+  2495	                updateSpecialProjectiles(dt);
+  2496	                updateImpacts(dt);
+  2497	                updateChainEffects(dt);
+  2498
+  2499	                // Update rose petals
+  2500	                for (let i = rosePetals.length - 1; i >= 0; i--) {
+  2501	                    const p = rosePetals[i];
+  2502
+  2503	                    if (p.vx !== undefined) {
+  2504	                        p.x += p.vx * dt;
+  2505	                        p.y += p.vy * dt;
+  2506	                        p.vx *= 0.95; // Drag
+  2507	                        p.vy += 200 * dt; // Gravity
+  2508	                    } else {
+  2509	                        p.y += p.vy * dt;
+  2510	                        p.x += Math.sin(timeElapsed * 2 + p.offset) * 20 * dt;
+  2511	                    }
+  2512
+  2513	                    p.rotation += p.rotSpeed * dt;
+  2514	                    if (p.y > canvas.height + 20) {
+  2515	                        rosePetals.splice(i, 1);
+  2516	                    }
+  2517	                }
+  2518
+  2519	                // Spawn rose petals if special is ready
+  2520	                if (specialAttackBar >= maxSpecialAttack) {
+  2521	                    if (Math.random() < 0.15) { // Spawn chance per frame
+  2522	                        rosePetals.push({
+  2523	                            x: player.x + (Math.random() - 0.5) * 40,
+  2524	                            y: player.y - 40,
+  2525	                            vy: 60 + Math.random() * 40,
+  2526	                            rotation: Math.random() * Math.PI * 2,
+  2527	                            rotSpeed: (Math.random() - 0.5) * 4,
+  2528	                            offset: Math.random() * 10
+  2529	                        });
+  2530	                    }
+  2531	                }
+  2532
+  2533	                // Update fire particles
+  2534	                for (let i = fireParticles.length - 1; i >= 0; i--) {
+  2535	                    const p = fireParticles[i];
+  2536	                    p.x += p.vx * dt;
+  2537	                    p.y += p.vy * dt;
+  2538	                    p.life -= dt;
+  2539	                    if (p.life <= 0) {
+  2540	                        fireParticles.splice(i, 1);
+  2541	                    }
+  2542	                }
+  2543
+  2544	                if (isa.enraged) {
+  2545	                    if (Math.random() < 0.3) {
+  2546	                        fireParticles.push({
+  2547	                            x: isa.x + (Math.random() - 0.5) * 60,
+  2548	                            y: isa.y + (Math.random() - 0.5) * 60,
+  2549	                            vx: (Math.random() - 0.5) * 20,
+  2550	                            vy: -50 - Math.random() * 50,
+  2551	                            life: 0.5 + Math.random() * 0.5,
+  2552	                            maxLife: 1.0,
+  2553	                            size: 10 + Math.random() * 15
+  2554	                        });
+  2555	                    }
+  2556	                }
+  2557
+  2558	                if (slowEffect.timer > 0) slowEffect.timer -= dt;
+  2559	                if (slapCooldown > 0) slapCooldown -= dt;
+  2560	                if (slapEffect.timer > 0) slapEffect.timer -= dt;
+  2561	                if (isa.hitTimer > 0) isa.hitTimer -= dt;
+  2562	                if (player.hitTimer > 0) player.hitTimer -= dt;
+  2563
+  2564	                if (dialogueTimer > 0) dialogueTimer -= dt;
+  2565	                if (playerDialogueTimer > 0) playerDialogueTimer -= dt;
+  2566	                if (Math.random() < 0.002) sayPlayer('idle');
+  2567	            }
+  2568
+  2569	            function drawFireParticles() {
+  2570	                ctx.save();
+  2571	                ctx.globalCompositeOperation = 'lighter';
+  2572	                fireParticles.forEach(p => {
+  2573	                    const alpha = p.life / p.maxLife;
+  2574	                    ctx.fillStyle = `rgba(255, ${Math.floor(100 + 155 * alpha)}, 0, ${alpha})`;
+  2575	                    ctx.beginPath();
+  2576	                    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+  2577	                    ctx.fill();
+  2578	                });
+  2579	                ctx.restore();
+  2580	            }
+  2581
+  2582	            function draw() {
+  2583	                drawBackground();
+  2584	                drawIsa();
+  2585	                drawFireParticles();
+  2586	                drawPinatas();
+  2587	                drawChanclasAll();
+  2588	                drawPowerups();
+  2589	                drawSpecialProjectiles();
+  2590	                drawPets();
+  2591	                drawRosePetals();
+  2592	                drawChainEffects();
+  2593	                drawImpacts();
+  2594	                drawPlayer();
+  2595	                drawSlapEffect();
+  2596	                drawPetsOverlay();
+  2597	                drawLowHealthVignette();
+  2598	                drawFlash();
+  2599	                drawHUD();
+  2600	                drawFloatTexts();
+  2601	                drawDialogue();
+  2602	                drawPlayerDialogue();
+  2603	            }
+  2604
+  2605
+  2606	            function drawPinatas() {
+  2607	                for (const p of pinatas) {
+  2608	                    ctx.save();
+  2609	                    ctx.translate(p.x, p.y);
+  2610	                    ctx.rotate(p.rotation);
+  2611	                    ctx.font = `${p.size}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+  2612	                    ctx.textAlign = 'center';
+  2613	                    ctx.textBaseline = 'middle';
+  2614	                    ctx.fillText('🪅', 0, 0);
+  2615	                    ctx.restore();
+  2616	                }
+  2617	            }
+  2618
+  2619	            function drawChanclasAll() {
+  2620	                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+  2621	            }
+  2622
+  2623	            function drawWinScreen() {
+  2624	                ctx.save();
+  2625	                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  2626	                ctx.fillRect(0, 0, canvas.width, canvas.height);
+  2627
+  2628	                // Draw Isa moving down and embracing
+  2629	                if (winAnimationStart === 0) winAnimationStart = Date.now();
+  2630	                const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
+  2631	                const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
+  2632	                drawIsaAvatar(ctx, isa.x, isaWinY, 78);
+  2633
+  2634	                // Speech bubble
+  2635	                if (winProgress > 0.7) {
+  2636	                    const bubbleWidth = 280;
+  2637	                    const bubbleX = canvas.width / 2 - bubbleWidth / 2;
+  2638	                    const bubbleY = isaWinY + 50;
+  2639
+  2640	                    ctx.fillStyle = 'rgba(255, 192, 203, 0.95)';
+  2641	                    roundRect(ctx, bubbleX, bubbleY, bubbleWidth, 70, 12);
+  2642	                    ctx.fill();
+  2643	                    ctx.strokeStyle = '#ff69b4';
+  2644	                    ctx.lineWidth = 2;
+  2645	                    roundRect(ctx, bubbleX, bubbleY, bubbleWidth, 70, 12);
+  2646	                    ctx.stroke();
+  2647
+  2648	                    ctx.fillStyle = '#333';
+  2649	                    ctx.font = '14px sans-serif';
+  2650	                    ctx.textAlign = 'center';
+  2651	                    ctx.textBaseline = 'middle';
+  2652	                    wrapText(ctx, dialogueText || "Te amo, Papi. I only hit you because I love you", canvas.width / 2, bubbleY + 35, bubbleWidth - 14, 16);
+  2653	                }
+  2654
+  2655	                // Ending caption
+  2656	                ctx.fillStyle = '#fff';
+  2657	                ctx.textAlign = 'center';
+  2658	                ctx.font = '32px sans-serif';
+  2659	                ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
+  2660	                ctx.font = '20px sans-serif';
+  2661	                ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+  2662
+  2663	                // Play again button
+  2664	                ctx.fillStyle = '#ff9f1c';
+  2665	                roundRect(ctx, 110, 550, canvas.width - 220, 50, 12);
+  2666	                ctx.fill();
+  2667	                ctx.fillStyle = '#222';
+  2668	                ctx.font = '20px sans-serif';
+  2669	                ctx.fillText('Play again', canvas.width / 2, 582);
+  2670
+  2671	                ctx.restore();
+  2672	            }
+  2673
+  2674	            let last = 0;
+  2675	            function loop(ts) {
+  2676	                const now = ts / 1000;
+  2677	                const dt = last ? Math.min(0.05, now - last) : 0;
+  2678	                last = now;
+  2679	                if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
+  2680	                if (state === STATE.TITLE) drawTitleScreen();
+  2681	                else if (state === STATE.SHOP) drawShop();
+  2682	                else if (state === STATE.ACHIEVEMENTS) drawAchievements();
+  2683	                else if (state === STATE.COSMETICS) drawCosmetics();
+  2684	                else if (state === STATE.WIN) {
+  2685	                    draw();
+  2686	                    drawWinScreen();
+  2687	                } else {
+  2688	                    draw();
+  2689	                    if (state === STATE.GAMEOVER) drawGameOver();
+  2690	                }
+  2691	                requestAnimationFrame(loop);
+  2692	            }
+  2693	            requestAnimationFrame(loop);
+  2694
+  2695	            function startGameFromTitle() {
+  2696	                resetGame();
+  2697	            }
+  2698
+  2699	            function setDirectionsVisible(show) {
+  2700	                body.classList.toggle('hide-directions', !show);
+  2701	            }
+  2702
+  2703	            function getMousePos(canvas, evt) {
+  2704	                const rect = canvas.getBoundingClientRect();
+  2705	                const scaleX = canvas.width / rect.width;
+  2706	                const scaleY = canvas.height / rect.height;
+  2707	                return {
+  2708	                    x: (evt.clientX - rect.left) * scaleX,
+  2709	                    y: (evt.clientY - rect.top) * scaleY
+  2710	                };
+  2711	            }
+  2712
+  2713	            canvas.addEventListener('click', (e) => {
+  2714	                const pos = getMousePos(canvas, e);
+  2715
+  2716	                if (state === STATE.TITLE) {
+  2717	                    // Check Play Button (110, 380, w, 46)
+  2718	                    if (pos.y >= 380 && pos.y <= 426 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+  2719	                        startGameFromTitle();
+  2720	                    }
+  2721	                    // Check Shop Button (110, 440, w, 46)
+  2722	                    else if (pos.y >= 440 && pos.y <= 486 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+  2723	                        setDirectionsVisible(false);
+  2724	                        state = STATE.SHOP;
+  2725	                    }
+  2726	                    // Check Achievements Button (110, 500, w, 46)
+  2727	                    else if (pos.y >= 500 && pos.y <= 546 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+  2728	                        setDirectionsVisible(false);
+  2729	                        state = STATE.ACHIEVEMENTS;
+  2730	                    }
+  2731	                    // Check Cosmetics Button (110, 560, w, 46)
+  2732	                    else if (pos.y >= 560 && pos.y <= 606 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+  2733	                        setDirectionsVisible(false);
+  2734	                        state = STATE.COSMETICS;
+  2735	                    }
+  2736	                } else if (state === STATE.SHOP) {
+  2737	                    // Check Upgrade Buttons
+  2738	                    const upgrades = [
+  2739	                        { id: 'lives', baseCost: 100, maxLevel: 5 },
+  2740	                        { id: 'shield', baseCost: 150, maxLevel: 1 },
+  2741	                        { id: 'cooldown', baseCost: 200, maxLevel: 5 },
+  2742	                        { id: 'speed', baseCost: 150, maxLevel: 5 }
+  2743	                    ];
+  2744	                    let y = 160;
+  2745	                    // Button height 80, margin 20
+  2746	                    for (let u of upgrades) {
+  2747	                        if (pos.y >= y && pos.y <= y + 80 && pos.x >= 40 && pos.x <= canvas.width - 40) {
+  2748	                            const level = gameData.upgrades[u.id] || 0;
+  2749	                            const cost = Math.floor(u.baseCost * Math.pow(1.5, level));
+  2750	                            if (level < u.maxLevel && gameData.coins >= cost) {
+  2751	                                gameData.coins -= cost;
+  2752	                                gameData.upgrades[u.id] = level + 1;
+  2753	                                saveGameData();
+  2754	                                playSound(1200, 0.1); // Cha-ching!
+  2755	                            } else {
+  2756	                                playSound(200, 0.1); // Error sound
+  2757	                            }
+  2758	                        }
+  2759	                        y += 100;
+  2760	                    }
+  2761
+  2762	                    // Check Back Button
+  2763	                    if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+  2764	                        setDirectionsVisible(true);
+  2765	                        state = STATE.TITLE;
+  2766	                    }
+  2767	                } else if (state === STATE.ACHIEVEMENTS) {
+  2768	                    let y = 130;
+  2769	                    for (let a of ACHIEVEMENTS_LIST) {
+  2770	                        if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+  2771	                            const status = gameData.achievements[a.id];
+  2772	                            const unlocked = a.check();
+  2773	                            if (unlocked && status !== 'claimed') {
+  2774	                                gameData.coins += a.reward;
+  2775	                                gameData.achievements[a.id] = 'claimed';
+  2776	                                saveGameData();
+  2777	                                playSound(1200, 0.1); // Cha-ching!
+  2778	                            }
+  2779	                        }
+  2780	                        y += 75;
+  2781	                    }
+  2782	                    // Check Back Button
+  2783	                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+  2784	                        setDirectionsVisible(true);
+  2785	                        state = STATE.TITLE;
+  2786	                    }
+  2787	                } else if (state === STATE.COSMETICS) {
+  2788	                    let y = 140;
+  2789	                    for (let c of COSMETICS_LIST) {
+  2790	                        if (pos.y >= y && pos.y <= y + 70 && pos.x >= 40 && pos.x <= canvas.width - 40) {
+  2791	                            const unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
+  2792	                            if (unlocked) {
+  2793	                                gameData.currentHat = c.id;
+  2794	                                saveGameData();
+  2795	                                playSound(900, 0.1);
+  2796	                            } else if (gameData.coins >= c.cost) {
+  2797	                                gameData.coins -= c.cost;
+  2798	                                gameData.cosmetics.push(c.id);
+  2799	                                gameData.currentHat = c.id;
+  2800	                                saveGameData();
+  2801	                                playSound(1200, 0.1); // Cha-ching!
+  2802	                            } else {
+  2803	                                playSound(200, 0.1); // Error
+  2804	                            }
+  2805	                        }
+  2806	                        y += 85;
+  2807	                    }
+  2808
+  2809	                    // Check Back Button
+  2810	                    if (pos.y >= canvas.height - 80 && pos.y <= canvas.height - 30 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+  2811	                        setDirectionsVisible(true);
+  2812	                        state = STATE.TITLE;
+  2813	                    }
+  2814	                } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
+  2815	                    // Play Again Button (110, 550, w, 50)
+  2816	                    if (pos.y >= 550 && pos.y <= 600 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+  2817	                        resetGame();
+  2818	                    } else if (pos.y > 600) { // Catch-all for bottom clicks just in case
+  2819	                         resetGame();
+  2820	                    }
+  2821	                }
+  2822	            });
+  2823
+  2824	            canvas.addEventListener('touchstart', (e) => {
+  2825	                // Prevent default touch behaviors like scrolling
+  2826	                if (e.target === canvas) e.preventDefault();
+  2827
+  2828	                const touchPoint = e.touches[0];
+  2829	                const rect = canvas.getBoundingClientRect();
+  2830	                const scaleX = canvas.width / rect.width;
+  2831	                const scaleY = canvas.height / rect.height;
+  2832	                const pos = {
+  2833	                    x: (touchPoint.clientX - rect.left) * scaleX,
+  2834	                    y: (touchPoint.clientY - rect.top) * scaleY
+  2835	                };
+  2836
+  2837	                if (state === STATE.TITLE) {
+  2838	                    if (pos.y >= 380 && pos.y <= 426 && pos.x >= 110 && pos.x <= canvas.width - 110) startGameFromTitle();
+  2839	                    else if (pos.y >= 440 && pos.y <= 486 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+  2840	                        setDirectionsVisible(false);
+  2841	                        state = STATE.SHOP;
+  2842	                    }
+  2843	                    else if (pos.y >= 500 && pos.y <= 546 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+  2844	                        setDirectionsVisible(false);
+  2845	                        state = STATE.ACHIEVEMENTS;
+  2846	                    }
+  2847	                    else if (pos.y >= 560 && pos.y <= 606 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+  2848	                        setDirectionsVisible(false);
+  2849	                        state = STATE.COSMETICS;
+  2850	                    }
+  2851	                    return;
+  2852	                }
+  2853	                if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
+  2854
+  2855	                                if (state === STATE.ACHIEVEMENTS) {
+  2856	                    let y = 130;
+  2857	                    for (let a of ACHIEVEMENTS_LIST) {
+  2858	                        if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+  2859	                            const status = gameData.achievements[a.id];
+  2860	                            const unlocked = a.check();
+  2861	                            if (unlocked && status !== 'claimed') {
+  2862	                                gameData.coins += a.reward;
+  2863	                                gameData.achievements[a.id] = 'claimed';
+  2864	                                saveGameData();
+  2865	                                playSound(1200, 0.1); // Cha-ching!
+  2866	                            }
+  2867	                        }
+  2868	                        y += 75;
+  2869	                    }
+  2870	                    // Check Back Button
+  2871	                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+  2872	                        setDirectionsVisible(true);
+  2873	                        state = STATE.TITLE;
+  2874	                    }
+  2875	                    return;
+  2876	                }
+  2877
+  2878	                if (state === STATE.COSMETICS) {
+  2879	                    let y = 140;
+  2880	                    for (let c of COSMETICS_LIST) {
+  2881	                        if (pos.y >= y && pos.y <= y + 70 && pos.x >= 40 && pos.x <= canvas.width - 40) {
+  2882	                            const unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
+  2883	                            if (unlocked) {
+  2884	                                gameData.currentHat = c.id;
+  2885	                                saveGameData();
+  2886	                                playSound(900, 0.1);
+  2887	                            } else if (gameData.coins >= c.cost) {
+  2888	                                gameData.coins -= c.cost;
+  2889	                                gameData.cosmetics.push(c.id);
+  2890	                                gameData.currentHat = c.id;
+  2891	                                saveGameData();
+  2892	                                playSound(1200, 0.1);
+  2893	                            } else {
+  2894	                                playSound(200, 0.1); // Error
+  2895	                            }
+  2896	                        }
+  2897	                        y += 85;
+  2898	                    }
+  2899	                    // Check Back Button
+  2900	                    if (pos.y >= canvas.height - 80 && pos.y <= canvas.height - 30 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+  2901	                        setDirectionsVisible(true);
+  2902	                        state = STATE.TITLE;
+  2903	                    }
+  2904	                    return;
+  2905	                }
+  2906
+  2907	                if (state === STATE.SHOP) {
+  2908	                     // Check Upgrade Buttons
+  2909	                    const upgrades = [
+  2910	                        { id: 'lives', baseCost: 100, maxLevel: 5 },
+  2911	                        { id: 'shield', baseCost: 150, maxLevel: 1 },
+  2912	                        { id: 'cooldown', baseCost: 200, maxLevel: 5 },
+  2913	                        { id: 'speed', baseCost: 150, maxLevel: 5 }
+  2914	                    ];
+  2915	                    let y = 160;
+  2916	                    for (let u of upgrades) {
+  2917	                        if (pos.y >= y && pos.y <= y + 80 && pos.x >= 40 && pos.x <= canvas.width - 40) {
+  2918	                            const level = gameData.upgrades[u.id] || 0;
+  2919	                            const cost = Math.floor(u.baseCost * Math.pow(1.5, level));
+  2920	                            if (level < u.maxLevel && gameData.coins >= cost) {
+  2921	                                gameData.coins -= cost;
+  2922	                                gameData.upgrades[u.id] = level + 1;
+  2923	                                saveGameData();
+  2924	                                playSound(1200, 0.1);
+  2925	                            } else {
+  2926	                                playSound(200, 0.1); // Error sound
+  2927	                            }
+  2928	                        }
+  2929	                        y += 100;
+  2930	                    }
+  2931	                    // Check Back Button
+  2932	                    if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+  2933	                        setDirectionsVisible(true);
+  2934	                        state = STATE.TITLE;
+  2935	                    }
+  2936	                    return;
+  2937	                }
+  2938
+  2939	                if (state === STATE.PLAYING) {
+  2940	                    const relativeY = pos.y / canvas.height;
+  2941
+  2942	                    // If tapping in the upper area (not movement zones at bottom), trigger slap
+  2943	                    if (relativeY < 0.6) {
+  2944	                        if (specialAttackBar >= maxSpecialAttack) {
+  2945	                            fireSpecialAttack();
+  2946	                        } else {
+  2947	                            trySlap();
+  2948	                        }
+  2949	                    } else {
+  2950	                        // Movement controls for bottom area
+  2951	                        if (pos.x < canvas.width / 2) touch.left = true; else touch.right = true;
+  2952	                    }
+  2953	                }
+  2954	            }, { passive: false });
+  2955	            canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
+  2956
+  2957	            function handleKey(e, isDown) {
+  2958	                if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
+  2959	                if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+  2960
+  2961	                // Slap key - spacebar
+  2962	                if (e.key === ' ' || e.key === 'Spacebar') {
+  2963	                    if (isDown && state === STATE.PLAYING) {
+  2964	                        if (specialAttackBar >= maxSpecialAttack) {
+  2965	                            fireSpecialAttack();
+  2966	                        } else {
+  2967	                            trySlap();
+  2968	                        }
+  2969	                    }
+  2970	                    e.preventDefault();
+  2971	                }
+  2972
+  2973	                if (isDown && e.key === 'Enter' && state !== STATE.PLAYING) {
+  2974	                    resetGame();
+  2975	                }
+  2976	            }
+  2977	            window.addEventListener('keydown', e => handleKey(e, true));
+  2978	            window.addEventListener('keyup', e => handleKey(e, false));
+  2979
+  2980	            function updateTouchOverlay() {
+  2981	                overlayLeft.style.background = touch.left ? 'rgba(255,255,255,0.06)' : 'transparent';
+  2982	                overlayRight.style.background = touch.right ? 'rgba(255,255,255,0.06)' : 'transparent';
+  2983	                requestAnimationFrame(updateTouchOverlay);
+  2984	            }
+  2985	            updateTouchOverlay();
+  2986
+  2987	            function handleMobileZones(zone, dir) {
+  2988	                zone.addEventListener('touchstart', (e) => {
+  2989	                    if (state !== STATE.PLAYING) return;
+  2990	                    touch[dir] = true;
+  2991	                    e.preventDefault();
+  2992	                }, { passive: false });
+  2993	                zone.addEventListener('touchend', () => { touch[dir] = false; });
+  2994	                zone.addEventListener('touchcancel', () => { touch[dir] = false; });
+  2995	            }
+  2996	            handleMobileZones(touchLeft, 'left');
+  2997	            handleMobileZones(touchRight, 'right');
+  2998
+  2999	            document.getElementById('mobile-controls').addEventListener('touchstart', () => {
+  3000	                if (state === STATE.TITLE) startGameFromTitle();
+  3001	                else if (state === STATE.GAMEOVER || state === STATE.WIN) resetGame();
+  3002	            }, { passive: true });
+  3003
+  3004	            function resize() {
+  3005	                const rect = canvas.getBoundingClientRect();
+  3006	                const scaleX = canvas.width / rect.width;
+  3007	                const scaleY = canvas.height / rect.height;
+  3008	                canvas.dataset.scaleX = scaleX;
+  3009	                canvas.dataset.scaleY = scaleY;
+  3010	                const control = document.getElementById('mobile-controls');
+  3011	                control.style.width = rect.width + 'px';
+  3012	                buildBackgroundElements();
+  3013	            }
+  3014	            window.addEventListener('resize', resize);
+  3015	            resize();
+  3016
+  3017	            function initTitle() {
+  3018	                sayRandom('start');
+  3019	                setDirectionsVisible(true);
+  3020	            }
+  3021	            initTitle();
+  3022	        })();
+  3023	    </script>
+  3024	</body>
+  3025
+  3026	</html>
