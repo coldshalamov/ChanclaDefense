@@ -1196,6 +1196,7 @@
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
+                else if (type === 'boomerang') emoji = '🪃';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
                 ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
@@ -1769,19 +1770,21 @@
             function spawnChancla() {
                 const isSuper = superEnabled && Math.random() < 0.18;
                 const isFire = isa.enraged && Math.random() < 0.25;
+                const isBoomerang = !isFire && !isSuper && isa.enraged && Math.random() < 0.15;
                 const w = isSuper ? 46 : 32;
                 const h = isSuper ? 26 : 18;
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
+                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0) + (isBoomerang ? 40 : 0);
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
                 if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
+                else if (isBoomerang) type = 'boomerang';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, returning: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2138,6 +2141,16 @@
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
+                    if (!c.slapped && c.returning && c.y < -50) {
+                        score += 1;
+                        const prevBest = bestScore;
+                        bestScore = Math.max(bestScore, score);
+                        if (score > prevBest && score % 10 === 0) sayRandom('highScore');
+                        if (Math.random() < 0.2) sayRandom('nearMiss');
+                        if (Math.random() < 0.25) sayPlayer('nearMiss');
+                        chanclas.splice(i, 1);
+                        continue;
+                    }
 
                     if (!c.slapped && rectsOverlap(player, c)) {
                         if (player.shield) {
@@ -2160,13 +2173,19 @@
                             return;
                         }
                     } else if (c.y > canvas.height + c.h) {
-                        score += 1;
-                        const prevBest = bestScore;
-                        bestScore = Math.max(bestScore, score);
-                        if (score > prevBest && score % 10 === 0) sayRandom('highScore');
-                        if (Math.random() < 0.2) sayRandom('nearMiss');
-                        if (Math.random() < 0.25) sayPlayer('nearMiss');
-                        chanclas.splice(i, 1);
+                        if (c.type === 'boomerang' && !c.returning && !c.slapped) {
+                            c.returning = true;
+                            c.vy = -Math.abs(c.vy) * 1.3; // Return a bit faster
+                            c.y = canvas.height + c.h; // Keep it at the bottom edge to bounce back
+                        } else {
+                            score += 1;
+                            const prevBest = bestScore;
+                            bestScore = Math.max(bestScore, score);
+                            if (score > prevBest && score % 10 === 0) sayRandom('highScore');
+                            if (Math.random() < 0.2) sayRandom('nearMiss');
+                            if (Math.random() < 0.25) sayPlayer('nearMiss');
+                            chanclas.splice(i, 1);
+                        }
                     }
                 }
             }
