@@ -1781,7 +1781,7 @@
                 if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, rallyCount: 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2105,26 +2105,49 @@
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
-                            // Hit Isa
-                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
-                            if (c.isPerfect) damage += 7;
+                            // 30% chance for Isa to parry the chancla back
+                            if (Math.random() < 0.3) {
+                                c.slapped = false;
+                                c.rallyCount = (c.rallyCount || 0) + 1;
+                                c.type = 'fire';
+                                c.vy = baseSpeed + (c.rallyCount * 100);
+                                c.vx = (player.x - c.x) * 2; // Aim back at player
 
-                            isa.anger = Math.max(0, isa.anger - damage);
-                            isa.hitTimer = 0.5;
+                                playSound(1000, 0.2); // Loud parry sound
+                                addFloatText('PARRY! ⚡', isa.x, isa.y + 30);
+                                triggerShake(10, 0.2);
+                            } else {
+                                // Hit Isa
+                                let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                                if (c.isPerfect) damage += 7;
 
-                            if (c.isPerfect) {
-                                addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
-                                hitStop = 0.1;
-                            }
-                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+                                // Bonus damage for rallying
+                                const rallies = c.rallyCount || 0;
+                                if (rallies > 0) {
+                                    damage += 10 * rallies;
+                                }
 
-                            playSound(900, 0.1); // Higher pitch for success
-                            chanclas.splice(i, 1);
+                                isa.anger = Math.max(0, isa.anger - damage);
+                                isa.hitTimer = 0.5;
 
-                            // Check win
-                            if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                if (rallies > 0) {
+                                    addFloatText(`MEGA HIT! 💥`, isa.x, isa.y + 30);
+                                    hitStop = 0.2;
+                                    triggerShake(15, 0.3);
+                                } else if (c.isPerfect) {
+                                    addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
+                                    hitStop = 0.1;
+                                }
+                                addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+
+                                playSound(900, 0.1); // Higher pitch for success
+                                chanclas.splice(i, 1);
+
+                                // Check win
+                                if (isa.anger <= 0) {
+                                    state = STATE.WIN;
+                                    sayRandom('win');
+                                }
                             }
                             continue;
                         }
