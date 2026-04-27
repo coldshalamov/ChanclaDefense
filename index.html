@@ -2105,18 +2105,39 @@
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
+                            if (Math.random() < 0.3) {
+                                // Parried!
+                                c.slapped = false;
+                                c.rallyCount = (c.rallyCount || 0) + 1;
+                                c.type = 'fire';
+                                c.vy = baseSpeed + (c.rallyCount * 100);
+                                c.vx = (player.x - c.x) * 2;
+                                addFloatText('PARRIED! 🏓', isa.x, isa.y + 10);
+                                playSound(800, 0.1);
+                                continue;
+                            }
+
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.isPerfect) damage += 7;
 
+                            if (c.rallyCount > 0) {
+                                damage += 10 * c.rallyCount;
+                            }
+
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
-                            if (c.isPerfect) {
+                            if (c.rallyCount > 0) {
+                                addFloatText('MEGA HIT! 💥', isa.x, isa.y + 30);
+                                hitStop = 0.2;
+                                triggerShake(10, 0.3);
+                            } else if (c.isPerfect) {
                                 addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
                                 hitStop = 0.1;
+                            } else {
+                                addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
                             }
-                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
 
                             playSound(900, 0.1); // Higher pitch for success
                             chanclas.splice(i, 1);
