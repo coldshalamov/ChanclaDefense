@@ -162,7 +162,7 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
             let state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -180,7 +180,8 @@
                 if (gameData.upgrades.speed === undefined) gameData.upgrades.speed = 0;
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 1 };
+                if (gameData.stats.wins === undefined) gameData.stats.wins = 1;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -391,10 +392,15 @@
                 flash.color = color;
             }
 
+
             function resetGame() {
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 1 };
+                if (gameData.stats.wins === undefined) gameData.stats.wins = 1;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
+
+                const wins = gameData.stats.wins;
+                isa.maxAnger = 100 + (wins - 1) * 20;
 
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
@@ -417,8 +423,8 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
-                spawnInterval = 1.2;
-                baseSpeed = 140;
+                spawnInterval = Math.max(0.5, 1.2 - (wins - 1) * 0.05);
+                baseSpeed = 140 + (wins - 1) * 5;
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1689,11 +1695,14 @@
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
                 ctx.font = '24px sans-serif';
-                ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
+                ctx.fillText('Chancla Bomb', canvas.width / 2, 290);
                 ctx.font = '16px sans-serif';
-                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
+                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 315);
                 ctx.font = '14px sans-serif';
-                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 340);
+                ctx.fillStyle = '#ff9f1c';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText(`Boss Level: ${gameData.stats.wins || 1}`, canvas.width / 2, 365);
 
                 // Play Button
                 ctx.fillStyle = '#ff9f1c';
@@ -2123,8 +2132,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                triggerWin();
                             }
                             continue;
                         }
@@ -2313,8 +2321,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            state = STATE.WIN;
-                            sayRandom('win');
+                            triggerWin();
                         }
                         continue;
                     }
@@ -2345,6 +2352,19 @@
                 gameData.bestScore = Math.max(gameData.bestScore, score);
                 saveGameData();
                 sayRandom('gameOver');
+            }
+
+            function triggerWin() {
+                if (state === STATE.WIN) return;
+                state = STATE.WIN;
+                const wins = gameData.stats.wins || 1;
+                const bonus = 50 + (wins - 1) * 50;
+                gameData.coins += bonus;
+                gameData.stats.totalCoinsEarned += bonus;
+                gameData.stats.wins = wins + 1;
+                gameData.bestScore = Math.max(gameData.bestScore, score);
+                saveGameData();
+                sayRandom('win');
             }
 
             function update(dt) {
@@ -2574,6 +2594,11 @@
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
                 ctx.font = '20px sans-serif';
                 ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+
+                const wins = (gameData.stats.wins || 1) - 1;
+                const bonus = 50 + (wins - 1) * 50;
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText(`Boss Defeat Bonus: +${bonus} 💰`, canvas.width / 2, 280);
 
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';
