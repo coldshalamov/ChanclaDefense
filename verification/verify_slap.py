@@ -7,7 +7,7 @@ def verify_slap():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
-        cwd = os.getcwd()
+        cwd = os.path.dirname(os.getcwd())
         file_path = f"file://{cwd}/chancla_bomb.html"
         page.goto(file_path)
 

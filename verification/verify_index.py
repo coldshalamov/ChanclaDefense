@@ -9,7 +9,7 @@ def verify_expressions():
         page = browser.new_page()
 
         # Load the game from the file directly using absolute path
-        cwd = os.getcwd()
+        cwd = os.path.dirname(os.getcwd())
         page.goto('file://' + cwd + '/index.html')
 
         # Start game by clicking (simulate touch/click)

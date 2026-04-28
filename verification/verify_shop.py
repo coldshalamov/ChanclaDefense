@@ -8,7 +8,7 @@ def run():
         context = browser.new_context(viewport={'width': 450, 'height': 800}, has_touch=True, is_mobile=True)
         page = context.new_page()
 
-        cwd = os.getcwd()
+        cwd = os.path.dirname(os.getcwd())
         page.goto(f"file://{cwd}/index.html")
 
         # Give it 1000 coins to buy stuff

@@ -16,7 +16,7 @@ def verify_phone_removed():
         page.on("pageerror", lambda err: print(f"Page Error: {err}"))
         page.on("console", lambda msg: print(f"Console: {msg.text}"))
 
-        with open('index.html', 'r') as f:
+        with open('../index.html', 'r') as f:
             content = f.read()
 
         # Bypass localStorage error for file:// protocol by making try block quiet

@@ -4,7 +4,7 @@ import os
 
 def verify_cocky():
     # Generate debug file
-    with open('index.html', 'r') as f:
+    with open('../index.html', 'r') as f:
         content = f.read()
 
     # Inject high combo
@@ -18,7 +18,7 @@ def verify_cocky():
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
 
-            cwd = os.getcwd()
+            cwd = os.path.dirname(os.getcwd())
             page.goto('file://' + cwd + '/verification/cocky_debug.html')
 
             # Start game

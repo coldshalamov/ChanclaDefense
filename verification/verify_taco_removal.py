@@ -7,7 +7,7 @@ def verify_taco_removal():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={'width': 450, 'height': 800})
 
-        cwd = os.getcwd()
+        cwd = os.path.dirname(os.getcwd())
         page.goto('file://' + cwd + '/chancla_bomb.html')
 
         # Click the canvas to start
