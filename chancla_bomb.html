@@ -1882,6 +1882,10 @@
                         c.slapped = true;
                         c.isPerfect = isPerfect;
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
+                        if (isPerfect) {
+                            chanclas.push({ ...c, vx: c.vx - 250, isPerfect: true, slapped: true, bounceCount: 0 });
+                            chanclas.push({ ...c, vx: c.vx + 250, isPerfect: true, slapped: true, bounceCount: 0 });
+                        }
                         slappedAny = true;
                         comboCount++;
                         score += comboCount;
@@ -2108,6 +2112,7 @@
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.isPerfect) damage += 7;
+                            if (c.bounceCount) damage += c.bounceCount * 5;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
@@ -2129,14 +2134,25 @@
                             continue;
                         }
 
-                        if (c.x < -50 || c.x > canvas.width + 50 || c.y < -50) {
+                        if (c.y < -50) {
                             chanclas.splice(i, 1);
                             continue;
                         }
+                        if (c.x < 0) {
+                            c.x = 0; c.vx = -c.vx * 1.2;
+                            c.bounceCount = (c.bounceCount || 0) + 1;
+                            spawnImpact(c.x, c.y);
+                        } else if (c.x + c.w > canvas.width) {
+                            c.x = canvas.width - c.w; c.vx = -c.vx * 1.2;
+                            c.bounceCount = (c.bounceCount || 0) + 1;
+                            spawnImpact(c.x, c.y);
+                        }
                     }
 
-                    if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
-                    if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
+                    if (!c.slapped) {
+                        if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
+                        if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
+                    }
 
 
                     if (!c.slapped && rectsOverlap(player, c)) {
