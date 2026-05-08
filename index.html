@@ -213,6 +213,7 @@
 
 
             let chanclas = [];
+            let spicyRush = { timer: 0 };
             let pets = [];
             let powerups = [];
             let pinatas = [];
@@ -407,6 +408,7 @@
                 isa.y = 70;
                 isa.enraged = false;
                 chanclas = [];
+                spicyRush.timer = 0;
                 pets = [];
                 powerups = [];
                 pinatas = [];
@@ -1807,6 +1809,10 @@
                     slowEffect.timer = 4.5;
                     addFloatText('Cerveza chill 🍺', p.x, p.y);
                 }
+                if (p.kind === 'taco') {
+                    spicyRush.timer = 5.0;
+                    addFloatText('SPICY RUSH! 🌮🔥', p.x, p.y);
+                }
 
             }
 
@@ -1854,6 +1860,7 @@
                                     size: 15 + Math.random() * 10
                                 });
                             }
+                            if (Math.random() < 0.35) spawnPowerup('taco', p.x, p.y);
                             pinatas.splice(i, 1);
                         } else {
                             addFloatText('BOING!', p.x, p.y);
@@ -2067,6 +2074,28 @@
                 const slowFactor = slowEffect.timer > 0 ? slowEffect.factor : 1;
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    if (spicyRush.timer > 0 && Math.abs(c.x - player.x) < 60 && Math.abs(c.y - player.y) < 60 && !c.slapped) {
+                        c.vx = (c.x - player.x) * 12;
+                        c.vy = -550;
+                        c.slapped = true;
+                        c.isPerfect = true;
+                        c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * 35;
+                        gameData.stats.totalSlaps++;
+                        gameData.stats.perfectSlaps++;
+                        specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 25);
+                        spawnImpact(c.x, c.y, true);
+                        playSound(850, 0.15);
+                        triggerShake(6, 0.2);
+                        triggerFlash(0.15, '#fff');
+                        hitStop = 0.15;
+                        spawnRoseExplosion(c.x, c.y);
+                        comboCount++;
+                        score += comboCount;
+                        gameData.coins += 2;
+                        gameData.stats.totalCoinsEarned += 2;
+                        addFloatText('SPICY PERFECT! 🌮 +2💰', c.x, c.y - 10);
+                    }
                     c.x += c.vx * dt;
                     c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
                     c.rotation += c.rotSpeed * dt;
@@ -2212,6 +2241,11 @@
                         ctx.fillStyle = '#5f4b32';
                         ctx.font = '12px sans-serif';
                         ctx.fillText('🍺', 0, 6);
+                    } else if (p.kind === 'taco') {
+                        ctx.font = '26px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('🌮', 0, 0);
                     }
                     ctx.restore();
                 });
@@ -2392,7 +2426,23 @@
                     spawnTimer = 0;
                 }
 
-                const speed = player.speed;
+                let speed = player.speed;
+                if (spicyRush.timer > 0) {
+                    spicyRush.timer -= dt;
+                    speed *= 1.5;
+                    if (Math.random() < 0.3) {
+                        fireParticles.push({
+                            x: player.x + (Math.random() - 0.5) * player.w,
+                            y: player.y + (Math.random() - 0.5) * player.h,
+                            vx: (Math.random() - 0.5) * 50,
+                            vy: -100 - Math.random() * 100,
+                            life: 1.0,
+                            maxLife: 1.0,
+                            size: 8 + Math.random() * 10,
+                            color: Math.random() < 0.5 ? '#ff4d4d' : '#ffa64d'
+                        });
+                    }
+                }
                 const moveLeft = keys.left || touch.left;
                 const moveRight = keys.right || touch.right;
                 if (moveLeft) player.x -= speed * dt;
