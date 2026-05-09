@@ -7,7 +7,7 @@ def test_combo_system():
         page = browser.new_page()
 
         # Load the game from the local file
-        url = "file://" + os.path.abspath("index.html")
+        url = "file://" + os.path.abspath("../index.html")
         page.goto(url)
 
         # Wait for the game canvas to load

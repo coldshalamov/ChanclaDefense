@@ -10,7 +10,7 @@ def run():
         page = context.new_page()
 
         cwd = os.getcwd()
-        page.goto(f'file://{cwd}/index.html')
+        page.goto(f'file://{cwd}/../index.html')
         page.click('#game')
         time.sleep(1)
         page.screenshot(path='verification/game_running.png')
