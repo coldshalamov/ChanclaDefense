@@ -237,6 +237,7 @@
             let shakeTimer = 0;
             let shakeIntensity = 0;
             let hitStop = 0;
+            let meteorTimer = 0;
             let impacts = [];
             let chainEffects = [];
             let comboCount = 0;
@@ -427,6 +428,7 @@
                 slowEffect.timer = 0;
                 shakeTimer = 0;
                 hitStop = 0;
+                meteorTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
@@ -1198,7 +1200,12 @@
                 else if (type === 'fire') emoji = '🔥';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
-                ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+
+                    if (type === 'meteor') {
+                        ctx.shadowColor = 'red';
+                        ctx.shadowBlur = 20;
+                    }
+                    ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.rotate(rotation);
                 ctx.fillText(emoji, 0, h * 0.2);
@@ -1766,6 +1773,23 @@
                 ctx.restore();
             }
 
+
+            function spawnMeteor() {
+                const w = 120;
+                const h = 120;
+                const x = canvas.width / 2;
+                const y = -100;
+                const vy = 35;
+                const vx = 0;
+                chanclas.push({
+                    x, y, vx, vy, w, h, type: 'meteor', rotation: 0, rotSpeed: 0.2,
+                    slapsNeeded: 12, currentSlaps: 0, isMeteor: true
+                });
+                addFloatText('¡LA CHANCLA GIGANTE!', canvas.width / 2, 120);
+                playSound(1000, 0.4);
+                triggerShake(15, 1.5);
+            }
+
             function spawnChancla() {
                 const isSuper = superEnabled && Math.random() < 0.18;
                 const isFire = isa.enraged && Math.random() < 0.25;
@@ -1820,6 +1844,7 @@
                 const slapRange = 80;
                 const perfectRange = 50;
                 let slappedAny = false;
+                let slappedMeteor = false;
 
                 for (let i = pinatas.length - 1; i >= 0; i--) {
                     const p = pinatas[i];
@@ -1864,6 +1889,33 @@
 
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    if (c.type === 'meteor' && !c.slapped) {
+                        const distToMeteor = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y + c.h/2 - player.y, 2));
+                        if (distToMeteor < 150) {
+                            c.currentSlaps++;
+                            c.vy -= 15;
+                            c.y -= 5;
+                            spawnImpact(player.x, player.y - 40, true);
+                            addFloatText(`MASH! ${c.currentSlaps}/${c.slapsNeeded}`, c.x + (Math.random()-0.5)*40, c.y + c.h/2 + (Math.random()-0.5)*20);
+                            triggerShake(5, 0.1);
+                            slappedAny = true;
+                            slappedMeteor = true;
+
+                            if (c.currentSlaps >= c.slapsNeeded) {
+                                c.slapped = true;
+                                c.vy = -600;
+                                c.vx = (isa.x - c.x) * 1.5;
+                                c.rotSpeed = 15;
+                                addFloatText('METEOR REFLECTED! ☄️', c.x, c.y);
+                                playSound(1200, 0.5);
+                                triggerFlash(0.3, '#fff');
+                                specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 50);
+                            }
+                            continue;
+                        }
+                    }
+
                     const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
 
                     if (dist < slapRange) {
@@ -1935,7 +1987,7 @@
 
                 if (slappedAny) {
                     const cdLevel = gameData.upgrades.cooldown || 0;
-                    slapCooldown = 0.3 - 0.015 * cdLevel;
+                    slapCooldown = slappedMeteor ? 0.08 : (0.3 - 0.015 * cdLevel);
                 } else {
                     slapCooldown = 0.15;
                     comboCount = 0;
@@ -2107,6 +2159,7 @@
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                            if (c.type === 'meteor') damage = 40;
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -2139,7 +2192,7 @@
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
 
-                    if (!c.slapped && rectsOverlap(player, c)) {
+                    if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2159,7 +2212,17 @@
                             endGame();
                             return;
                         }
-                    } else if (c.y > canvas.height + c.h) {
+                    } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
+                        triggerShake(30, 0.8);
+                        triggerFlash(0.5, '#ff0000');
+                        player.lives -= 1;
+                        player.hitTimer = 1.0;
+                        addFloatText('💥 SHOCKWAVE!', canvas.width/2, canvas.height - 100);
+                        sayPlayer('hit');
+                        chanclas.splice(i, 1);
+                        if (player.lives <= 0) endGame();
+                        continue;
+                    } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
                         score += 1;
                         const prevBest = bestScore;
                         bestScore = Math.max(bestScore, score);
@@ -2390,6 +2453,15 @@
                 if (spawnTimer >= spawnInterval) {
                     spawnChancla();
                     spawnTimer = 0;
+                }
+
+
+                if (isa.enraged) {
+                    meteorTimer += dt;
+                    if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
+                        spawnMeteor();
+                        meteorTimer = 0;
+                    }
                 }
 
                 const speed = player.speed;
