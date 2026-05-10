@@ -244,6 +244,13 @@
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
 
+            let dashTrails = [];
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
+            let dashTimer = 0;
+            let dashCooldown = 0;
+            let dashDir = 0;
+
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
             let dialogueText = '';
@@ -432,6 +439,12 @@
                 flash.timer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
+                dashTrails = [];
+                lastTapLeft = 0;
+                lastTapRight = 0;
+                dashTimer = 0;
+                dashCooldown = 0;
+                dashDir = 0;
                 wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -706,6 +719,16 @@
 
             function drawPlayer() {
                 const { x, y, w, h } = player;
+
+                // Draw dash trails
+                dashTrails.forEach(t => {
+                    ctx.save();
+                    ctx.globalAlpha = t.timer / 0.2 * 0.5;
+                    ctx.filter = 'sepia(1) hue-rotate(140deg) saturate(3)'; // Make trails cyan-ish
+                    drawPlayerAvatar(ctx, t.x, y, Math.min(w, h), false, 'normal');
+                    ctx.restore();
+                });
+
                 ctx.save();
                 ctx.fillStyle = '#fff';
                 ctx.font = '14px sans-serif';
@@ -2464,12 +2487,27 @@
                     }
                 }
 
-                const speed = player.speed;
-                const moveLeft = keys.left || touch.left;
-                const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+                if (dashTimer > 0) {
+                    player.x += dashDir * 800 * dt;
+                    dashTrails.push({ x: player.x, timer: 0.2 });
+                } else {
+                    const speed = player.speed;
+                    const moveLeft = keys.left || touch.left;
+                    const moveRight = keys.right || touch.right;
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
+
+                if (dashTimer > 0) dashTimer -= dt;
+                if (dashCooldown > 0) dashCooldown -= dt;
+
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].timer -= dt;
+                    if (dashTrails[i].timer <= 0) {
+                        dashTrails.splice(i, 1);
+                    }
+                }
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
                     spawnOwen();
@@ -2935,15 +2973,59 @@
                         }
                     } else {
                         // Movement controls for bottom area
-                        if (pos.x < canvas.width / 2) touch.left = true; else touch.right = true;
+                        const now = Date.now();
+                        if (pos.x < canvas.width / 2) {
+                            touch.left = true;
+                            if (now - lastTapLeft < 250 && dashCooldown <= 0) {
+                                dashTimer = 0.15;
+                                dashCooldown = 0.8;
+                                player.hitTimer = 0.2;
+                                dashDir = -1;
+                            }
+                            lastTapLeft = now;
+                        } else {
+                            touch.right = true;
+                            if (now - lastTapRight < 250 && dashCooldown <= 0) {
+                                dashTimer = 0.15;
+                                dashCooldown = 0.8;
+                                player.hitTimer = 0.2;
+                                dashDir = 1;
+                            }
+                            lastTapRight = now;
+                        }
                     }
                 }
             }, { passive: false });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {
-                if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
-                if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+                const now = Date.now();
+                if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
+                    keys.left = isDown;
+                    if (isDown && !e.repeat && state === STATE.PLAYING) {
+                        if (now - lastTapLeft < 250 && dashCooldown <= 0) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            player.hitTimer = 0.2;
+                            dashDir = -1;
+                        }
+                        lastTapLeft = now;
+                    }
+                    e.preventDefault();
+                }
+                if (['ArrowRight', 'd', 'D'].includes(e.key)) {
+                    keys.right = isDown;
+                    if (isDown && !e.repeat && state === STATE.PLAYING) {
+                        if (now - lastTapRight < 250 && dashCooldown <= 0) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            player.hitTimer = 0.2;
+                            dashDir = 1;
+                        }
+                        lastTapRight = now;
+                    }
+                    e.preventDefault();
+                }
 
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
@@ -2974,7 +3056,25 @@
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+                    const now = Date.now();
                     touch[dir] = true;
+                    if (dir === 'left') {
+                        if (now - lastTapLeft < 250 && dashCooldown <= 0) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            player.hitTimer = 0.2;
+                            dashDir = -1;
+                        }
+                        lastTapLeft = now;
+                    } else {
+                        if (now - lastTapRight < 250 && dashCooldown <= 0) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            player.hitTimer = 0.2;
+                            dashDir = 1;
+                        }
+                        lastTapRight = now;
+                    }
                     e.preventDefault();
                 }, { passive: false });
                 zone.addEventListener('touchend', () => { touch[dir] = false; });
