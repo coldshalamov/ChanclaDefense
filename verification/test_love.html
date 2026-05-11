@@ -244,6 +244,13 @@
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
 
+            let lastTapLeft = 0;
+            let lastTapRight = 0;
+            let dashTimer = 0;
+            let dashCooldown = 0;
+            let dashDir = 0;
+            let dashTrails = [];
+
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
             let dialogueText = '';
@@ -403,6 +410,12 @@
                 player.lives = 3 + (gameData.upgrades.lives || 0);
                 player.shield = (gameData.upgrades.shield || 0) > 0;
                 player.hitTimer = 0;
+                lastTapLeft = 0;
+                lastTapRight = 0;
+                dashTimer = 0;
+                dashCooldown = 0;
+                dashDir = 0;
+                dashTrails = [];
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -605,6 +618,16 @@
                     chainEffects[i].timer -= dt;
                     if (chainEffects[i].timer <= 0) chainEffects.splice(i, 1);
                 }
+            }
+
+            function drawDashTrails() {
+                dashTrails.forEach(t => {
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, t.life / 0.15) * 0.5;
+                    ctx.filter = 'drop-shadow(0 0 5px #00ffff) drop-shadow(0 0 10px #00ffff) sepia(1) hue-rotate(140deg) saturate(3)';
+                    drawPlayerAvatar(ctx, t.x, t.y, Math.min(player.w, player.h), false, 'normal');
+                    ctx.restore();
+                });
             }
 
             function drawChainEffects() {
@@ -2193,6 +2216,7 @@
 
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
+                        if (dashTimer > 0) continue; // I-frames during dash
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2213,6 +2237,7 @@
                             return;
                         }
                     } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
+                        if (dashTimer > 0) continue; // I-frames during dash shockwave
                         triggerShake(30, 0.8);
                         triggerFlash(0.5, '#ff0000');
                         player.lives -= 1;
@@ -2464,12 +2489,25 @@
                     }
                 }
 
-                const speed = player.speed;
-                const moveLeft = keys.left || touch.left;
-                const moveRight = keys.right || touch.right;
-                if (moveLeft) player.x -= speed * dt;
-                if (moveRight) player.x += speed * dt;
+                if (dashTimer > 0) {
+                    player.x += dashDir * 800 * dt;
+                    dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
+                } else {
+                    const speed = player.speed;
+                    const moveLeft = keys.left || touch.left;
+                    const moveRight = keys.right || touch.right;
+                    if (moveLeft) player.x -= speed * dt;
+                    if (moveRight) player.x += speed * dt;
+                }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
+
+                if (dashTimer > 0) dashTimer -= dt;
+                if (dashCooldown > 0) dashCooldown -= dt;
+
+                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                    dashTrails[i].life -= dt;
+                    if (dashTrails[i].life <= 0) dashTrails.splice(i, 1);
+                }
 
                 if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
                     spawnOwen();
@@ -2576,6 +2614,7 @@
                 drawSpecialProjectiles();
                 drawPets();
                 drawRosePetals();
+                drawDashTrails();
                 drawChainEffects();
                 drawImpacts();
                 drawPlayer();
@@ -2942,8 +2981,30 @@
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
             function handleKey(e, isDown) {
-                if (['ArrowLeft', 'a', 'A'].includes(e.key)) { keys.left = isDown; e.preventDefault(); }
-                if (['ArrowRight', 'd', 'D'].includes(e.key)) { keys.right = isDown; e.preventDefault(); }
+                if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
+                    if (isDown && !keys.left && !e.repeat && dashCooldown <= 0) {
+                        if (timeElapsed - lastTapLeft < 0.25) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = -1;
+                        }
+                        lastTapLeft = timeElapsed;
+                    }
+                    keys.left = isDown;
+                    e.preventDefault();
+                }
+                if (['ArrowRight', 'd', 'D'].includes(e.key)) {
+                    if (isDown && !keys.right && !e.repeat && dashCooldown <= 0) {
+                        if (timeElapsed - lastTapRight < 0.25) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = 1;
+                        }
+                        lastTapRight = timeElapsed;
+                    }
+                    keys.right = isDown;
+                    e.preventDefault();
+                }
 
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
@@ -2974,6 +3035,23 @@
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+                    if (!touch[dir] && dashCooldown <= 0) {
+                        if (dir === 'left') {
+                            if (timeElapsed - lastTapLeft < 0.25) {
+                                dashTimer = 0.15;
+                                dashCooldown = 0.8;
+                                dashDir = -1;
+                            }
+                            lastTapLeft = timeElapsed;
+                        } else if (dir === 'right') {
+                            if (timeElapsed - lastTapRight < 0.25) {
+                                dashTimer = 0.15;
+                                dashCooldown = 0.8;
+                                dashDir = 1;
+                            }
+                            lastTapRight = timeElapsed;
+                        }
+                    }
                     touch[dir] = true;
                     e.preventDefault();
                 }, { passive: false });
