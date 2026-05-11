@@ -1941,6 +1941,16 @@
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
 
+                        // Check for Ping-Pong Rally
+                        if (c.rallyCount > 0) {
+                            addFloatText('MEGA HIT! 💥', c.x, c.y - 30);
+                            triggerShake(10, 0.3);
+                            triggerFlash(0.2, '#fff');
+                            gameData.coins += 5 * c.rallyCount;
+                            gameData.stats.totalCoinsEarned += 5 * c.rallyCount;
+                            score += 20 * c.rallyCount;
+                        }
+
                         if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
                             specialReadyTriggered = true;
                             // HUD egg icon approx location
@@ -2161,23 +2171,38 @@
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.type === 'meteor') damage = 40;
                             if (c.isPerfect) damage += 7;
+                            if (c.rallyCount > 0) damage += 10 * c.rallyCount;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
-                            if (c.isPerfect) {
-                                addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
-                                hitStop = 0.1;
-                            }
-                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+                            // Ping-Pong Rally (Dead Man's Volley) Mechanic
+                            if (c.type !== 'meteor' && Math.random() < 0.3) {
+                                // Isa parries the chancla back!
+                                c.slapped = false;
+                                c.rallyCount = (c.rallyCount || 0) + 1;
+                                c.type = 'fire'; // Turns into a fire chancla
+                                c.vy = baseSpeed + (c.rallyCount * 100);
+                                c.vx = (player.x - c.x) * 2;
 
-                            playSound(900, 0.1); // Higher pitch for success
-                            chanclas.splice(i, 1);
+                                addFloatText('PARRY! 🏓', isa.x, isa.y + 30);
+                                triggerFlash(0.2, '#ff0000');
+                                playSound(1100, 0.15); // Parry sound
+                            } else {
+                                if (c.isPerfect) {
+                                    addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
+                                    hitStop = 0.1;
+                                }
+                                addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
 
-                            // Check win
-                            if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                playSound(900, 0.1); // Higher pitch for success
+                                chanclas.splice(i, 1);
+
+                                // Check win
+                                if (isa.anger <= 0) {
+                                    state = STATE.WIN;
+                                    sayRandom('win');
+                                }
                             }
                             continue;
                         }
