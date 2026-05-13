@@ -1986,7 +1986,18 @@
                         const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
 
                         // Add float text
-                        if (isPerfect) {
+                        if (c.rallyCount && c.rallyCount > 0) {
+                            gameData.coins += 5 * c.rallyCount;
+                            gameData.stats.totalCoinsEarned += 5 * c.rallyCount;
+                            score += 50 * c.rallyCount;
+                            addFloatText('MEGA HIT! 💥 +' + (5 * c.rallyCount) + '💰' + comboText, c.x, c.y - 10);
+                            spawnImpact(c.x, c.y, true);
+                            playSound(850, 0.15);
+                            triggerShake(10, 0.3);
+                            triggerFlash(0.2, '#fff');
+                            hitStop = 0.2;
+                            spawnRoseExplosion(c.x, c.y);
+                        } else if (isPerfect) {
                             gameData.coins += 2;
                             gameData.stats.totalCoinsEarned += 2;
                             addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
@@ -2180,29 +2191,42 @@
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
-                            // Hit Isa
-                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
-                            if (c.type === 'meteor') damage = 40;
-                            if (c.isPerfect) damage += 7;
+                            // Hit Isa or Parry
+                            if (Math.random() < 0.3) {
+                                // Ping-Pong Rally Parry
+                                c.slapped = false;
+                                c.rallyCount = (c.rallyCount || 0) + 1;
+                                c.type = 'fire';
+                                c.vy = baseSpeed + (c.rallyCount * 100);
+                                c.vx = (player.x - c.x) * 2;
+                                addFloatText('PARRY! 🔄', isa.x, isa.y + 30);
+                                playSound(1000, 0.2);
+                            } else {
+                                // Hit Isa
+                                let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                                if (c.type === 'meteor') damage = 40;
+                                if (c.isPerfect) damage += 7;
+                                if (c.rallyCount && c.rallyCount > 0) damage += 10 * c.rallyCount;
 
-                            isa.anger = Math.max(0, isa.anger - damage);
-                            isa.hitTimer = 0.5;
+                                isa.anger = Math.max(0, isa.anger - damage);
+                                isa.hitTimer = 0.5;
 
-                            if (c.isPerfect) {
-                                addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
-                                hitStop = 0.1;
+                                if (c.isPerfect) {
+                                    addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
+                                    hitStop = 0.1;
+                                }
+                                addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+
+                                playSound(900, 0.1); // Higher pitch for success
+                                chanclas.splice(i, 1);
+
+                                // Check win
+                                if (isa.anger <= 0) {
+                                    state = STATE.WIN;
+                                    sayRandom('win');
+                                }
+                                continue;
                             }
-                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
-
-                            playSound(900, 0.1); // Higher pitch for success
-                            chanclas.splice(i, 1);
-
-                            // Check win
-                            if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
-                            }
-                            continue;
                         }
 
                         if (c.x < -50 || c.x > canvas.width + 50 || c.y < -50) {
