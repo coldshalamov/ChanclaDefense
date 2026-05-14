@@ -743,6 +743,7 @@
                 else if (comboCount >= 5) expression = 'cocky';
 
                 drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
+
                 if (player.shield) {
                     ctx.strokeStyle = '#9bfffa';
                     ctx.lineWidth = 3;
@@ -750,6 +751,22 @@
                     ctx.arc(x, y, w * 0.65, 0, Math.PI * 2);
                     ctx.stroke();
                 }
+
+                // Draw dash cooldown bar
+                if (dashCooldown > 0) {
+                    const barW = 30;
+                    const barH = 4;
+                    const barX = x - barW / 2;
+                    const barY = y + h / 2 + 5;
+
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(barX, barY, barW, barH);
+
+                    const progress = 1 - (dashCooldown / 0.8);
+                    ctx.fillStyle = '#00ffff';
+                    ctx.fillRect(barX, barY, barW * Math.max(0, progress), barH);
+                }
+
                 ctx.restore();
             }
 
@@ -2435,8 +2452,15 @@
                 sayRandom('gameOver');
             }
 
+
             function update(dt) {
-                if (state !== STATE.PLAYING) return;
+                pollGamepad();
+
+                if (state !== STATE.PLAYING) {
+                    // Start button polling works globally if needed, but update only runs when playing.
+                    // To ensure we can start with gamepad, we should add polling to the animation loop.
+                    return;
+                }
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
@@ -2980,6 +3004,61 @@
             }, { passive: false });
             canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
 
+
+            let lastGamepadState = { slap: false, start: false, dash: false };
+
+            function pollGamepad() {
+                const gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+                if (!gamepads) return;
+
+                let gp = null;
+                for (let i = 0; i < gamepads.length; i++) {
+                    if (gamepads[i]) {
+                        gp = gamepads[i];
+                        break;
+                    }
+                }
+                if (!gp) return;
+
+                // Movement (D-pad and Left Stick)
+                let moveLeft = gp.axes[0] < -0.3 || (gp.buttons[14] && gp.buttons[14].pressed);
+                let moveRight = gp.axes[0] > 0.3 || (gp.buttons[15] && gp.buttons[15].pressed);
+                keys.left = moveLeft;
+                keys.right = moveRight;
+
+                // Slap (Button 0 - A/Cross)
+                let slapPressed = gp.buttons[0] && gp.buttons[0].pressed;
+                if (slapPressed && !lastGamepadState.slap && state === STATE.PLAYING) {
+                    if (specialAttackBar >= maxSpecialAttack) {
+                        fireSpecialAttack();
+                    } else {
+                        trySlap();
+                    }
+                }
+                lastGamepadState.slap = slapPressed;
+
+                // Reset/Start (Button 9 - Start/Options)
+                let startPressed = gp.buttons[9] && gp.buttons[9].pressed;
+                if (startPressed && !lastGamepadState.start && state !== STATE.PLAYING) {
+                    resetGame();
+                }
+                lastGamepadState.start = startPressed;
+
+                // Dash (Button 2 - X/Square, Button 1 - B/Circle, or Triggers)
+                let dashPressed = (gp.buttons[2] && gp.buttons[2].pressed) ||
+                                  (gp.buttons[1] && gp.buttons[1].pressed) ||
+                                  (gp.buttons[6] && gp.buttons[6].pressed) ||
+                                  (gp.buttons[7] && gp.buttons[7].pressed);
+
+                if (dashPressed && !lastGamepadState.dash && state === STATE.PLAYING && dashCooldown <= 0) {
+                    dashTimer = 0.15;
+                    dashCooldown = 0.8;
+                    dashDir = keys.right ? 1 : (keys.left ? -1 : (lastTapRight > lastTapLeft ? 1 : -1));
+                    if (dashDir === 0) dashDir = 1;
+                }
+                lastGamepadState.dash = dashPressed;
+            }
+
             function handleKey(e, isDown) {
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
                     if (isDown && !keys.left && !e.repeat && dashCooldown <= 0) {
@@ -3003,6 +3082,17 @@
                         lastTapRight = timeElapsed;
                     }
                     keys.right = isDown;
+                    e.preventDefault();
+                }
+
+
+                if (['Shift'].includes(e.key)) {
+                    if (isDown && !e.repeat && state === STATE.PLAYING && dashCooldown <= 0) {
+                        dashTimer = 0.15;
+                        dashCooldown = 0.8;
+                        dashDir = keys.right ? 1 : (keys.left ? -1 : (lastTapRight > lastTapLeft ? 1 : -1));
+                        if (dashDir === 0) dashDir = 1;
+                    }
                     e.preventDefault();
                 }
 
