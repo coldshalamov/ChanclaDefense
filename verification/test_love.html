@@ -1828,7 +1828,7 @@
                 if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, rallyCount: 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1984,6 +1984,14 @@
 
                         const comboPhrase = getComboPhrase(comboCount);
                         const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
+
+                        if (c.rallyCount > 0) {
+                            score += 15 * c.rallyCount;
+                            gameData.coins += 5;
+                            gameData.stats.totalCoinsEarned += 5;
+                            addFloatText('MEGA HIT! 💥', c.x, c.y - 30);
+                            playSound(1200, 0.3);
+                        }
 
                         // Add float text
                         if (isPerfect) {
@@ -2180,10 +2188,22 @@
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
+                            if (c.type !== 'meteor' && Math.random() < 0.3) {
+                                c.slapped = false;
+                                c.rallyCount = (c.rallyCount || 0) + 1;
+                                c.type = 'fire';
+                                c.vy = baseSpeed + (c.rallyCount * 100);
+                                c.vx = (player.x - c.x) * 2;
+                                playSound(800, 0.2);
+                                addFloatText('PARRY!', isa.x, isa.y - 20);
+                                continue;
+                            }
+
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.type === 'meteor') damage = 40;
                             if (c.isPerfect) damage += 7;
+                            damage += 10 * (c.rallyCount || 0);
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
