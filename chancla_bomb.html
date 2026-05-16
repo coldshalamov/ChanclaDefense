@@ -213,6 +213,8 @@
 
 
             let chanclas = [];
+            let chihuahuas = [];
+            const stampede = { timer: 0, spawnTimer: 0 };
             let pets = [];
             let powerups = [];
             let pinatas = [];
@@ -421,6 +423,9 @@
                 isa.y = 70;
                 isa.enraged = false;
                 chanclas = [];
+                chihuahuas = [];
+                stampede.timer = 0;
+                stampede.spawnTimer = 0;
                 pets = [];
                 powerups = [];
                 pinatas = [];
@@ -1235,6 +1240,22 @@
                 ctx.restore();
             }
 
+
+            function drawChihuahuas() {
+                chihuahuas.forEach(c => {
+                    ctx.save();
+                    ctx.translate(c.x, c.y);
+                    if (c.vx > 0) {
+                        ctx.scale(-1, 1);
+                    }
+                    ctx.font = '24px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🐕', 0, 0);
+                    ctx.restore();
+                });
+            }
+
             function drawPets() {
                 pets.forEach(p => {
                     if (p.kind === 'owen') drawOwen(p);
@@ -1850,7 +1871,11 @@
             }
 
             function applyPowerup(p) {
-                if (p.kind === 'beer') {
+                if (p.kind === 'chihuahua') {
+                    stampede.timer = 5.0;
+                    addFloatText('¡ESTAMPIDA!', p.x, p.y);
+                    playSound(900, 0.3);
+                } else if (p.kind === 'beer') {
                     slowEffect.timer = 4.5;
                     addFloatText('Cerveza chill 🍺', p.x, p.y);
                 }
@@ -2259,6 +2284,46 @@
                 }
             }
 
+
+            function updateChihuahuas(dt) {
+                if (stampede.timer > 0) {
+                    stampede.timer -= dt;
+                    stampede.spawnTimer -= dt;
+                    if (stampede.spawnTimer <= 0) {
+                        const side = Math.random() < 0.5 ? 'left' : 'right';
+                        const x = side === 'left' ? -30 : canvas.width + 30;
+                        const y = canvas.height - 40 - Math.random() * 60;
+                        const vx = (side === 'left' ? 1 : -1) * (200 + Math.random() * 100);
+                        chihuahuas.push({ x, y, vx, w: 30, h: 30, life: 3, eaten: false });
+                        stampede.spawnTimer = 0.15;
+                    }
+                }
+
+                for (let i = chihuahuas.length - 1; i >= 0; i--) {
+                    const c = chihuahuas[i];
+                    c.x += c.vx * dt;
+                    c.life -= dt;
+
+                    if (!c.eaten) {
+                        for (let j = chanclas.length - 1; j >= 0; j--) {
+                            const chancla = chanclas[j];
+                            if (!chancla.slapped && rectsOverlap(c, chancla)) {
+                                chanclas.splice(j, 1);
+                                c.eaten = true;
+                                addFloatText('BORK!', c.x, c.y - 10);
+                                playSound(900 + Math.random() * 200, 0.1);
+                                spawnImpact(c.x, c.y);
+                                break;
+                            }
+                        }
+                    }
+
+                    if (c.life <= 0 || c.x < -100 || c.x > canvas.width + 100) {
+                        chihuahuas.splice(i, 1);
+                    }
+                }
+            }
+
             function updatePets(dt) {
                 for (let i = pets.length - 1; i >= 0; i--) {
                     const p = pets[i];
@@ -2267,7 +2332,7 @@
                         p.x += p.vx * dt;
                         if (!p.dropped && Math.random() < 0.12 * dt) {
                             const r = Math.random();
-                            spawnPowerup('beer', p.x, p.y - 10);
+                            spawnPowerup(Math.random() < 0.5 ? 'beer' : 'chihuahua', p.x, p.y - 10);
                             p.dropped = true;
                         }
                         if (p.x < -60 || p.x > canvas.width + 60 || p.duration <= 0) {
@@ -2290,7 +2355,13 @@
                     ctx.save();
                     ctx.translate(p.x, p.y);
                     const scale = p.w / 26;
-                    ctx.scale(scale, scale); if (p.kind === 'beer') {
+                    ctx.scale(scale, scale);
+                    if (p.kind === 'chihuahua') {
+                        ctx.font = '26px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('🦴', 0, 0);
+                    } else if (p.kind === 'beer') {
                         ctx.fillStyle = '#f2c94c';
                         roundRect(ctx, -12, -18, 24, 36, 6);
                         ctx.fill();
@@ -2516,6 +2587,7 @@
                 updatePinatas(dt);
                 updateChanclas(dt);
                 updatePets(dt);
+                updateChihuahuas(dt);
                 updatePowerups(dt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
@@ -2613,6 +2685,7 @@
                 drawPowerups();
                 drawSpecialProjectiles();
                 drawPets();
+                drawChihuahuas();
                 drawRosePetals();
                 drawDashTrails();
                 drawChainEffects();
