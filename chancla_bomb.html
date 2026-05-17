@@ -233,6 +233,7 @@
             let winAnimationStart = 0;
             let shakeTimer = 0;
             let shakeIntensity = 0;
+            let slowMoTimer = 0;
             let hitStop = 0;
             let meteorTimer = 0;
             let impacts = [];
@@ -429,6 +430,7 @@
                 slapCooldown = 0;
                 winAnimationStart = 0;
                 shakeTimer = 0;
+                slowMoTimer = 0;
                 hitStop = 0;
                 meteorTimer = 0;
                 flash.timer = 0;
@@ -2174,7 +2176,17 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                        if (dashTimer > 0) { // I-frames during dash and perfect dodge check
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                triggerFlash(0.3, '#00ffff');
+                                addFloatText('PERFECT DODGE! 🕒', player.x, player.y - 30);
+                                score += 10;
+                                playSound(1100, 0.2); // Special sound for dodge
+                            }
+                            continue;
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2195,7 +2207,17 @@
                             return;
                         }
                     } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
-                        if (dashTimer > 0) continue; // I-frames during dash shockwave
+                        if (dashTimer > 0) { // I-frames during dash shockwave and perfect dodge check
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                triggerFlash(0.3, '#00ffff');
+                                addFloatText('PERFECT DODGE! 🕒', player.x, player.y - 30);
+                                score += 10;
+                                playSound(1100, 0.2);
+                            }
+                            continue;
+                        }
                         triggerShake(30, 0.8);
                         triggerFlash(0.5, '#ff0000');
                         player.lives -= 1;
@@ -2356,6 +2378,12 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+
+                const realDt = dt;
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= realDt;
+                    dt *= 0.3;
+                }
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
