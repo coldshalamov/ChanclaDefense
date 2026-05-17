@@ -180,7 +180,8 @@
                 if (gameData.upgrades.speed === undefined) gameData.upgrades.speed = 0;
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 1 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -400,9 +401,13 @@
             }
 
             function resetGame() {
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 1 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
+
+                const wins = gameData.stats.wins;
+                isa.maxAnger = 100 + (wins - 1) * 20;
 
                 player.x = canvas.width / 2;
                 player.y = canvas.height - 70;
@@ -431,8 +436,10 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
-                spawnInterval = 1.2;
-                baseSpeed = 140;
+                spawnInterval = 1.2 - (wins - 1) * 0.05;
+                minSpawnInterval = 0.45 - (wins - 1) * 0.02;
+                if (spawnInterval < minSpawnInterval) spawnInterval = minSpawnInterval;
+                baseSpeed = 140 + (wins - 1) * 5;
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1722,8 +1729,14 @@
                 ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
+
+                ctx.fillStyle = '#ff79c6';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText(`Boss Level: ${gameData.stats.wins}`, canvas.width / 2, 355);
+
+                ctx.fillStyle = '#fff';
                 ctx.font = '14px sans-serif';
-                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 375);
 
                 // Play Button
                 ctx.fillStyle = '#ff9f1c';
@@ -2227,8 +2240,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                triggerWin();
                             }
                             continue;
                         }
@@ -2429,8 +2441,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            state = STATE.WIN;
-                            sayRandom('win');
+                            triggerWin();
                         }
                         continue;
                     }
@@ -2451,6 +2462,17 @@
                     ctx.fillText('🦵', 0, 0);
                     ctx.restore();
                 });
+            }
+
+            function triggerWin() {
+                state = STATE.WIN;
+                const defeatedLevel = gameData.stats.wins;
+                const winBonus = 50 + (defeatedLevel - 1) * 50;
+                gameData.coins += winBonus;
+                gameData.stats.totalCoinsEarned += winBonus;
+                gameData.stats.wins++;
+                saveGameData();
+                sayRandom('win');
             }
 
             function endGame() {
@@ -2713,6 +2735,17 @@
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
                 ctx.font = '20px sans-serif';
                 ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+
+                const defeatedLevel = gameData.stats.wins - 1;
+                const winBonus = 50 + (defeatedLevel - 1) * 50;
+
+                ctx.fillStyle = '#ff79c6';
+                ctx.font = 'bold 22px sans-serif';
+                ctx.fillText(`Boss Level ${defeatedLevel} Defeated!`, canvas.width / 2, 280);
+
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText(`Bonus Coins: +${winBonus}`, canvas.width / 2, 310);
 
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';
