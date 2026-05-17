@@ -213,8 +213,6 @@
 
 
             let chanclas = [];
-            let pets = [];
-            let powerups = [];
             let pinatas = [];
             let floatTexts = [];
             let rosePetals = [];
@@ -226,7 +224,6 @@
             let minSpawnInterval = 0.45;
             let spawnTimer = 0;
             let baseSpeed = 140;
-            const slowEffect = { timer: 0, factor: 0.62 };
             let timeElapsed = 0;
             let superEnabled = false;
             let specialAttackBar = 0;
@@ -323,11 +320,6 @@
                     "Mi gringo pro player, qué miedo y qué ganas.",
                     "Está bien… hoy guardo la chancla. Pero solo hoy."
                 ],
-                petOwen: [
-                    "Ay, Alecito te protege solo por hojuelas de salmón, qué suerte tienes.",
-                    "Mira, hasta Owen te defiende de mis chanclas.",
-                    "Si sobrevives es por Owen, no por tus reflejos, ¿eh?"
-                ],
                 win: [
                     "Te amo, Papi. I only hit you because I love you."
                 ],
@@ -421,8 +413,6 @@
                 isa.y = 70;
                 isa.enraged = false;
                 chanclas = [];
-                pets = [];
-                powerups = [];
                 pinatas = [];
                 floatTexts = [];
                 rosePetals = [];
@@ -438,7 +428,6 @@
                 specialAttackBar = 0;
                 slapCooldown = 0;
                 winAnimationStart = 0;
-                slowEffect.timer = 0;
                 shakeTimer = 0;
                 hitStop = 0;
                 meteorTimer = 0;
@@ -739,7 +728,6 @@
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
                 else if (slapEffect.timer > 0) expression = 'slap';
-                else if (slowEffect.timer > 0) expression = 'chill';
                 else if (comboCount >= 5) expression = 'cocky';
 
                 drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
@@ -921,8 +909,7 @@
                 // Add shake/rotate for hit
                 if (expression === 'hit') {
                     ctx.rotate((Math.random() - 0.5) * 0.25);
-                } else if (expression === 'chill') {
-                    ctx.rotate(Math.sin(timeElapsed * 3) * 0.08); // Relaxed sway
+
                 } else if (expression === 'cocky') {
                     ctx.rotate(Math.sin(timeElapsed * 10) * 0.03); // Confident bob
                 } else if (expression === 'dead') {
@@ -979,18 +966,12 @@
 
                 // Left lens
                 roundRect(ctx, -headW * 0.32, -headH * 0.1, headW * 0.24, headH * 0.18, 6);
-                if (expression === 'chill') {
-                    ctx.fillStyle = '#111';
-                    ctx.fill();
-                }
+
                 ctx.stroke();
 
                 // Right lens
                 roundRect(ctx, headW * 0.08, -headH * 0.1, headW * 0.24, headH * 0.18, 6);
-                if (expression === 'chill') {
-                    ctx.fillStyle = '#111';
-                    ctx.fill();
-                }
+
                 ctx.stroke();
 
                 ctx.beginPath();
@@ -999,21 +980,7 @@
                 ctx.stroke();
 
                 // Eyes
-                if (expression === 'chill') {
-                    // Reflection on sunglasses
-                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                    ctx.beginPath();
-                    ctx.moveTo(-headW * 0.28, -headH * 0.08);
-                    ctx.lineTo(-headW * 0.18, -headH * 0.08);
-                    ctx.lineTo(-headW * 0.28, 0);
-                    ctx.fill();
-
-                    ctx.beginPath();
-                    ctx.moveTo(headW * 0.12, -headH * 0.08);
-                    ctx.lineTo(headW * 0.22, -headH * 0.08);
-                    ctx.lineTo(headW * 0.12, 0);
-                    ctx.fill();
-                } else if (expression === 'hit') {
+                if (expression === 'hit') {
                     // Wincing/Shut eyes
                     ctx.strokeStyle = '#2a1b12';
                     ctx.lineWidth = 2.5;
@@ -1139,14 +1106,6 @@
                     ctx.beginPath();
                     ctx.ellipse(0, headH * 0.24, headW * 0.12, headH * 0.08, 0, 0, Math.PI * 2);
                     ctx.fill();
-                } else if (expression === 'chill') {
-                    // Cool smirk
-                    ctx.strokeStyle = '#1e130c';
-                    ctx.lineWidth = 1.6;
-                    ctx.beginPath();
-                    ctx.moveTo(-headW * 0.1, headH * 0.24);
-                    ctx.quadraticCurveTo(0, headH * 0.26, headW * 0.12, headH * 0.22);
-                    ctx.stroke();
                 } else if (expression === 'cocky') {
                     // Confident smirk
                     ctx.strokeStyle = '#1e130c';
@@ -1221,6 +1180,7 @@
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
+                else if (type === 'bomb') emoji = '💣';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1232,43 +1192,6 @@
                 ctx.textAlign = 'center';
                 ctx.rotate(rotation);
                 ctx.fillText(emoji, 0, h * 0.2);
-                ctx.restore();
-            }
-
-            function drawPets() {
-                pets.forEach(p => {
-                    if (p.kind === 'owen') drawOwen(p);
-                });
-            }
-
-            function drawOwen(p) {
-                ctx.save();
-                ctx.fillStyle = '#444';
-                roundRect(ctx, p.x - 25, p.y - 15, 50, 30, 10);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(p.x - 20, p.y - 15);
-                ctx.lineTo(p.x - 10, p.y - 35);
-                ctx.lineTo(p.x, p.y - 15);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(p.x + 20, p.y - 15);
-                ctx.lineTo(p.x + 10, p.y - 35);
-                ctx.lineTo(p.x, p.y - 15);
-                ctx.fill();
-                ctx.fillStyle = '#eee';
-                ctx.beginPath();
-                ctx.arc(p.x - 8, p.y - 2, 4, 0, Math.PI * 2);
-                ctx.arc(p.x + 8, p.y - 2, 4, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#eee';
-                ctx.beginPath();
-                ctx.arc(p.x, p.y + 6, 10, 0.2 * Math.PI, 0.8 * Math.PI);
-                ctx.stroke();
-                ctx.fillStyle = '#fff';
-                ctx.font = '12px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('Owen Alejandro', p.x, p.y - 24);
                 ctx.restore();
             }
 
@@ -1375,12 +1298,6 @@
                 ctx.fillStyle = '#fff';
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width - 12, 22);
-                if (slowEffect.timer > 0) {
-                    ctx.fillStyle = '#ffd166';
-                    ctx.font = '14px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('🍺 chill ' + slowEffect.timer.toFixed(1) + 's', canvas.width / 2, 22);
-                }
 
                 // Draw special attack bar
                 const barWidth = 180;
@@ -1814,48 +1731,40 @@
             }
 
             function spawnChancla() {
-                const isSuper = superEnabled && Math.random() < 0.18;
-                const isFire = isa.enraged && Math.random() < 0.25;
-                const w = isSuper ? 46 : 32;
-                const h = isSuper ? 26 : 18;
+                const isBomb = Math.random() < 0.08;
+                const isSuper = superEnabled && !isBomb && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isSuper && Math.random() < 0.25;
+
+                let w = 32;
+                let h = 18;
+                if (isSuper) { w = 46; h = 26; }
+                else if (isBomb) { w = 38; h = 38; }
+
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
+
+                let vy = baseSpeed + Math.random() * 60;
+                if (isSuper) vy += 40;
+                else if (isFire) vy += 80;
+                else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
+
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isFire) type = 'fire';
+                if (isBomb) type = 'bomb';
+                else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
             }
 
-            function spawnOwen() {
-                const side = Math.random() < 0.5 ? 'left' : 'right';
-                const x = side === 'left' ? -40 : canvas.width + 40;
-                const y = canvas.height - 110;
-                const vx = side === 'left' ? 180 : -180;
-                pets.push({ kind: 'owen', x, y, vx, active: true, duration: 6 });
-                sayRandom('petOwen');
-            }
-
-            function spawnPowerup(kind, x, y) {
-                powerups.push({ kind, x, y, vy: 110, w: 38, h: 38 });
-            }
 
             function addFloatText(text, x, y) {
                 floatTexts.push({ text, x, y, time: 1.8, max: 1.8 });
             }
 
-            function applyPowerup(p) {
-                if (p.kind === 'beer') {
-                    slowEffect.timer = 4.5;
-                    addFloatText('Cerveza chill 🍺', p.x, p.y);
-                }
-
-            }
 
             function trySlap() {
                 if (slapCooldown > 0) return;
@@ -2148,11 +2057,10 @@
             }
 
             function updateChanclas(dt) {
-                const slowFactor = slowEffect.timer > 0 ? slowEffect.factor : 1;
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
                     c.x += c.vx * dt;
-                    c.y += c.vy * dt * (c.slapped ? 1 : slowFactor);
+                    c.y += c.vy * dt;
                     c.rotation += c.rotSpeed * dt;
 
                     // Remove slapped chanclas that fly off screen
@@ -2211,16 +2119,33 @@
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
+                            if (c.type === 'bomb') damage = 20;
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
-                            if (c.isPerfect) {
+                            if (c.type === 'bomb') {
+                                triggerShake(20, 0.5);
+                                triggerFlash(0.2, '#fff');
+                                addFloatText('BOOM! 💣', isa.x, isa.y + 30);
+                                for (let k = 0; k < 10; k++) {
+                                    fireParticles.push({
+                                        x: isa.x + (Math.random() - 0.5) * 40,
+                                        y: isa.y + (Math.random() - 0.5) * 40,
+                                        vx: (Math.random() - 0.5) * 200,
+                                        vy: (Math.random() - 0.5) * 200,
+                                        life: 0.5 + Math.random() * 0.5,
+                                        maxLife: 1.0,
+                                        size: 15 + Math.random() * 15
+                                    });
+                                }
+                            } else if (c.isPerfect) {
                                 addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
                                 hitStop = 0.1;
+                            } else {
+                                addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
                             }
-                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
 
                             playSound(900, 0.1); // Higher pitch for success
                             chanclas.splice(i, 1);
@@ -2242,17 +2167,22 @@
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
+                    if (c.y < -50 && c.isShrapnel) {
+                        chanclas.splice(i, 1);
+                        continue;
+                    }
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
+                        if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
                         if (dashTimer > 0) continue; // I-frames during dash
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
                         comboCount = 0;
-                        const shakeAmt = c.type === 'super' ? 15 : (c.type === 'fire' ? 15 : 8);
+                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
@@ -2276,61 +2206,33 @@
                         if (player.lives <= 0) endGame();
                         continue;
                     } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
-                        score += 1;
-                        const prevBest = bestScore;
-                        bestScore = Math.max(bestScore, score);
-                        if (score > prevBest && score % 10 === 0) sayRandom('highScore');
-                        if (Math.random() < 0.2) sayRandom('nearMiss');
-                        if (Math.random() < 0.25) sayPlayer('nearMiss');
+                        if (c.type === 'bomb') {
+                            triggerShake(15, 0.3);
+                            triggerFlash(0.1, '#fff');
+                            playSound(1000, 0.4);
+                            addFloatText('SHRAPNEL! 💥', c.x, canvas.height - 20);
+                            for (let j = 0; j < 3; j++) {
+                                chanclas.push({
+                                    x: c.x,
+                                    y: canvas.height - 10,
+                                    vx: (Math.random() - 0.5) * 150,
+                                    vy: -400 - Math.random() * 200,
+                                    w: 32, h: 18, type: 'fire', rotation: 0, rotSpeed: (Math.random() - 0.5) * 15,
+                                    slapped: false, // Mark as false so they don't hit Isa
+                                    isShrapnel: true
+                                });
+                            }
+                        } else {
+                            score += 1;
+                            const prevBest = bestScore;
+                            bestScore = Math.max(bestScore, score);
+                            if (score > prevBest && score % 10 === 0) sayRandom('highScore');
+                            if (Math.random() < 0.2) sayRandom('nearMiss');
+                            if (Math.random() < 0.25) sayPlayer('nearMiss');
+                        }
                         chanclas.splice(i, 1);
                     }
                 }
-            }
-
-            function updatePets(dt) {
-                for (let i = pets.length - 1; i >= 0; i--) {
-                    const p = pets[i];
-                    p.duration -= dt;
-                    if (p.kind === 'owen') {
-                        p.x += p.vx * dt;
-                        if (!p.dropped && Math.random() < 0.12 * dt) {
-                            const r = Math.random();
-                            spawnPowerup('beer', p.x, p.y - 10);
-                            p.dropped = true;
-                        }
-                        if (p.x < -60 || p.x > canvas.width + 60 || p.duration <= 0) {
-                            pets.splice(i, 1);
-                            continue;
-                        }
-                        for (let j = chanclas.length - 1; j >= 0; j--) {
-                            if (rectsOverlap({ x: p.x, y: p.y, w: 50, h: 30 }, chanclas[j])) {
-                                chanclas.splice(j, 1);
-                            }
-                        }
-                    }
-                }
-            }
-
-
-
-            function drawPowerups() {
-                powerups.forEach(p => {
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    const scale = p.w / 26;
-                    ctx.scale(scale, scale); if (p.kind === 'beer') {
-                        ctx.fillStyle = '#f2c94c';
-                        roundRect(ctx, -12, -18, 24, 36, 6);
-                        ctx.fill();
-                        ctx.fillStyle = '#fff3a3';
-                        roundRect(ctx, -10, -22, 20, 10, 4);
-                        ctx.fill();
-                        ctx.fillStyle = '#5f4b32';
-                        ctx.font = '12px sans-serif';
-                        ctx.fillText('🍺', 0, 6);
-                    }
-                    ctx.restore();
-                });
             }
 
             function drawFloatTexts() {
@@ -2349,19 +2251,8 @@
                 return Math.abs(a.x - b.x) < (a.w / 2 + b.w / 2) && Math.abs(a.y - b.y) < (a.h / 2 + b.h / 2);
             }
 
-            function updatePowerups(dt) {
-                for (let i = powerups.length - 1; i >= 0; i--) {
-                    const p = powerups[i];
-                    p.y += p.vy * dt;
-                    if (rectsOverlap(player, p)) {
-                        applyPowerup(p);
-                        powerups.splice(i, 1);
-                        continue;
-                    }
-                    if (p.y > canvas.height + p.h) {
-                        powerups.splice(i, 1);
-                    }
-                }
+
+            function updateFloatTexts(dt) {
                 for (let i = floatTexts.length - 1; i >= 0; i--) {
                     const f = floatTexts[i];
                     f.y -= 18 * dt;
@@ -2537,17 +2428,14 @@
                     if (dashTrails[i].life <= 0) dashTrails.splice(i, 1);
                 }
 
-                if (!pets.some(p => p.kind === 'owen') && (player.lives <= 2 && Math.random() < 0.003 || Math.random() < 0.0007)) {
-                    spawnOwen();
-                }
+
 
                 updatePinatas(dt);
                 updateChanclas(dt);
-                updatePets(dt);
-                updatePowerups(dt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
+                updateFloatTexts(dt);
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -2608,7 +2496,6 @@
                     }
                 }
 
-                if (slowEffect.timer > 0) slowEffect.timer -= dt;
                 if (slapCooldown > 0) slapCooldown -= dt;
                 if (slapEffect.timer > 0) slapEffect.timer -= dt;
                 if (isa.hitTimer > 0) isa.hitTimer -= dt;
@@ -2638,9 +2525,7 @@
                 drawFireParticles();
                 drawPinatas();
                 drawChanclasAll();
-                drawPowerups();
                 drawSpecialProjectiles();
-                drawPets();
                 drawRosePetals();
                 drawDashTrails();
                 drawChainEffects();

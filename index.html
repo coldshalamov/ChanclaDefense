@@ -1180,6 +1180,7 @@
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
+                else if (type === 'bomb') emoji = '💣';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1730,18 +1731,29 @@
             }
 
             function spawnChancla() {
-                const isSuper = superEnabled && Math.random() < 0.18;
-                const isFire = isa.enraged && Math.random() < 0.25;
-                const w = isSuper ? 46 : 32;
-                const h = isSuper ? 26 : 18;
+                const isBomb = Math.random() < 0.08;
+                const isSuper = superEnabled && !isBomb && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isSuper && Math.random() < 0.25;
+
+                let w = 32;
+                let h = 18;
+                if (isSuper) { w = 46; h = 26; }
+                else if (isBomb) { w = 38; h = 38; }
+
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
-                const vy = baseSpeed + Math.random() * 60 + (isSuper ? 40 : 0) + (isFire ? 80 : 0);
+
+                let vy = baseSpeed + Math.random() * 60;
+                if (isSuper) vy += 40;
+                else if (isFire) vy += 80;
+                else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
+
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isFire) type = 'fire';
+                if (isBomb) type = 'bomb';
+                else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
@@ -2107,16 +2119,33 @@
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
+                            if (c.type === 'bomb') damage = 20;
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
-                            if (c.isPerfect) {
+                            if (c.type === 'bomb') {
+                                triggerShake(20, 0.5);
+                                triggerFlash(0.2, '#fff');
+                                addFloatText('BOOM! 💣', isa.x, isa.y + 30);
+                                for (let k = 0; k < 10; k++) {
+                                    fireParticles.push({
+                                        x: isa.x + (Math.random() - 0.5) * 40,
+                                        y: isa.y + (Math.random() - 0.5) * 40,
+                                        vx: (Math.random() - 0.5) * 200,
+                                        vy: (Math.random() - 0.5) * 200,
+                                        life: 0.5 + Math.random() * 0.5,
+                                        maxLife: 1.0,
+                                        size: 15 + Math.random() * 15
+                                    });
+                                }
+                            } else if (c.isPerfect) {
                                 addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
                                 hitStop = 0.1;
+                            } else {
+                                addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
                             }
-                            addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
 
                             playSound(900, 0.1); // Higher pitch for success
                             chanclas.splice(i, 1);
@@ -2138,17 +2167,22 @@
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
+                    if (c.y < -50 && c.isShrapnel) {
+                        chanclas.splice(i, 1);
+                        continue;
+                    }
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
+                        if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
                         if (dashTimer > 0) continue; // I-frames during dash
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
                         comboCount = 0;
-                        const shakeAmt = c.type === 'super' ? 15 : (c.type === 'fire' ? 15 : 8);
+                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
@@ -2172,12 +2206,30 @@
                         if (player.lives <= 0) endGame();
                         continue;
                     } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
-                        score += 1;
-                        const prevBest = bestScore;
-                        bestScore = Math.max(bestScore, score);
-                        if (score > prevBest && score % 10 === 0) sayRandom('highScore');
-                        if (Math.random() < 0.2) sayRandom('nearMiss');
-                        if (Math.random() < 0.25) sayPlayer('nearMiss');
+                        if (c.type === 'bomb') {
+                            triggerShake(15, 0.3);
+                            triggerFlash(0.1, '#fff');
+                            playSound(1000, 0.4);
+                            addFloatText('SHRAPNEL! 💥', c.x, canvas.height - 20);
+                            for (let j = 0; j < 3; j++) {
+                                chanclas.push({
+                                    x: c.x,
+                                    y: canvas.height - 10,
+                                    vx: (Math.random() - 0.5) * 150,
+                                    vy: -400 - Math.random() * 200,
+                                    w: 32, h: 18, type: 'fire', rotation: 0, rotSpeed: (Math.random() - 0.5) * 15,
+                                    slapped: false, // Mark as false so they don't hit Isa
+                                    isShrapnel: true
+                                });
+                            }
+                        } else {
+                            score += 1;
+                            const prevBest = bestScore;
+                            bestScore = Math.max(bestScore, score);
+                            if (score > prevBest && score % 10 === 0) sayRandom('highScore');
+                            if (Math.random() < 0.2) sayRandom('nearMiss');
+                            if (Math.random() < 0.25) sayPlayer('nearMiss');
+                        }
                         chanclas.splice(i, 1);
                     }
                 }
