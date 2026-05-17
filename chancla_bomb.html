@@ -162,7 +162,7 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
             let state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -180,7 +180,8 @@
                 if (gameData.upgrades.speed === undefined) gameData.upgrades.speed = 0;
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, wins: 1 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -408,6 +409,9 @@
                 dashCooldown = 0;
                 dashDir = 0;
                 dashTrails = [];
+
+                const wins = gameData.stats.wins || 1;
+                isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -421,8 +425,9 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
-                spawnInterval = 1.2;
-                baseSpeed = 140;
+                spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
+                minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
+                baseSpeed = 140 + (wins - 1) * 5;
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1648,7 +1653,8 @@
                 ctx.fill();
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
-                ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+                const wins = gameData.stats ? (gameData.stats.wins || 1) : 1;
+                ctx.fillText(`Jugar / Play (Lv. ${wins})`, canvas.width / 2, 410);
 
                 // Shop Button
                 ctx.fillStyle = '#2196f3';
@@ -2152,8 +2158,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                triggerWin();
                             }
                             continue;
                         }
@@ -2320,8 +2325,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            state = STATE.WIN;
-                            sayRandom('win');
+                            triggerWin();
                         }
                         continue;
                     }
@@ -2342,6 +2346,17 @@
                     ctx.fillText('🦵', 0, 0);
                     ctx.restore();
                 });
+            }
+
+            function triggerWin() {
+                state = STATE.WIN;
+                const defeatedLevel = gameData.stats.wins || 1;
+                const bonus = 50 + (defeatedLevel - 1) * 50;
+                gameData.coins += bonus;
+                gameData.stats.totalCoinsEarned += bonus;
+                gameData.stats.wins = defeatedLevel + 1;
+                saveGameData();
+                sayRandom('win');
             }
 
             function endGame() {
@@ -2596,8 +2611,16 @@
                 ctx.textAlign = 'center';
                 ctx.font = '32px sans-serif';
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
+
+                const defeatedLevel = (gameData.stats.wins || 2) - 1; // Since we incremented it in triggerWin
+                const bonus = 50 + (defeatedLevel - 1) * 50;
+
                 ctx.font = '20px sans-serif';
-                ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+                ctx.fillText(`Defeated Lv. ${defeatedLevel} Isa!`, canvas.width / 2, 235);
+
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 22px sans-serif';
+                ctx.fillText(`+${bonus} Bonus Coins!`, canvas.width / 2, 265);
 
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';
