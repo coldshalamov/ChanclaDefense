@@ -247,6 +247,7 @@
             let dashCooldown = 0;
             let dashDir = 0;
             let dashTrails = [];
+            let slowMoTimer = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -431,6 +432,7 @@
                 shakeTimer = 0;
                 hitStop = 0;
                 meteorTimer = 0;
+                slowMoTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
@@ -2174,7 +2176,16 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                triggerFlash(0.2, '#00ffff');
+                                addFloatText('PERFECT DODGE! ⏱️', player.x, player.y - 40);
+                                playSound(1000, 0.4);
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2356,6 +2367,11 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt;
+                    dt *= 0.3;
+                }
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
