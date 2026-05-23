@@ -240,6 +240,7 @@
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
+            let slowMoTimer = 0;
 
             let lastTapLeft = 0;
             let lastTapRight = 0;
@@ -433,6 +434,7 @@
                 meteorTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
+                slowMoTimer = 0;
                 chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
@@ -501,6 +503,11 @@
 
                 ctx.fillStyle = '#ffe066';
                 starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+
+                if (typeof slowMoTimer !== 'undefined' && slowMoTimer > 0) {
+                    ctx.fillStyle = 'rgba(0, 229, 255, 0.15)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
             }
 
             function drawFlash() {
@@ -2174,7 +2181,16 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE! ⏳', player.x, player.y - 40);
+                                triggerFlash(0.2, '#00e5ff');
+                                playSound(800, 0.2);
+                            }
+                            continue;
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2195,7 +2211,16 @@
                             return;
                         }
                     } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
-                        if (dashTimer > 0) continue; // I-frames during dash shockwave
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE! ⏳', player.x, player.y - 40);
+                                triggerFlash(0.2, '#00e5ff');
+                                playSound(800, 0.2);
+                            }
+                            continue;
+                        }
                         triggerShake(30, 0.8);
                         triggerFlash(0.5, '#ff0000');
                         player.lives -= 1;
@@ -2356,6 +2381,11 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt;
+                    dt *= 0.3;
+                }
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
