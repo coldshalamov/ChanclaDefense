@@ -241,6 +241,10 @@
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
 
+            let cats = [];
+            let catTimer = 0;
+            const catInterval = 8;
+
             let lastTapLeft = 0;
             let lastTapRight = 0;
             let dashTimer = 0;
@@ -434,6 +438,8 @@
                 flash.timer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
+                cats = [];
+                catTimer = 0;
                 wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -2261,6 +2267,56 @@
                 }
             }
 
+            function updateCats(dt) {
+                catTimer += dt;
+                const currentInterval = isa.enraged ? catInterval * 0.6 : catInterval;
+                if (catTimer >= currentInterval) {
+                    catTimer = 0;
+                    const isLeft = Math.random() < 0.5;
+                    const x = isLeft ? -50 : canvas.width + 50;
+                    const vx = isLeft ? 250 : -250;
+                    const y = canvas.height - 40; // Ground level
+                    const emoji = Math.random() < 0.5 ? '🐈' : '🐈‍⬛';
+                    cats.push({ x, y, vx, w: 40, h: 30, emoji, timeAlive: 0 });
+                    addFloatText('¡MIS GATOS!', canvas.width / 2, canvas.height - 100);
+                    playSound(600, 0.2); // Alert sound
+                }
+
+                for (let i = cats.length - 1; i >= 0; i--) {
+                    const c = cats[i];
+                    c.x += c.vx * dt;
+                    c.timeAlive += dt;
+
+                    // Check collision with player
+                    if (rectsOverlap(player, c)) {
+                        if (dashTimer <= 0) {
+                            // Player hit!
+                            if (player.shield) {
+                                player.shield = false;
+                                cats.splice(i, 1);
+                                continue;
+                            }
+                            player.lives -= 1;
+                            player.hitTimer = 0.5;
+                            comboCount = 0;
+                            triggerShake(10, 0.3);
+                            triggerFlash(0.1, '#ff0000');
+                            playSound(400, 0.2);
+                            sayPlayer('hit');
+                            if (player.lives <= 0) {
+                                endGame();
+                                return;
+                            }
+                        }
+                    }
+
+                    // Remove if off-screen
+                    if ((c.vx > 0 && c.x > canvas.width + 100) || (c.vx < 0 && c.x < -100)) {
+                        cats.splice(i, 1);
+                    }
+                }
+            }
+
             function updateSpecialProjectiles(dt) {
                 for (let i = specialProjectiles.length - 1; i >= 0; i--) {
                     const proj = specialProjectiles[i];
@@ -2436,6 +2492,7 @@
                 updateImpacts(dt);
                 updateChainEffects(dt);
                 updateFloatTexts(dt);
+                updateCats(dt);
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
@@ -2519,12 +2576,31 @@
                 ctx.restore();
             }
 
+            function drawCats() {
+                for (const c of cats) {
+                    ctx.save();
+                    const bobY = Math.sin(c.timeAlive * 15) * 5;
+                    ctx.translate(c.x, c.y + bobY);
+
+                    if (c.vx < 0) {
+                        ctx.scale(-1, 1);
+                    }
+
+                    ctx.font = '36px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(c.emoji, 0, 0);
+                    ctx.restore();
+                }
+            }
+
             function draw() {
                 drawBackground();
                 drawIsa();
                 drawFireParticles();
                 drawPinatas();
                 drawChanclasAll();
+                drawCats();
                 drawSpecialProjectiles();
                 drawRosePetals();
                 drawDashTrails();
