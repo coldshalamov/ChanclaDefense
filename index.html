@@ -238,6 +238,7 @@
             let impacts = [];
             let chainEffects = [];
             let comboCount = 0;
+            let suegra = null;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
 
@@ -2097,6 +2098,19 @@
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
+
+                        // Check collision with Suegra for slapped chanclas
+                        if (suegra) {
+                            const distToSuegra = Math.sqrt(Math.pow(c.x - suegra.x, 2) + Math.pow(c.y - suegra.y, 2));
+                            if (distToSuegra < 40 + c.w / 2) {
+                                addFloatText('¡Qué falta de respeto!', suegra.x, suegra.y);
+                                score += 100;
+                                suegra = null;
+                                chanclas.splice(i, 1);
+                                continue;
+                            }
+                        }
+
                             // Ping-Pong Rally (Dead Man's Volley) mechanic
                             if (Math.random() < 0.3) {
                                 c.slapped = false;
@@ -2261,6 +2275,56 @@
                 }
             }
 
+
+            function updateSuegra(dt) {
+                if (!suegra) {
+                    if (isa.enraged) {
+                        suegraTimer = (window.suegraTimer || 0) + dt;
+                        if (suegraTimer > 15) {
+                            suegra = { x: canvas.width / 2, y: 150, vx: 100, activeTime: 0, spawnTimer: 0 };
+                            suegraTimer = 0;
+                            addFloatText('¡LA SUEGRA!', suegra.x, suegra.y);
+                            playSound(1000, 0.3);
+                        }
+                    }
+                    return;
+                }
+
+                suegra.activeTime += dt;
+                suegra.x += suegra.vx * dt;
+
+                if (suegra.x < 40 || suegra.x > canvas.width - 40) {
+                    suegra.vx *= -1;
+                }
+
+                suegra.spawnTimer += dt;
+                if (suegra.spawnTimer > 1.5) {
+                    suegra.spawnTimer = 0;
+
+                    // Aim homing slipper
+                    const dx = player.x - suegra.x;
+                    const dy = player.y - suegra.y;
+                    const mag = Math.sqrt(dx*dx + dy*dy);
+
+                    chanclas.push({
+                        x: suegra.x,
+                        y: suegra.y,
+                        vx: (dx/mag) * 80,
+                        vy: baseSpeed + 40,
+                        w: 32,
+                        h: 18,
+                        type: 'suegra',
+                        rotation: 0,
+                        rotSpeed: (Math.random() - 0.5) * 5
+                    });
+                }
+
+                if (suegra.activeTime > 15) {
+                    addFloatText('¡Ya me cansé!', suegra.x, suegra.y);
+                    suegra = null;
+                }
+            }
+
             function updateSpecialProjectiles(dt) {
                 for (let i = specialProjectiles.length - 1; i >= 0; i--) {
                     const proj = specialProjectiles[i];
@@ -2329,6 +2393,18 @@
                     proj.x += (dx / dist) * proj.speed * dt;
                     proj.y += (dy / dist) * proj.speed * dt;
                 }
+            }
+
+
+            function drawSuegra() {
+                if (!suegra) return;
+                ctx.save();
+                ctx.translate(suegra.x, suegra.y);
+                ctx.font = '60px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('👵', 0, 0);
+                ctx.restore();
             }
 
             function drawSpecialProjectiles() {
@@ -2432,6 +2508,7 @@
 
                 updatePinatas(dt);
                 updateChanclas(dt);
+                updateSuegra(dt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
@@ -2525,6 +2602,7 @@
                 drawFireParticles();
                 drawPinatas();
                 drawChanclasAll();
+                drawSuegra();
                 drawSpecialProjectiles();
                 drawRosePetals();
                 drawDashTrails();
