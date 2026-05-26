@@ -241,6 +241,8 @@
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
+            let suegraTimer = 0;
+            let suegra = { active: false, x: 0, y: 30, vx: 100, retreat: false, timer: 0 };
 
             let lastTapLeft = 0;
             let lastTapRight = 0;
@@ -439,6 +441,8 @@
                 meteorTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
+                suegraTimer = 0;
+                suegra = { active: false, x: 0, y: 30, vx: 100, retreat: false, timer: 0 };
                 chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
@@ -1187,6 +1191,7 @@
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
+                else if (type === 'slipper') emoji = '👡';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1405,7 +1410,8 @@
 
             function drawAchievements() {
                 drawBackground();
-                drawIsa(); // Background decoration
+                drawIsa();
+                drawSuegra(); // Background decoration
 
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.85)';
@@ -1476,7 +1482,8 @@
 
             function drawShop() {
                 drawBackground();
-                drawIsa(); // Background decoration
+                drawIsa();
+                drawSuegra(); // Background decoration
 
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.85)';
@@ -1557,7 +1564,8 @@
 
             function drawCosmetics() {
                 drawBackground();
-                drawIsa(); // Background decoration
+                drawIsa();
+                drawSuegra(); // Background decoration
 
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.85)';
@@ -1634,6 +1642,7 @@
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
+                drawSuegra();
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -1969,6 +1978,8 @@
 
                     specialAttackBar = 0;
                     specialReadyTriggered = false;
+                suegraTimer = 0;
+                suegra = { active: false, x: 0, y: 30, vx: 100, retreat: false, timer: 0 };
 
                     // Play special attack sound
                     playSound(800, 0.2);
@@ -2069,6 +2080,11 @@
                     c.x += c.vx * dt;
                     c.y += c.vy * dt;
                     c.rotation += c.rotSpeed * dt;
+                    if (c.type === 'slipper' && !c.slapped) {
+                        // Homing logic towards player
+                        const dx = player.x - c.x;
+                        c.vx += dx * 2 * dt; // Adjust horizontal velocity
+                    }
 
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
@@ -2162,6 +2178,21 @@
                                 triggerWin();
                             }
                             continue;
+                        }
+
+                        if (suegra.active && !suegra.retreat) {
+                            const distToSuegra = Math.sqrt(Math.pow(c.x - suegra.x, 2) + Math.pow(c.y - suegra.y, 2));
+                            if (distToSuegra < 40 + c.w / 2) {
+                                // Hit the Suegra
+                                suegra.retreat = true;
+                                addFloatText('¡Qué falta de respeto!', suegra.x, suegra.y + 30);
+                                triggerShake(15, 0.4);
+                                triggerFlash(0.2, '#fff');
+                                score += 150;
+                                spawnImpact(suegra.x, suegra.y, true);
+                                chanclas.splice(i, 1);
+                                continue;
+                            }
                         }
 
                         if (c.x < -50 || c.x > canvas.width + 50 || c.y < -50) {
@@ -2423,6 +2454,45 @@
                         spawnMeteor();
                         meteorTimer = 0;
                     }
+
+                    suegraTimer += dt;
+                    if (suegraTimer > 15 && !suegra.active) {
+                        suegra.active = true;
+                        suegra.x = -50;
+                        suegra.y = 30;
+                        suegra.vx = 80;
+                        suegra.retreat = false;
+                        suegra.timer = 0;
+                        suegraTimer = 0;
+                        addFloatText('¡LA SUEGRA!', canvas.width/2, 100);
+                        playSound(1100, 0.5);
+                    }
+
+                    if (suegra.active) {
+                        if (suegra.retreat) {
+                            suegra.y -= 150 * dt; // Fly up
+                            if (suegra.y < -100) {
+                                suegra.active = false;
+                            }
+                        } else {
+                            suegra.x += suegra.vx * dt;
+                            if (suegra.x > canvas.width - 40) suegra.vx = -Math.abs(suegra.vx);
+                            if (suegra.x < 40) suegra.vx = Math.abs(suegra.vx);
+
+                            suegra.timer += dt;
+                            if (suegra.timer > 2.0) { // Drop homing slipper
+                                suegra.timer = 0;
+                                chanclas.push({
+                                    x: suegra.x,
+                                    y: suegra.y + 20,
+                                    vx: (Math.random() - 0.5) * 50,
+                                    vy: 100,
+                                    w: 30, h: 20, type: 'slipper', rotation: 0, rotSpeed: (Math.random() - 0.5) * 10
+                                });
+                                playSound(500, 0.1);
+                            }
+                        }
+                    }
                 }
 
                 if (dashTimer > 0) {
@@ -2523,6 +2593,22 @@
                 if (Math.random() < 0.002) sayPlayer('idle');
             }
 
+            function drawSuegra() {
+                if (!suegra.active) return;
+                ctx.save();
+                ctx.translate(suegra.x, suegra.y);
+                if (suegra.retreat) {
+                    ctx.rotate((Math.random() - 0.5) * 0.5); // Shake while retreating
+                }
+                ctx.font = '50px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('👵', 0, 0);
+
+                // Draw a health/rage bar or something if needed, or just her
+                ctx.restore();
+            }
+
             function drawFireParticles() {
                 ctx.save();
                 ctx.globalCompositeOperation = 'lighter';
@@ -2539,6 +2625,7 @@
             function draw() {
                 drawBackground();
                 drawIsa();
+                drawSuegra();
                 drawFireParticles();
                 drawPinatas();
                 drawChanclasAll();
