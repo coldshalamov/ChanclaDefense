@@ -235,6 +235,7 @@
             let shakeTimer = 0;
             let shakeIntensity = 0;
             let hitStop = 0;
+            let slowMoTimer = 0;
             let meteorTimer = 0;
             let impacts = [];
             let chainEffects = [];
@@ -436,6 +437,7 @@
                 winAnimationStart = 0;
                 shakeTimer = 0;
                 hitStop = 0;
+                slowMoTimer = 0;
                 meteorTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
@@ -492,6 +494,13 @@
                 }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                if (slowMoTimer > 0) {
+                    ctx.save();
+                    ctx.fillStyle = `rgba(0, 255, 255, ${Math.min(0.15, slowMoTimer * 0.15)})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                }
 
                 ctx.fillStyle = isa.enraged ? '#1a0508' : '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
@@ -2180,7 +2189,15 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                                                if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 40);
+                                triggerFlash(0.2, '#00ffff');
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2201,7 +2218,15 @@
                             return;
                         }
                     } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
-                        if (dashTimer > 0) continue; // I-frames during dash shockwave
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 40);
+                                triggerFlash(0.2, '#00ffff');
+                            }
+                            continue; // I-frames during dash shockwave
+                        }
                         triggerShake(30, 0.8);
                         triggerFlash(0.5, '#ff0000');
                         player.lives -= 1;
@@ -2389,6 +2414,12 @@
                 if (hitStop > 0) {
                     hitStop -= dt;
                     return;
+                }
+
+                let realDt = dt;
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= realDt;
+                    dt *= 0.3;
                 }
 
                 if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
