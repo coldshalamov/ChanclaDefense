@@ -235,6 +235,7 @@
             let shakeTimer = 0;
             let shakeIntensity = 0;
             let hitStop = 0;
+            let slowMoTimer = 0;
             let meteorTimer = 0;
             let impacts = [];
             let chainEffects = [];
@@ -436,6 +437,7 @@
                 winAnimationStart = 0;
                 shakeTimer = 0;
                 hitStop = 0;
+                slowMoTimer = 0;
                 meteorTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
@@ -507,6 +509,10 @@
 
                 ctx.fillStyle = '#ffe066';
                 starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+                if (typeof slowMoTimer !== 'undefined' && slowMoTimer > 0) {
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
             }
 
             function drawFlash() {
@@ -2180,7 +2186,16 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE! ⏱️', player.x, player.y - 40);
+                                playSound(1500, 0.2);
+                                triggerFlash(0.2, '#00ffff');
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2389,6 +2404,11 @@
                 if (hitStop > 0) {
                     hitStop -= dt;
                     return;
+                }
+
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt;
+                    dt *= 0.3;
                 }
 
                 if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
