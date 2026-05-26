@@ -149,7 +149,7 @@
         <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
     </div>
     <script>
-        (() => {
+
             const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
             const overlayLeft = document.getElementById('overlay-left');
@@ -181,7 +181,6 @@
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
-                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -368,7 +367,7 @@
                 playerDialogueTimer = 2.5;
 
                 if (playerDialogueText === "YOU'RE CRAZY!") {
-                    setTimeout(() => {
+                    setTimeout
                         dialogueText = "I'll SHOW YOU CRAZY!";
                         dialogueTimer = 3.0;
                     }, 600);
@@ -395,7 +394,6 @@
 
             function resetGame() {
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
-                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
@@ -411,8 +409,6 @@
                 dashCooldown = 0;
                 dashDir = 0;
                 dashTrails = [];
-                const wins = gameData.stats.wins || 1;
-                isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -426,10 +422,8 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
-                spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
-                minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
-                spawnTimer = 0;
-                baseSpeed = 140 + (wins - 1) * 5;
+                spawnInterval = 1.2;
+                baseSpeed = 140;
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1654,7 +1648,6 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
-                ctx.fillText('Level ' + (gameData.stats.wins || 1), canvas.width / 2, 345);
 
                 // Play Button
                 ctx.fillStyle = '#ff9f1c';
@@ -2166,7 +2159,8 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                triggerWin();
+                                state = STATE.WIN;
+                                sayRandom('win');
                             }
                             continue;
                         }
@@ -2351,7 +2345,8 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            triggerWin();
+                            state = STATE.WIN;
+                            sayRandom('win');
                         }
                         continue;
                     }
@@ -2372,18 +2367,6 @@
                     ctx.fillText('🦵', 0, 0);
                     ctx.restore();
                 });
-            }
-
-
-            function triggerWin() {
-                const defeatedLevel = gameData.stats.wins || 1;
-                const bonus = 50 + (defeatedLevel - 1) * 50;
-                gameData.coins += bonus;
-                gameData.stats.totalCoinsEarned += bonus;
-                gameData.stats.wins = defeatedLevel + 1;
-                saveGameData();
-                state = STATE.WIN;
-                sayRandom('win');
             }
 
             function endGame() {
@@ -2644,8 +2627,7 @@
                 ctx.font = '32px sans-serif';
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
                 ctx.font = '20px sans-serif';
-                ctx.fillText("Level " + (gameData.stats.wins - 1) + " Defeated!", canvas.width / 2, 240);
-                ctx.fillText('Boss Bonus: +' + (50 + (gameData.stats.wins - 2) * 50) + ' 💰', canvas.width / 2, 270);
+                ctx.fillText("You've survived another day...", canvas.width / 2, 240);
 
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';
@@ -3045,7 +3027,7 @@
                 setDirectionsVisible(true);
             }
             initTitle();
-        })();
+
     </script>
 </body>
 
