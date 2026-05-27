@@ -181,6 +181,7 @@
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -231,6 +232,8 @@
             let slapCooldown = 0;
             const slapEffect = { timer: 0, duration: 0.15 };
             let winAnimationStart = 0;
+                suegra = { active: false, x: 0, y: 0, speed: 100, timer: 0 };
+                suegraTimer = 0;
             let shakeTimer = 0;
             let shakeIntensity = 0;
             let hitStop = 0;
@@ -240,6 +243,8 @@
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
+            let suegra = { active: false, x: 0, y: 0, speed: 100, timer: 0 };
+            let suegraTimer = 0;
 
             let lastTapLeft = 0;
             let lastTapRight = 0;
@@ -393,6 +398,7 @@
 
             function resetGame() {
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
@@ -408,6 +414,8 @@
                 dashCooldown = 0;
                 dashDir = 0;
                 dashTrails = [];
+                const wins = gameData.stats.wins || 1;
+                isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -421,13 +429,17 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
-                spawnInterval = 1.2;
-                baseSpeed = 140;
+                spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
+                minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
+                spawnTimer = 0;
+                baseSpeed = 140 + (wins - 1) * 5;
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
                 slapCooldown = 0;
                 winAnimationStart = 0;
+                suegra = { active: false, x: 0, y: 0, speed: 100, timer: 0 };
+                suegraTimer = 0;
                 shakeTimer = 0;
                 hitStop = 0;
                 meteorTimer = 0;
@@ -1180,6 +1192,7 @@
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
+                else if (type === 'slipper') emoji = '🥿';
                 else if (type === 'bomb') emoji = '💣';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
@@ -1399,7 +1412,8 @@
 
             function drawAchievements() {
                 drawBackground();
-                drawIsa(); // Background decoration
+                drawIsa();
+                drawSuegra(); // Background decoration
 
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.85)';
@@ -1470,7 +1484,8 @@
 
             function drawShop() {
                 drawBackground();
-                drawIsa(); // Background decoration
+                drawIsa();
+                drawSuegra(); // Background decoration
 
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.85)';
@@ -1551,7 +1566,8 @@
 
             function drawCosmetics() {
                 drawBackground();
-                drawIsa(); // Background decoration
+                drawIsa();
+                drawSuegra(); // Background decoration
 
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.85)';
@@ -1628,6 +1644,7 @@
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
+                drawSuegra();
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -1641,6 +1658,7 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                ctx.fillText('Level ' + (gameData.stats.wins || 1), canvas.width / 2, 345);
 
                 // Play Button
                 ctx.fillStyle = '#ff9f1c';
@@ -2063,6 +2081,16 @@
                     c.y += c.vy * dt;
                     c.rotation += c.rotSpeed * dt;
 
+                    if (c.isHoming && !c.slapped) {
+                        const dx = player.x - c.x;
+                        const dy = player.y - c.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist > 0) {
+                            c.vx = (dx/dist) * 200;
+                            c.vy = (dy/dist) * 200;
+                        }
+                    }
+
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
                         // Check for chain reaction with other chanclas
@@ -2090,6 +2118,21 @@
                                     playSound(700, 0.1);
                                     score += 5 + comboCount; // Bonus score for chaotic skill
                                 }
+                            }
+                        }
+
+                        if (suegra.active) {
+                            const distToSuegra = Math.sqrt(Math.pow(c.x - suegra.x, 2) + Math.pow(c.y - suegra.y, 2));
+                            if (distToSuegra < 40 + c.w / 2) {
+                                suegra.active = false;
+                                suegraTimer = 0;
+                                score += 100;
+                                gameData.coins += 50;
+                                gameData.stats.totalCoinsEarned += 50;
+                                addFloatText('¡Qué falta de respeto!', suegra.x, suegra.y);
+                                playSound(1200, 0.2);
+                                c.slapped = false; // Prevent it from also hitting Isa
+                                continue;
                             }
                         }
 
@@ -2152,8 +2195,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                triggerWin();
                             }
                             continue;
                         }
@@ -2320,8 +2362,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            state = STATE.WIN;
-                            sayRandom('win');
+                            triggerWin();
                         }
                         continue;
                     }
@@ -2342,6 +2383,18 @@
                     ctx.fillText('🦵', 0, 0);
                     ctx.restore();
                 });
+            }
+
+
+            function triggerWin() {
+                const defeatedLevel = gameData.stats.wins || 1;
+                const bonus = 50 + (defeatedLevel - 1) * 50;
+                gameData.coins += bonus;
+                gameData.stats.totalCoinsEarned += bonus;
+                gameData.stats.wins = defeatedLevel + 1;
+                saveGameData();
+                state = STATE.WIN;
+                sayRandom('win');
             }
 
             function endGame() {
@@ -2401,6 +2454,30 @@
 
 
                 if (isa.enraged) {
+                    suegraTimer += dt;
+                    if (suegraTimer > 15 && !suegra.active) {
+                        suegra.active = true;
+                        suegra.x = canvas.width + 50;
+                        suegra.y = 120;
+                        suegra.speed = 100;
+                        suegra.timer = 0;
+                    }
+                    if (suegra.active) {
+                        suegra.x -= suegra.speed * dt;
+                        suegra.timer += dt;
+                        if (suegra.timer > 2) {
+                            chanclas.push({
+                                x: suegra.x, y: suegra.y, vx: 0, vy: 0,
+                                w: 30, h: 20, type: 'slipper', isHoming: true, rotation: 0, rotSpeed: 0
+                            });
+                            suegra.timer = 0;
+                        }
+                        if (suegra.x < -100) {
+                            suegra.active = false;
+                            suegraTimer = 0;
+                        }
+                    }
+
                     meteorTimer += dt;
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
@@ -2519,9 +2596,20 @@
                 ctx.restore();
             }
 
+            function drawSuegra() {
+                if (!suegra.active) return;
+                ctx.save();
+                ctx.font = '60px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('👵', suegra.x, suegra.y);
+                ctx.restore();
+            }
+
             function draw() {
                 drawBackground();
                 drawIsa();
+                drawSuegra();
                 drawFireParticles();
                 drawPinatas();
                 drawChanclasAll();
@@ -2597,7 +2685,8 @@
                 ctx.font = '32px sans-serif';
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
                 ctx.font = '20px sans-serif';
-                ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+                ctx.fillText("Level " + (gameData.stats.wins - 1) + " Defeated!", canvas.width / 2, 240);
+                ctx.fillText('Boss Bonus: +' + (50 + (gameData.stats.wins - 2) * 50) + ' 💰', canvas.width / 2, 270);
 
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';
