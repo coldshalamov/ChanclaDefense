@@ -242,6 +242,7 @@
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
 
+            let slowMoTimer = 0;
             let lastTapLeft = 0;
             let lastTapRight = 0;
             let dashTimer = 0;
@@ -435,6 +436,7 @@
                 slapCooldown = 0;
                 winAnimationStart = 0;
                 shakeTimer = 0;
+                slowMoTimer = 0;
                 hitStop = 0;
                 meteorTimer = 0;
                 flash.timer = 0;
@@ -492,6 +494,13 @@
                 }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                if (slowMoTimer > 0) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(0, 229, 255, 0.15)'; // Cyan slow-mo tint
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                }
 
                 ctx.fillStyle = isa.enraged ? '#1a0508' : '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
@@ -1730,7 +1739,7 @@
                 const vx = 0;
                 chanclas.push({
                     x, y, vx, vy, w, h, type: 'meteor', rotation: 0, rotSpeed: 0.2,
-                    slapsNeeded: 12, currentSlaps: 0, isMeteor: true
+                    slapsNeeded: 12, currentSlaps: 0, isMeteor: true, dodged: false
                 });
                 addFloatText('¡LA CHANCLA GIGANTE!', canvas.width / 2, 120);
                 playSound(1000, 0.4);
@@ -1763,7 +1772,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, dodged: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2179,8 +2188,18 @@
                     }
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE! ⏱️', player.x, player.y - 40);
+                                triggerFlash(0.2, '#00e5ff');
+                                playSound(1200, 0.3);
+                                spawnImpact(player.x, player.y, true);
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2225,7 +2244,7 @@
                                     vy: -400 - Math.random() * 200,
                                     w: 32, h: 18, type: 'fire', rotation: 0, rotSpeed: (Math.random() - 0.5) * 15,
                                     slapped: false, // Mark as false so they don't hit Isa
-                                    isShrapnel: true
+                                    isShrapnel: true, dodged: false
                                 });
                             }
                         } else {
@@ -2400,6 +2419,10 @@
                     addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
                 }
 
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt; // Real dt
+                    dt *= 0.3; // Scale game dt
+                }
                 timeElapsed += dt;
                 spawnTimer += dt;
                 if (timeElapsed > 12) {
