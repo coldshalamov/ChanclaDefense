@@ -240,7 +240,11 @@
             let chainEffects = [];
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
+
             let specialReadyTriggered = false;
+            let suegraTimer = 0;
+            const suegra = { x: 0, y: 150, active: false, speed: 100, dropTimer: 0, hoverOffset: 0 };
+
 
             let lastTapLeft = 0;
             let lastTapRight = 0;
@@ -438,7 +442,11 @@
                 hitStop = 0;
                 meteorTimer = 0;
                 flash.timer = 0;
+
                 specialReadyTriggered = false;
+                suegraTimer = 0;
+                suegra.active = false;
+
                 chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
@@ -1182,11 +1190,14 @@
                 ctx.save();
                 ctx.translate(x, y);
 
+
                 // Use the thong sandal emoji for the classic "Chancla" look
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
+                else if (type === 'slipper') emoji = '🥿';
+
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1968,8 +1979,8 @@
                     });
 
                     specialAttackBar = 0;
-                    specialReadyTriggered = false;
 
+                specialReadyTriggered = false;
                     // Play special attack sound
                     playSound(800, 0.2);
 
@@ -2063,12 +2074,21 @@
                 }
             }
 
+
             function updateChanclas(dt) {
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
                     c.x += c.vx * dt;
                     c.y += c.vy * dt;
                     c.rotation += c.rotSpeed * dt;
+
+                    if (c.isHoming && !c.slapped) {
+                        const dx = player.x - c.x;
+                        c.vx += (dx > 0 ? 80 : -80) * dt;
+                        if (c.vx > 100) c.vx = 100;
+                        if (c.vx < -100) c.vx = -100;
+                    }
+
 
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
@@ -2100,7 +2120,39 @@
                             }
                         }
 
+
+                        // Check collision with Suegra
+                        if (suegra.active) {
+                            const distToSuegra = Math.sqrt(Math.pow(c.x - suegra.x, 2) + Math.pow(c.y - suegra.y, 2));
+                            if (distToSuegra < 40 + c.w / 2) {
+                                suegra.active = false;
+                                suegraTimer = 0;
+                                addFloatText('¡Qué falta de respeto!', suegra.x, suegra.y - 30);
+                                playSound(1000, 0.2);
+                                triggerFlash(0.2, '#fff');
+                                spawnImpact(suegra.x, suegra.y, true);
+                                score += 50;
+                                gameData.coins += 5;
+                                gameData.stats.totalCoinsEarned += 5;
+                                for (let k = 0; k < 15; k++) {
+                                    rosePetals.push({
+                                        x: suegra.x,
+                                        y: suegra.y,
+                                        vx: (Math.random() - 0.5) * 300,
+                                        vy: (Math.random() - 0.5) * 300,
+                                        rotation: Math.random() * 6,
+                                        rotSpeed: (Math.random() - 0.5) * 10,
+                                        emoji: ['👵', '💢', '💨'][Math.floor(Math.random() * 3)],
+                                        size: 20 + Math.random() * 10
+                                    });
+                                }
+                                chanclas.splice(i, 1);
+                                continue;
+                            }
+                        }
+
                         // Check collision with Isa for slapped chanclas
+
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
@@ -2425,7 +2477,46 @@
                     }
                 }
 
+
+                if (isa.enraged) {
+                    suegraTimer += dt;
+                    if (suegraTimer > 15 && !suegra.active) {
+                        suegra.active = true;
+                        suegra.x = canvas.width + 50;
+                        suegra.y = 100 + Math.random() * 100;
+                        suegra.dropTimer = 0;
+                        suegra.speed = 100 + Math.random() * 50;
+                        playSound(600, 0.3);
+                        addFloatText('¡LA SUEGRA!', canvas.width/2, 100);
+                    }
+                }
+
+                if (suegra.active) {
+                    suegra.hoverOffset += dt * 3;
+                    suegra.x -= suegra.speed * dt;
+                    suegra.dropTimer += dt;
+
+                    if (suegra.dropTimer > 1.2) {
+                        suegra.dropTimer = 0;
+                        chanclas.push({
+                            x: suegra.x,
+                            y: suegra.y + 20,
+                            vx: 0,
+                            vy: baseSpeed + 20,
+                            w: 32, h: 18, type: 'slipper', rotation: 0, rotSpeed: (Math.random() - 0.5) * 10,
+                            isHoming: true
+                        });
+                        playSound(500, 0.1);
+                    }
+
+                    if (suegra.x < -50) {
+                        suegra.active = false;
+                        suegraTimer = 0;
+                    }
+                }
+
                 if (dashTimer > 0) {
+
                     player.x += dashDir * 800 * dt;
                     dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
                 } else {
@@ -2536,10 +2627,32 @@
                 ctx.restore();
             }
 
+
+            function drawSuegra() {
+                if (!suegra.active) return;
+                ctx.save();
+                const y = suegra.y + Math.sin(suegra.hoverOffset) * 10;
+                ctx.translate(suegra.x, y);
+                ctx.font = '60px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('👵', 0, 0);
+
+                // Draw drop indicator
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.beginPath();
+                ctx.arc(0, 30, 5 + Math.sin(timeElapsed * 10) * 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
             function draw() {
                 drawBackground();
                 drawIsa();
+                drawSuegra();
                 drawFireParticles();
+
                 drawPinatas();
                 drawChanclasAll();
                 drawSpecialProjectiles();

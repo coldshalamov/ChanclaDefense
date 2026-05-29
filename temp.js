@@ -1,154 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chancla Bomb: Isa vs. Su Gringo Para Siempre</title>
-    <!-- Force high-quality emoji font for consistent looks across PC and iPhone -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-top: #0d1b2a;
-            --bg-bottom: #192f43;
-            --accent: #ff79c6;
-            --super: #ffb347;
-            --text: #f8f8f2;
-            --dialog: #1f4068;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: radial-gradient(circle at 20% 20%, #1c2f4a 0%, #0b1726 50%, #050910 100%);
-            color: var(--text);
-            font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-        }
-
-        .wrapper {
-            text-align: center;
-        }
-
-        canvas {
-            background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
-            border-radius: 16px;
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
-            width: min(95vw, 420px);
-            aspect-ratio: 4 / 7;
-            height: auto;
-            touch-action: none;
-            display: block;
-            margin: 0 auto;
-        }
-
-        .mobile-hint {
-            color: #d7e8ff;
-            font-size: 14px;
-            margin-top: 6px;
-            letter-spacing: 0.3px;
-        }
-
-        #mobile-controls {
-            position: relative;
-            width: min(95vw, 420px);
-            aspect-ratio: 4 / 7;
-            margin: 0 auto;
-            transform: translateY(-100%);
-            pointer-events: none;
-        }
-
-        .touch-zone {
-            position: absolute;
-            bottom: 0;
-            width: 50%;
-            height: 40%;
-            pointer-events: auto;
-        }
-
-        .touch-left {
-            left: 0;
-        }
-
-        .touch-right {
-            right: 0;
-        }
-
-        .touch-overlay {
-            position: absolute;
-            inset: 0;
-            border-radius: 16px;
-            pointer-events: none;
-        }
-
-        .touch-visual {
-            position: absolute;
-            bottom: 16px;
-            width: 42%;
-            height: 70px;
-            border-radius: 18px;
-            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05));
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fdf5ff;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            pointer-events: none;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .touch-visual span {
-            font-size: 18px;
-            display: block;
-        }
-
-        .touch-visual-left {
-            left: 10px;
-        }
-
-        .touch-visual-right {
-            right: 10px;
-        }
-
-        .touch-visual,
-        .mobile-hint {
-            transition: transform 0.35s ease, opacity 0.35s ease;
-        }
-
-        .hide-directions .touch-visual {
-            transform: translateY(140%);
-            opacity: 0;
-        }
-
-        .hide-directions .mobile-hint {
-            transform: translateY(12px);
-            opacity: 0;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="wrapper">
-        <canvas id="game" width="400" height="700"></canvas>
-        <div id="mobile-controls">
-            <div class="touch-zone touch-left"></div>
-            <div class="touch-zone touch-right"></div>
-            <div class="touch-overlay" id="overlay-left"></div>
-            <div class="touch-overlay" id="overlay-right"></div>
-            <div class="touch-visual touch-visual-left"><span>⬅️ Drag aquí</span></div>
-            <div class="touch-visual touch-visual-right"><span>➡️ Drag aquí</span></div>
-        </div>
-        <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
-    </div>
-    <script>
         (() => {
             const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
@@ -181,6 +30,7 @@
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -239,7 +89,11 @@
             let chainEffects = [];
             let comboCount = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
+
             let specialReadyTriggered = false;
+            let suegraTimer = 0;
+            const suegra = { x: 0, y: 150, active: false, speed: 100, dropTimer: 0, hoverOffset: 0 };
+
 
             let lastTapLeft = 0;
             let lastTapRight = 0;
@@ -393,6 +247,7 @@
 
             function resetGame() {
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
@@ -408,6 +263,8 @@
                 dashCooldown = 0;
                 dashDir = 0;
                 dashTrails = [];
+                const wins = gameData.stats.wins || 1;
+                isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -421,8 +278,10 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
-                spawnInterval = 1.2;
-                baseSpeed = 140;
+                spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
+                minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
+                spawnTimer = 0;
+                baseSpeed = 140 + (wins - 1) * 5;
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -432,7 +291,11 @@
                 hitStop = 0;
                 meteorTimer = 0;
                 flash.timer = 0;
+
                 specialReadyTriggered = false;
+                suegraTimer = 0;
+                suegra.active = false;
+
                 chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
@@ -1176,11 +1039,14 @@
                 ctx.save();
                 ctx.translate(x, y);
 
+
                 // Use the thong sandal emoji for the classic "Chancla" look
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
+                else if (type === 'slipper') emoji = '🥿';
+
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1641,6 +1507,7 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                ctx.fillText('Level ' + (gameData.stats.wins || 1), canvas.width / 2, 345);
 
                 // Play Button
                 ctx.fillStyle = '#ff9f1c';
@@ -1961,8 +1828,8 @@
                     });
 
                     specialAttackBar = 0;
-                    specialReadyTriggered = false;
 
+                specialReadyTriggered = false;
                     // Play special attack sound
                     playSound(800, 0.2);
 
@@ -2056,12 +1923,21 @@
                 }
             }
 
+
             function updateChanclas(dt) {
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
                     c.x += c.vx * dt;
                     c.y += c.vy * dt;
                     c.rotation += c.rotSpeed * dt;
+
+                    if (c.isHoming && !c.slapped) {
+                        const dx = player.x - c.x;
+                        c.vx += (dx > 0 ? 80 : -80) * dt;
+                        if (c.vx > 100) c.vx = 100;
+                        if (c.vx < -100) c.vx = -100;
+                    }
+
 
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
@@ -2093,7 +1969,39 @@
                             }
                         }
 
+
+                        // Check collision with Suegra
+                        if (suegra.active) {
+                            const distToSuegra = Math.sqrt(Math.pow(c.x - suegra.x, 2) + Math.pow(c.y - suegra.y, 2));
+                            if (distToSuegra < 40 + c.w / 2) {
+                                suegra.active = false;
+                                suegraTimer = 0;
+                                addFloatText('¡Qué falta de respeto!', suegra.x, suegra.y - 30);
+                                playSound(1000, 0.2);
+                                triggerFlash(0.2, '#fff');
+                                spawnImpact(suegra.x, suegra.y, true);
+                                score += 50;
+                                gameData.coins += 5;
+                                gameData.stats.totalCoinsEarned += 5;
+                                for (let k = 0; k < 15; k++) {
+                                    rosePetals.push({
+                                        x: suegra.x,
+                                        y: suegra.y,
+                                        vx: (Math.random() - 0.5) * 300,
+                                        vy: (Math.random() - 0.5) * 300,
+                                        rotation: Math.random() * 6,
+                                        rotSpeed: (Math.random() - 0.5) * 10,
+                                        emoji: ['👵', '💢', '💨'][Math.floor(Math.random() * 3)],
+                                        size: 20 + Math.random() * 10
+                                    });
+                                }
+                                chanclas.splice(i, 1);
+                                continue;
+                            }
+                        }
+
                         // Check collision with Isa for slapped chanclas
+
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
@@ -2152,8 +2060,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                triggerWin();
                             }
                             continue;
                         }
@@ -2320,8 +2227,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            state = STATE.WIN;
-                            sayRandom('win');
+                            triggerWin();
                         }
                         continue;
                     }
@@ -2342,6 +2248,18 @@
                     ctx.fillText('🦵', 0, 0);
                     ctx.restore();
                 });
+            }
+
+
+            function triggerWin() {
+                const defeatedLevel = gameData.stats.wins || 1;
+                const bonus = 50 + (defeatedLevel - 1) * 50;
+                gameData.coins += bonus;
+                gameData.stats.totalCoinsEarned += bonus;
+                gameData.stats.wins = defeatedLevel + 1;
+                saveGameData();
+                state = STATE.WIN;
+                sayRandom('win');
             }
 
             function endGame() {
@@ -2408,7 +2326,46 @@
                     }
                 }
 
+
+                if (isa.enraged) {
+                    suegraTimer += dt;
+                    if (suegraTimer > 15 && !suegra.active) {
+                        suegra.active = true;
+                        suegra.x = canvas.width + 50;
+                        suegra.y = 100 + Math.random() * 100;
+                        suegra.dropTimer = 0;
+                        suegra.speed = 100 + Math.random() * 50;
+                        playSound(600, 0.3);
+                        addFloatText('¡LA SUEGRA!', canvas.width/2, 100);
+                    }
+                }
+
+                if (suegra.active) {
+                    suegra.hoverOffset += dt * 3;
+                    suegra.x -= suegra.speed * dt;
+                    suegra.dropTimer += dt;
+
+                    if (suegra.dropTimer > 1.2) {
+                        suegra.dropTimer = 0;
+                        chanclas.push({
+                            x: suegra.x,
+                            y: suegra.y + 20,
+                            vx: 0,
+                            vy: baseSpeed + 20,
+                            w: 32, h: 18, type: 'slipper', rotation: 0, rotSpeed: (Math.random() - 0.5) * 10,
+                            isHoming: true
+                        });
+                        playSound(500, 0.1);
+                    }
+
+                    if (suegra.x < -50) {
+                        suegra.active = false;
+                        suegraTimer = 0;
+                    }
+                }
+
                 if (dashTimer > 0) {
+
                     player.x += dashDir * 800 * dt;
                     dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
                 } else {
@@ -2519,10 +2476,32 @@
                 ctx.restore();
             }
 
+
+            function drawSuegra() {
+                if (!suegra.active) return;
+                ctx.save();
+                const y = suegra.y + Math.sin(suegra.hoverOffset) * 10;
+                ctx.translate(suegra.x, y);
+                ctx.font = '60px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('👵', 0, 0);
+
+                // Draw drop indicator
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.beginPath();
+                ctx.arc(0, 30, 5 + Math.sin(timeElapsed * 10) * 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
             function draw() {
                 drawBackground();
                 drawIsa();
+                drawSuegra();
                 drawFireParticles();
+
                 drawPinatas();
                 drawChanclasAll();
                 drawSpecialProjectiles();
@@ -2597,7 +2576,8 @@
                 ctx.font = '32px sans-serif';
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
                 ctx.font = '20px sans-serif';
-                ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+                ctx.fillText("Level " + (gameData.stats.wins - 1) + " Defeated!", canvas.width / 2, 240);
+                ctx.fillText('Boss Bonus: +' + (50 + (gameData.stats.wins - 2) * 50) + ' 💰', canvas.width / 2, 270);
 
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';
@@ -2998,7 +2978,3 @@
             }
             initTitle();
         })();
-    </script>
-</body>
-
-</html>
