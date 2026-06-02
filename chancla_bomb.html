@@ -235,6 +235,7 @@
             let shakeTimer = 0;
             let shakeIntensity = 0;
             let hitStop = 0;
+            let slowMoTimer = 0;
             let meteorTimer = 0;
             let impacts = [];
             let chainEffects = [];
@@ -436,6 +437,7 @@
                 winAnimationStart = 0;
                 shakeTimer = 0;
                 hitStop = 0;
+                slowMoTimer = 0;
                 meteorTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
@@ -492,6 +494,11 @@
                 }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                if (typeof slowMoTimer !== "undefined" && slowMoTimer > 0) {
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
 
                 ctx.fillStyle = isa.enraged ? '#1a0508' : '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
@@ -2180,7 +2187,15 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 20);
+                                triggerFlash(0.2, '#00ffff');
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2351,6 +2366,7 @@
 
 
             function triggerWin() {
+                if (state === STATE.WIN) return;
                 const defeatedLevel = gameData.stats.wins || 1;
                 const bonus = 50 + (defeatedLevel - 1) * 50;
                 gameData.coins += bonus;
@@ -2389,6 +2405,11 @@
                 if (hitStop > 0) {
                     hitStop -= dt;
                     return;
+                }
+
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt;
+                    dt *= 0.3;
                 }
 
                 if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
