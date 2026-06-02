@@ -149,8 +149,7 @@
         <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
     </div>
     <script>
-        (() => {
-            const canvas = document.getElementById('game');
+const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
             const overlayLeft = document.getElementById('overlay-left');
             const overlayRight = document.getElementById('overlay-right');
@@ -159,8 +158,8 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
-            let state = STATE.TITLE;
+            var STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
+            var state = STATE.TITLE;
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -181,6 +180,7 @@
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -247,6 +247,7 @@
             let dashCooldown = 0;
             let dashDir = 0;
             let dashTrails = [];
+            let slowMoTimer = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -393,6 +394,7 @@
 
             function resetGame() {
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
@@ -408,6 +410,8 @@
                 dashCooldown = 0;
                 dashDir = 0;
                 dashTrails = [];
+                const wins = gameData.stats.wins || 1;
+                isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -421,8 +425,10 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
-                spawnInterval = 1.2;
-                baseSpeed = 140;
+                spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
+                minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
+                spawnTimer = 0;
+                baseSpeed = 140 + (wins - 1) * 5;
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -434,6 +440,7 @@
                 flash.timer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
+                slowMoTimer = 0;
                 wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -501,6 +508,11 @@
 
                 ctx.fillStyle = '#ffe066';
                 starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+
+                if (slowMoTimer > 0) {
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
             }
 
             function drawFlash() {
@@ -1641,6 +1653,7 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                ctx.fillText('Level ' + (gameData.stats.wins || 1), canvas.width / 2, 345);
 
                 // Play Button
                 ctx.fillStyle = '#ff9f1c';
@@ -2152,8 +2165,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                triggerWin();
                             }
                             continue;
                         }
@@ -2174,7 +2186,15 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 40);
+                                triggerFlash(0.15, '#00ffff');
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2320,8 +2340,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            state = STATE.WIN;
-                            sayRandom('win');
+                            triggerWin();
                         }
                         continue;
                     }
@@ -2344,6 +2363,18 @@
                 });
             }
 
+
+            function triggerWin() {
+                const defeatedLevel = gameData.stats.wins || 1;
+                const bonus = 50 + (defeatedLevel - 1) * 50;
+                gameData.coins += bonus;
+                gameData.stats.totalCoinsEarned += bonus;
+                gameData.stats.wins = defeatedLevel + 1;
+                saveGameData();
+                state = STATE.WIN;
+                sayRandom('win');
+            }
+
             function endGame() {
                 state = STATE.GAMEOVER;
                 const earned = Math.floor(score / 10);
@@ -2356,6 +2387,11 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt;
+                    dt *= 0.3;
+                }
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
@@ -2597,7 +2633,8 @@
                 ctx.font = '32px sans-serif';
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
                 ctx.font = '20px sans-serif';
-                ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+                ctx.fillText("Level " + (gameData.stats.wins - 1) + " Defeated!", canvas.width / 2, 240);
+                ctx.fillText('Boss Bonus: +' + (50 + (gameData.stats.wins - 2) * 50) + ' 💰', canvas.width / 2, 270);
 
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';
@@ -2997,7 +3034,16 @@
                 setDirectionsVisible(true);
             }
             initTitle();
-        })();
+
+
+    window.forcePerfectDodge = function() {
+        dashTimer = 0.15;
+        const c = { x: player.x, y: player.y, vx: 0, vy: 0, w: 32, h: 18, type: 'normal', rotation: 0, rotSpeed: 0 };
+        chanclas.push(c);
+    };
+    window.getSlowMoTimer = () => slowMoTimer;
+    window.getPlayer = () => player;
+    window.getChanclas = () => chanclas;
     </script>
 </body>
 

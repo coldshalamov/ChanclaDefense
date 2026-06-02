@@ -248,6 +248,7 @@
             let dashCooldown = 0;
             let dashDir = 0;
             let dashTrails = [];
+            let slowMoTimer = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -440,6 +441,7 @@
                 flash.timer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
+                slowMoTimer = 0;
                 wrapper.style.transform = 'none';
                 sayRandom('start');
                 playerDialogueTimer = 0;
@@ -507,6 +509,11 @@
 
                 ctx.fillStyle = '#ffe066';
                 starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+
+                if (slowMoTimer > 0) {
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
             }
 
             function drawFlash() {
@@ -2180,7 +2187,15 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 40);
+                                triggerFlash(0.15, '#00ffff');
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2373,6 +2388,11 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt;
+                    dt *= 0.3;
+                }
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
