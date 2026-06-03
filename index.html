@@ -1187,6 +1187,7 @@
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
+                else if (type === 'bouncy') emoji = '👟';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1741,6 +1742,7 @@
                 const isBomb = Math.random() < 0.08;
                 const isSuper = superEnabled && !isBomb && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isSuper && Math.random() < 0.25;
+                const isBouncy = !isBomb && !isSuper && !isFire && Math.random() < 0.15;
 
                 let w = 32;
                 let h = 18;
@@ -1755,13 +1757,17 @@
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
 
-                const vx = (Math.random() - 0.5) * 60;
-                const rotSpeed = (Math.random() - 0.5) * 5;
+                let vx = (Math.random() - 0.5) * 60;
+                if (isBouncy) vx = (Math.random() < 0.5 ? 1 : -1) * (60 + Math.random() * 60);
+
+                let rotSpeed = (Math.random() - 0.5) * 5;
+                if (isBouncy) rotSpeed = (Math.random() - 0.5) * 15;
 
                 let type = 'normal';
                 if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
+                else if (isBouncy) type = 'bouncy';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -2070,6 +2076,18 @@
                     c.y += c.vy * dt;
                     c.rotation += c.rotSpeed * dt;
 
+                    if (c.type === 'bouncy' && !c.slapped) {
+                        if (c.x < c.w / 2) {
+                            c.x = c.w / 2;
+                            c.vx *= -1;
+                            c.rotSpeed *= -1;
+                        } else if (c.x > canvas.width - c.w / 2) {
+                            c.x = canvas.width - c.w / 2;
+                            c.vx *= -1;
+                            c.rotSpeed *= -1;
+                        }
+                    }
+
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
                         // Check for chain reaction with other chanclas
@@ -2127,6 +2145,7 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'bouncy') damage = 10;
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -2186,14 +2205,14 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'bouncy') ? 2 : 1;
                         comboCount = 0;
-                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
+                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' || c.type === 'bouncy' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
                         chanclas.splice(i, 1);
-                        sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
+                        sayRandom(c.type === 'super' || c.type === 'bouncy' ? 'hitSuper' : 'hitNormal');
                         sayPlayer('hit');
                         if (player.lives === 1) sayRandom('lowHealth');
                         if (player.lives <= 0) {
