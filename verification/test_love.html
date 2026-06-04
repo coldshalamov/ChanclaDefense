@@ -181,6 +181,7 @@
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -393,6 +394,7 @@
 
             function resetGame() {
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
@@ -408,6 +410,8 @@
                 dashCooldown = 0;
                 dashDir = 0;
                 dashTrails = [];
+                const wins = gameData.stats.wins || 1;
+                isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -421,8 +425,10 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
-                spawnInterval = 1.2;
-                baseSpeed = 140;
+                spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
+                minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
+                spawnTimer = 0;
+                baseSpeed = 140 + (wins - 1) * 5;
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1181,6 +1187,7 @@
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
+                else if (type === 'bouncy') emoji = '👟';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1641,6 +1648,7 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                ctx.fillText('Level ' + (gameData.stats.wins || 1), canvas.width / 2, 345);
 
                 // Play Button
                 ctx.fillStyle = '#ff9f1c';
@@ -1734,6 +1742,7 @@
                 const isBomb = Math.random() < 0.08;
                 const isSuper = superEnabled && !isBomb && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isSuper && Math.random() < 0.25;
+                const isBouncy = !isBomb && !isSuper && !isFire && Math.random() < 0.15;
 
                 let w = 32;
                 let h = 18;
@@ -1755,6 +1764,7 @@
                 if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
+                else if (isBouncy) type = 'bouncy';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -2120,6 +2130,7 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'bouncy') damage = 10;
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -2152,8 +2163,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                state = STATE.WIN;
-                                sayRandom('win');
+                                triggerWin();
                             }
                             continue;
                         }
@@ -2164,8 +2174,23 @@
                         }
                     }
 
-                    if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
-                    if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
+                    if (c.type === 'bouncy' && !c.slapped) {
+                        if (c.x < c.w / 2) {
+                            c.x = c.w / 2;
+                            c.vx *= -1;
+                            c.rotSpeed *= -1;
+                            addFloatText('BOING!', c.x, c.y);
+                        }
+                        if (c.x > canvas.width - c.w / 2) {
+                            c.x = canvas.width - c.w / 2;
+                            c.vx *= -1;
+                            c.rotSpeed *= -1;
+                            addFloatText('BOING!', c.x, c.y);
+                        }
+                    } else {
+                        if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
+                        if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
+                    }
 
                     if (c.y < -50 && c.isShrapnel) {
                         chanclas.splice(i, 1);
@@ -2180,7 +2205,7 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'bouncy') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
@@ -2320,8 +2345,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            state = STATE.WIN;
-                            sayRandom('win');
+                            triggerWin();
                         }
                         continue;
                     }
@@ -2342,6 +2366,18 @@
                     ctx.fillText('🦵', 0, 0);
                     ctx.restore();
                 });
+            }
+
+
+            function triggerWin() {
+                const defeatedLevel = gameData.stats.wins || 1;
+                const bonus = 50 + (defeatedLevel - 1) * 50;
+                gameData.coins += bonus;
+                gameData.stats.totalCoinsEarned += bonus;
+                gameData.stats.wins = defeatedLevel + 1;
+                saveGameData();
+                state = STATE.WIN;
+                sayRandom('win');
             }
 
             function endGame() {
@@ -2597,7 +2633,8 @@
                 ctx.font = '32px sans-serif';
                 ctx.fillText("YOU WIN! 🎉", canvas.width / 2, 200);
                 ctx.font = '20px sans-serif';
-                ctx.fillText("You've survived another day...", canvas.width / 2, 240);
+                ctx.fillText("Level " + (gameData.stats.wins - 1) + " Defeated!", canvas.width / 2, 240);
+                ctx.fillText('Boss Bonus: +' + (50 + (gameData.stats.wins - 2) * 50) + ' 💰', canvas.width / 2, 270);
 
                 // Play again button
                 ctx.fillStyle = '#ff9f1c';

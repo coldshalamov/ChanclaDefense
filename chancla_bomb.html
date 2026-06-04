@@ -1187,6 +1187,7 @@
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
+                else if (type === 'bouncy') emoji = '👟';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1741,6 +1742,7 @@
                 const isBomb = Math.random() < 0.08;
                 const isSuper = superEnabled && !isBomb && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isSuper && Math.random() < 0.25;
+                const isBouncy = !isBomb && !isSuper && !isFire && Math.random() < 0.15;
 
                 let w = 32;
                 let h = 18;
@@ -1762,6 +1764,7 @@
                 if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
+                else if (isBouncy) type = 'bouncy';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -2127,6 +2130,7 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'bouncy') damage = 10;
                             if (c.isPerfect) damage += 7;
 
                             isa.anger = Math.max(0, isa.anger - damage);
@@ -2170,8 +2174,23 @@
                         }
                     }
 
-                    if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
-                    if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
+                    if (c.type === 'bouncy' && !c.slapped) {
+                        if (c.x < c.w / 2) {
+                            c.x = c.w / 2;
+                            c.vx *= -1;
+                            c.rotSpeed *= -1;
+                            addFloatText('BOING!', c.x, c.y);
+                        }
+                        if (c.x > canvas.width - c.w / 2) {
+                            c.x = canvas.width - c.w / 2;
+                            c.vx *= -1;
+                            c.rotSpeed *= -1;
+                            addFloatText('BOING!', c.x, c.y);
+                        }
+                    } else {
+                        if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
+                        if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
+                    }
 
                     if (c.y < -50 && c.isShrapnel) {
                         chanclas.splice(i, 1);
@@ -2186,7 +2205,7 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'bouncy') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
