@@ -236,6 +236,7 @@
             let shakeIntensity = 0;
             let hitStop = 0;
             let meteorTimer = 0;
+            let slowMoTimer = 0;
             let impacts = [];
             let chainEffects = [];
             let comboCount = 0;
@@ -441,6 +442,7 @@
                 shakeTimer = 0;
                 hitStop = 0;
                 meteorTimer = 0;
+                slowMoTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
@@ -515,6 +517,11 @@
 
                 ctx.fillStyle = '#ffe066';
                 starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+
+                if (slowMoTimer > 0) {
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
             }
 
             function drawFlash() {
@@ -2191,7 +2198,15 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 30);
+                                triggerFlash(0.3, '#00e5ff');
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2212,7 +2227,15 @@
                             return;
                         }
                     } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
-                        if (dashTimer > 0) continue; // I-frames during dash shockwave
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 30);
+                                triggerFlash(0.3, '#00e5ff');
+                            }
+                            continue; // I-frames during dash shockwave
+                        }
                         triggerShake(30, 0.8);
                         triggerFlash(0.5, '#ff0000');
                         player.lives -= 1;
@@ -2384,6 +2407,11 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt;
+                    dt *= 0.3;
+                }
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
