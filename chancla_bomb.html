@@ -212,10 +212,8 @@
                 { id: 'veteran', name: 'Veteran', desc: 'Play 50 games', reward: 75, check: () => gameData.stats.gamesPlayed >= 50 }
             ];
 
-
             let chanclas = [];
-            let pinatas = [];
-            let floatTexts = [];
+                        let floatTexts = [];
             let rosePetals = [];
             let fireParticles = [];
             let specialProjectiles = [];
@@ -419,8 +417,7 @@
                 isa.y = 70;
                 isa.enraged = false;
                 chanclas = [];
-                pinatas = [];
-                floatTexts = [];
+                                floatTexts = [];
                 rosePetals = [];
                 fireParticles = [];
                 specialProjectiles = [];
@@ -1410,7 +1407,6 @@
                 ctx.restore();
             }
 
-
             function drawAchievements() {
                 drawBackground();
                 drawIsa(); // Background decoration
@@ -1728,7 +1724,6 @@
                 ctx.restore();
             }
 
-
             function spawnMeteor() {
                 const w = 120;
                 const h = 120;
@@ -1775,11 +1770,9 @@
                 if (isSuper) sayPlayer('super');
             }
 
-
             function addFloatText(text, x, y) {
                 floatTexts.push({ text, x, y, time: 1.8, max: 1.8 });
             }
-
 
             function trySlap() {
                 if (slapCooldown > 0) return;
@@ -1793,47 +1786,6 @@
 
                 let slappedAny = false;
                 let slappedMeteor = false;
-
-                for (let i = pinatas.length - 1; i >= 0; i--) {
-                    const p = pinatas[i];
-                    const dist = Math.sqrt(Math.pow(p.x - player.x, 2) + Math.pow(p.y - player.y, 2));
-
-                    if (dist < slapRange) {
-                        slappedAny = true;
-                        p.hits++;
-                        p.vy = -400; // Bounce up
-                        p.vx += (p.x - player.x) * 5; // Impart momentum
-                        p.rotSpeed = (Math.random() - 0.5) * 15;
-                        slapEffect.type = 'hit';
-
-                        spawnImpact(p.x, p.y);
-                        playSound(400, 0.1);
-
-                        if (p.hits >= 3) {
-                            // Pop piñata
-                            playSound(600, 0.2);
-                            addFloatText('PIÑATA POP! +20💰', p.x, p.y - 20);
-                            score += 50;
-                            gameData.coins += 20;
-                            gameData.stats.totalCoinsEarned += 20;
-
-                            // Confetti
-                            for (let k = 0; k < 15; k++) {
-                                rosePetals.push({
-                                    x: p.x, y: p.y,
-                                    vx: (Math.random() - 0.5) * 300, vy: (Math.random() - 0.5) * 300,
-                                    rotation: Math.random() * 6, rotSpeed: (Math.random() - 0.5) * 10,
-                                    emoji: ['🍬', '🎉', '✨', '💰'][Math.floor(Math.random() * 4)],
-                                    size: 15 + Math.random() * 10
-                                });
-                            }
-                            pinatas.splice(i, 1);
-                        } else {
-                            addFloatText('BOING!', p.x, p.y);
-                        }
-                    }
-                }
-
 
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
@@ -2039,41 +1991,6 @@
                 }
             }
 
-
-            function updatePinatas(dt) {
-                // Rare spawn chance
-                if (Math.random() < 0.001) {
-                    pinatas.push({
-                        x: 50 + Math.random() * (canvas.width - 100),
-                        y: -50,
-                        vx: (Math.random() - 0.5) * 50,
-                        vy: 0,
-                        hits: 0,
-                        rotation: 0,
-                        rotSpeed: (Math.random() - 0.5) * 2,
-                        size: 40
-                    });
-                }
-
-                for (let i = pinatas.length - 1; i >= 0; i--) {
-                    const p = pinatas[i];
-                    p.x += p.vx * dt;
-                    p.y += p.vy * dt;
-                    p.vy += 300 * dt; // Gravity
-
-                    // Bounce off walls
-                    if (p.x < 20) { p.x = 20; p.vx *= -0.8; }
-                    if (p.x > canvas.width - 20) { p.x = canvas.width - 20; p.vx *= -0.8; }
-
-                    p.rotation += p.rotSpeed * dt;
-
-                    // Remove if it falls off screen
-                    if (p.y > canvas.height + 50) {
-                        pinatas.splice(i, 1);
-                    }
-                }
-            }
-
             function updateChanclas(dt) {
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
@@ -2268,7 +2185,6 @@
                 return Math.abs(a.x - b.x) < (a.w / 2 + b.w / 2) && Math.abs(a.y - b.y) < (a.h / 2 + b.h / 2);
             }
 
-
             function updateFloatTexts(dt) {
                 for (let i = floatTexts.length - 1; i >= 0; i--) {
                     const f = floatTexts[i];
@@ -2359,7 +2275,6 @@
                     ctx.restore();
                 });
             }
-
 
             function triggerWin() {
                 const defeatedLevel = gameData.stats.wins || 1;
@@ -2458,7 +2373,6 @@
                     spawnTimer = 0;
                 }
 
-
                 if (isa.enraged) {
                     meteorTimer += dt;
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
@@ -2487,10 +2401,7 @@
                     if (dashTrails[i].life <= 0) dashTrails.splice(i, 1);
                 }
 
-
-
-                updatePinatas(dt);
-                updateChanclas(dt);
+                                updateChanclas(dt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
@@ -2582,8 +2493,7 @@
                 drawBackground();
                 drawIsa();
                 drawFireParticles();
-                drawPinatas();
-                drawChanclasAll();
+                                drawChanclasAll();
                 drawSpecialProjectiles();
                 drawRosePetals();
                 drawDashTrails();
@@ -2598,20 +2508,6 @@
                 drawFloatTexts();
                 drawDialogue();
                 drawPlayerDialogue();
-            }
-
-
-            function drawPinatas() {
-                for (const p of pinatas) {
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    ctx.rotate(p.rotation);
-                    ctx.font = `${p.size}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('🪅', 0, 0);
-                    ctx.restore();
-                }
             }
 
             function drawChanclasAll() {
