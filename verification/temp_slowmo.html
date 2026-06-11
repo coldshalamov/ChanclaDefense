@@ -160,7 +160,7 @@
             const wrapper = document.querySelector('.wrapper');
 
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
-            let state = STATE.TITLE;
+            let state = STATE.PLAYING; resetGame();
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -2334,7 +2334,7 @@
                 sayRandom('gameOver');
             }
 
-            function update(dt) {
+            function update(dt) { slowMoTimer = 1.5;
                 if (state !== STATE.PLAYING) return;
 
                 const realDt = dt;
@@ -2996,16 +2996,7 @@
                 sayRandom('start');
                 setDirectionsVisible(true);
             }
-
-            window.debug_spawnHeart = () => {
-                state = STATE.PLAYING;
-                // Reset to ensure clean state
-                resetGame();
-                // Spawn heart directly on player
-                spawnPowerup('heart', player.x, player.y);
-            };
             initTitle();
-
         })();
     </script>
 </body>
