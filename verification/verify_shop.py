@@ -1,68 +1,68 @@
-from playwright.sync_api import sync_playwright
-import time
 import os
+import re
+import time
+from playwright.sync_api import sync_playwright
 
-def run():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(viewport={'width': 450, 'height': 800}, has_touch=True, is_mobile=True)
-        page = context.new_page()
+def run_cuj(page):
+    with open('index.html', 'r') as f:
+        content = f.read()
 
-        cwd = os.getcwd()
-        page.goto(f"file://{cwd}/index.html")
+    # Strip IIFE to expose gameData
+    content = re.sub(r'^\s*\(\(\)\s*=>\s*\{\s*', '', content, flags=re.MULTILINE)
+    content = re.sub(r'\}\)\(\);\s*$', '', content, flags=re.MULTILINE)
+    content = re.sub(r'\blet\s+(gameData|saveGameData|state|STATE|canvas)\b', r'var \1', content)
 
-        # Give it 1000 coins to buy stuff
-        page.evaluate("localStorage.setItem('chancla_bomb_save', JSON.stringify({ coins: 1000, upgrades: {}, bestScore: 0 }))")
-        page.reload()
+    temp_path = os.path.abspath('verification/temp_test.html')
+    with open(temp_path, 'w') as f:
+        f.write(content)
 
-        page.wait_for_selector("#game")
+    url = f"file://{temp_path}"
 
-        # Click Shop Button (110, 450, w, 46) -> center is around x=225, y=473
-        page.evaluate("""
-            const canvas = document.getElementById('game');
-            const rect = canvas.getBoundingClientRect();
-            const clickEvent = new MouseEvent('click', {
-                clientX: rect.left + 225 * (rect.width / canvas.width),
-                clientY: rect.top + 473 * (rect.height / canvas.height)
-            });
-            canvas.dispatchEvent(clickEvent);
-        """)
+    # Mock localStorage to bypass file:// restrictions
+    page.add_init_script("Object.defineProperty(window, 'localStorage', { value: { getItem: () => null, setItem: () => {} }, writable: true });")
+    page.goto(url)
+    page.wait_for_timeout(500)
 
-        time.sleep(0.5)
+    # Click Shop Button (Title Screen)
+    # The Play Button is at y:380-426, Shop is at y:440-486, x: 110-290
+    page.mouse.click(200, 460)
+    page.wait_for_timeout(1000)
 
-        # Screenshot of empty shop
-        page.screenshot(path="verification/shop_initial.png")
+    # Give us some money to buy the upgrade
+    page.evaluate("window.gameData.coins = 5000; window.saveGameData();")
+    # Force a redraw by going back and forth
+    page.mouse.click(200, 650) # Click back button
+    page.wait_for_timeout(500)
+    page.mouse.click(200, 460) # Click shop again
+    page.wait_for_timeout(1000)
 
-        # Click first upgrade (Extra Life) - pos: y=160 to 240, x=40 to 410 -> center x=225, y=200
-        page.evaluate("""
-            const canvas = document.getElementById('game');
-            const rect = canvas.getBoundingClientRect();
-            const clickEvent = new MouseEvent('click', {
-                clientX: rect.left + 225 * (rect.width / canvas.width),
-                clientY: rect.top + 200 * (rect.height / canvas.height)
-            });
-            canvas.dispatchEvent(clickEvent);
-        """)
+    # Take screenshot of the shop before purchase
+    page.screenshot(path="/home/jules/verification/screenshots/shop_before_purchase.png")
 
-        time.sleep(0.5)
+    # Click the new 'Slap Power' upgrade
+    # y positions: 120, 215, 310, 405, 500. It's the 5th one, so y=500
+    # button is 80px high, so y: 500-580
+    page.mouse.click(200, 540)
+    page.wait_for_timeout(500)
 
-        # Click third upgrade (Cooldown) - pos: y=360 to 440 -> center x=225, y=400
-        page.evaluate("""
-            const canvas = document.getElementById('game');
-            const rect = canvas.getBoundingClientRect();
-            const clickEvent = new MouseEvent('click', {
-                clientX: rect.left + 225 * (rect.width / canvas.width),
-                clientY: rect.top + 400 * (rect.height / canvas.height)
-            });
-            canvas.dispatchEvent(clickEvent);
-        """)
-
-        time.sleep(0.5)
-
-        # Screenshot of shop after purchases
-        page.screenshot(path="verification/shop_purchased.png")
-
-        browser.close()
+    page.screenshot(path="/home/jules/verification/screenshots/shop_after_purchase.png")
+    page.wait_for_timeout(1000)
 
 if __name__ == "__main__":
-    run()
+    # Ensure directories exist
+    os.makedirs("/home/jules/verification/videos", exist_ok=True)
+    os.makedirs("/home/jules/verification/screenshots", exist_ok=True)
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        # 400x700 is the canvas size
+        context = browser.new_context(
+            record_video_dir="/home/jules/verification/videos",
+            viewport={'width': 400, 'height': 700}
+        )
+        page = context.new_page()
+        try:
+            run_cuj(page)
+        finally:
+            context.close()
+            browser.close()
