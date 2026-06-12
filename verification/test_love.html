@@ -250,6 +250,7 @@
             let dashCooldown = 0;
             let dashDir = 0;
             let dashTrails = [];
+            let slowMoTimer = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -412,6 +413,7 @@
                 dashCooldown = 0;
                 dashDir = 0;
                 dashTrails = [];
+                slowMoTimer = 0;
                 const wins = gameData.stats.wins || 1;
                 isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
@@ -500,6 +502,11 @@
                 }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                if (slowMoTimer > 0) {
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
 
                 ctx.fillStyle = isa.enraged ? '#1a0508' : '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
@@ -2191,7 +2198,15 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 40);
+                                triggerFlash(0.2, 'cyan');
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2384,6 +2399,11 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt;
+                    dt *= 0.3;
+                }
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
