@@ -243,6 +243,11 @@
             let fiestaHue = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
+            let tornadoTimer = 0;
+            let tornadoActive = false;
+            let tornadoDuration = 0;
+            let tornadoAngle = 0;
+            let tornadoSpawnTimer = 0;
 
             let lastTapLeft = 0;
             let lastTapRight = 0;
@@ -442,6 +447,11 @@
                 meteorTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
+                tornadoTimer = 0;
+                tornadoActive = false;
+                tornadoDuration = 0;
+                tornadoAngle = 0;
+                tornadoSpawnTimer = 0;
                 chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
@@ -2370,19 +2380,21 @@
                     }
                 }
 
-                spawnTimer += dt;
-                if (timeElapsed > 12) {
-                    // Ramp up difficulty faster if enraged
-                    const intervalDec = isa.enraged ? 0.05 : 0.02;
-                    const speedInc = isa.enraged ? 10 : 5;
+                if (!tornadoActive) {
+                    spawnTimer += dt;
+                    if (timeElapsed > 12) {
+                        // Ramp up difficulty faster if enraged
+                        const intervalDec = isa.enraged ? 0.05 : 0.02;
+                        const speedInc = isa.enraged ? 10 : 5;
 
-                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
-                    baseSpeed += dt * speedInc;
-                }
-                if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval) {
-                    spawnChancla();
-                    spawnTimer = 0;
+                        spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
+                        baseSpeed += dt * speedInc;
+                    }
+                    if (timeElapsed > 18) superEnabled = true;
+                    if (spawnTimer >= spawnInterval) {
+                        spawnChancla();
+                        spawnTimer = 0;
+                    }
                 }
 
 
@@ -2391,6 +2403,57 @@
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
                         meteorTimer = 0;
+                    }
+
+                    if (!tornadoActive && !chanclas.some(c => c.type === 'meteor')) {
+                        tornadoTimer += dt;
+                        if (tornadoTimer >= 18) {
+                            tornadoActive = true;
+                            tornadoDuration = 6.0;
+                            tornadoTimer = 0;
+                            addFloatText('CHANCLA TORNADO!', canvas.width / 2, 120);
+                            playSound(1000, 0.4);
+                            triggerShake(15, 1.5);
+                        }
+                    }
+
+                    if (tornadoActive) {
+                        tornadoDuration -= dt;
+                        if (tornadoDuration <= 0) {
+                            tornadoActive = false;
+                        } else {
+                            // Move Isa to center
+                            isa.x += (canvas.width / 2 - isa.x) * 5 * dt;
+                            isa.y += (80 - isa.y) * 5 * dt;
+
+                            tornadoAngle += Math.PI * 1.5 * dt; // Rotate spiral
+                            tornadoSpawnTimer -= dt;
+
+                            if (tornadoSpawnTimer <= 0) {
+                                tornadoSpawnTimer = 0.15; // Fast spawn rate
+                                // Spawn 3 chanclas in a spiral pattern
+                                for (let i = 0; i < 3; i++) {
+                                    const offsetAngle = (i * Math.PI * 2) / 3;
+                                    const angle = tornadoAngle + offsetAngle;
+
+                                    const vx = Math.cos(angle) * 200;
+                                    const vy = Math.sin(angle) * 200;
+
+                                    chanclas.push({
+                                        x: isa.x,
+                                        y: isa.y + 20,
+                                        vx: vx,
+                                        vy: Math.abs(vy) + 50, // Bias downwards
+                                        w: 32,
+                                        h: 18,
+                                        type: 'fire',
+                                        rotation: 0,
+                                        rotSpeed: 5
+                                    });
+                                }
+                                playWhoosh();
+                            }
+                        }
                     }
                 }
 
