@@ -1771,7 +1771,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, rallyCount: 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2134,12 +2134,28 @@
                             }
 
                             // Hit Isa
+                            if (!c.rallyCount) c.rallyCount = 0;
+                            if (Math.random() < 0.3) {
+                                // Parry!
+                                c.slapped = false;
+                                c.rallyCount++;
+                                c.type = 'fire';
+                                c.vy = baseSpeed + (c.rallyCount * 100);
+                                c.vx = (player.x - c.x) * 2;
+                                addFloatText('PARRY! 🛡️', isa.x, isa.y + 30);
+                                playSound(900, 0.1);
+                                continue;
+                            }
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
                             if (c.isPerfect) damage += 7;
 
+                            if (c.rallyCount > 0) {
+                                damage += 10 * c.rallyCount;
+                                addFloatText('MEGA HIT! 💥', isa.x, isa.y - 20);
+                            }
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
