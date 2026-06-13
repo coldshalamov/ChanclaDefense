@@ -1412,6 +1412,7 @@
 
             function drawAchievements() {
                 drawBackground();
+                drawTelegraphs();
                 drawIsa(); // Background decoration
 
                 ctx.save();
@@ -1483,6 +1484,7 @@
 
             function drawShop() {
                 drawBackground();
+                drawTelegraphs();
                 drawIsa(); // Background decoration
 
                 ctx.save();
@@ -1565,6 +1567,7 @@
 
             function drawCosmetics() {
                 drawBackground();
+                drawTelegraphs();
                 drawIsa(); // Background decoration
 
                 ctx.save();
@@ -1641,6 +1644,7 @@
 
             function drawTitleScreen() {
                 drawBackground();
+                drawTelegraphs();
                 drawIsa();
                 drawPlayer();
                 ctx.save();
@@ -2501,8 +2505,67 @@
                 ctx.restore();
             }
 
+
+            function drawTelegraphs() {
+                ctx.save();
+                for (let i = 0; i < chanclas.length; i++) {
+                    const c = chanclas[i];
+                    if (c.slapped) continue;
+                    if (c.y > player.y) continue;
+
+                    const dy = player.y - c.y;
+                    if (c.vy <= 0) continue;
+
+                    const timeToImpact = dy / c.vy;
+                    let hitX = c.x;
+
+                    if (c.type === 'bouncy') {
+                        let tempX = c.x;
+                        let tempVx = c.vx;
+                        let tRemaining = timeToImpact;
+                        const dtStep = 0.016;
+                        while(tRemaining > 0) {
+                            let step = Math.min(tRemaining, dtStep);
+                            tempX += tempVx * step;
+                            if (tempX < 20) { tempX = 20; tempVx *= -1; }
+                            if (tempX > canvas.width - 20) { tempX = canvas.width - 20; tempVx *= -1; }
+                            tRemaining -= step;
+                        }
+                        hitX = tempX;
+                    } else {
+                        hitX = c.x + c.vx * timeToImpact;
+                    }
+
+                    const maxDist = 600;
+                    const normalizedDist = Math.max(0, Math.min(1, dy / maxDist));
+                    const inverseDist = 1 - normalizedDist;
+
+                    const size = 15 + inverseDist * 25;
+                    const alpha = 0.1 + inverseDist * 0.5;
+                    const pulse = Math.abs(Math.sin(timeElapsed * 10)) * 0.2 * inverseDist;
+
+                    let color = '255, 255, 255';
+                    if (c.type === 'bomb') color = '255, 50, 50';
+                    else if (c.type === 'super') color = '255, 179, 71';
+                    else if (c.type === 'fire') color = '255, 100, 0';
+                    else if (c.type === 'meteor') color = '255, 0, 0';
+                    else if (c.type === 'bouncy') color = '150, 50, 255';
+
+                    ctx.beginPath();
+                    ctx.ellipse(hitX, player.y + 20, size, size * 0.3, 0, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${color}, ${alpha + pulse})`;
+                    ctx.fill();
+
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = `rgba(${color}, ${Math.max(0.3, alpha)})`;
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
             function draw() {
                 drawBackground();
+                drawTelegraphs();
                 drawIsa();
                 drawFireParticles();
                 drawChanclasAll();
