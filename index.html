@@ -250,6 +250,7 @@
             let dashCooldown = 0;
             let dashDir = 0;
             let dashTrails = [];
+            let slowMoTimer = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -499,6 +500,11 @@
                 }
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                if (slowMoTimer > 0) {
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
 
                 ctx.fillStyle = isa.enraged ? '#1a0508' : '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
@@ -1737,7 +1743,7 @@
                 const vy = 35;
                 const vx = 0;
                 chanclas.push({
-                    x, y, vx, vy, w, h, type: 'meteor', rotation: 0, rotSpeed: 0.2,
+                    x, y, vx, vy, w, h, type: 'meteor', rotation: 0, rotSpeed: 0.2, dodged: false,
                     slapsNeeded: 12, currentSlaps: 0, isMeteor: true
                 });
                 addFloatText('¡LA CHANCLA GIGANTE!', canvas.width / 2, 120);
@@ -1771,7 +1777,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, dodged: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2117,7 +2123,17 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 30);
+                                triggerFlash(0.2, '#00ffff');
+                                playSound(1000, 0.5);
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2138,7 +2154,17 @@
                             return;
                         }
                     } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
-                        if (dashTimer > 0) continue; // I-frames during dash shockwave
+
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 30);
+                                triggerFlash(0.2, '#00ffff');
+                                playSound(1000, 0.5);
+                            }
+                            continue; // I-frames during dash
+                        } // I-frames during dash shockwave
                         triggerShake(30, 0.8);
                         triggerFlash(0.5, '#ff0000');
                         player.lives -= 1;
@@ -2162,7 +2188,8 @@
                                     vy: -400 - Math.random() * 200,
                                     w: 32, h: 18, type: 'fire', rotation: 0, rotSpeed: (Math.random() - 0.5) * 15,
                                     slapped: false, // Mark as false so they don't hit Isa
-                                    isShrapnel: true
+                                    isShrapnel: true,
+                                    dodged: false
                                 });
                             }
                         } else {
@@ -2310,6 +2337,10 @@
             }
 
             function update(dt) {
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt;
+                    dt *= 0.3;
+                }
                 if (state !== STATE.PLAYING) return;
 
                 if (shakeTimer > 0) {
