@@ -236,6 +236,10 @@
             let shakeIntensity = 0;
             let hitStop = 0;
             let meteorTimer = 0;
+            let tornadoTimer = 0;
+            let tornadoActive = false;
+            let tornadoAngle = 0;
+            let tornadoSpawnTimer = 0;
             let impacts = [];
             let chainEffects = [];
             let comboCount = 0;
@@ -440,6 +444,10 @@
                 shakeTimer = 0;
                 hitStop = 0;
                 meteorTimer = 0;
+                tornadoTimer = 0;
+                tornadoActive = false;
+                tornadoAngle = 0;
+                tornadoSpawnTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
@@ -2370,27 +2378,72 @@
                     }
                 }
 
-                spawnTimer += dt;
-                if (timeElapsed > 12) {
-                    // Ramp up difficulty faster if enraged
-                    const intervalDec = isa.enraged ? 0.05 : 0.02;
-                    const speedInc = isa.enraged ? 10 : 5;
+                tornadoTimer += dt;
 
-                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
-                    baseSpeed += dt * speedInc;
-                }
-                if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval) {
-                    spawnChancla();
-                    spawnTimer = 0;
+                if (tornadoTimer >= 18 && !tornadoActive) {
+                    tornadoActive = true;
+                    tornadoAngle = 0;
+                    tornadoSpawnTimer = 0;
+                    addFloatText('¡CHANCLA TORNADO!', canvas.width / 2, 120);
+                    playSound(1000, 0.5);
+                    triggerShake(20, 2.0);
                 }
 
+                if (tornadoActive) {
+                    // Move Isa to center
+                    isa.x += (canvas.width / 2 - isa.x) * 5 * dt;
 
-                if (isa.enraged) {
-                    meteorTimer += dt;
-                    if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
-                        spawnMeteor();
-                        meteorTimer = 0;
+                    tornadoSpawnTimer -= dt;
+                    if (tornadoSpawnTimer <= 0) {
+                        for (let i = 0; i < 3; i++) {
+                            const angle = tornadoAngle + (i * Math.PI * 2 / 3);
+                            const vx = Math.cos(angle) * 150;
+                            const vy = Math.sin(angle) * 150 + 100; // Add downward bias
+
+                            chanclas.push({
+                                x: isa.x,
+                                y: isa.y + 20,
+                                vx: vx,
+                                vy: vy,
+                                w: 32,
+                                h: 18,
+                                type: 'normal',
+                                rotation: angle,
+                                rotSpeed: 10
+                            });
+                        }
+                        tornadoAngle += 0.4;
+                        tornadoSpawnTimer = 0.15; // Fast spawn rate
+                    }
+
+                    // End tornado
+                    if (tornadoTimer >= 23) {
+                        tornadoActive = false;
+                        tornadoTimer = 0;
+                    }
+                } else {
+                    spawnTimer += dt;
+                    if (timeElapsed > 12) {
+                        // Ramp up difficulty faster if enraged
+                        const intervalDec = isa.enraged ? 0.05 : 0.02;
+                        const speedInc = isa.enraged ? 10 : 5;
+
+                        spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
+                        baseSpeed += dt * speedInc;
+                    }
+                    if (timeElapsed > 18) superEnabled = true;
+                    if (spawnTimer >= spawnInterval) {
+                        spawnChancla();
+                        spawnTimer = 0;
+                    }
+
+
+                    if (isa.enraged) {
+                        meteorTimer += dt;
+                        if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
+                            spawnMeteor();
+                            meteorTimer = 0;
+                        }
                     }
                 }
 
