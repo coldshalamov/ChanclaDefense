@@ -1190,16 +1190,20 @@
                 ctx.translate(x, y);
 
                 // Use the thong sandal emoji for the classic "Chancla" look
-                let emoji = '🩴💨';
+                                let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
+                else if (type === 'golden') emoji = '🩴✨';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
                     if (type === 'meteor') {
                         ctx.shadowColor = 'red';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'golden') {
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 15;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1746,9 +1750,10 @@
             }
 
             function spawnChancla() {
-                const isBomb = Math.random() < 0.08;
-                const isSuper = superEnabled && !isBomb && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isSuper && Math.random() < 0.25;
+                                const isGolden = Math.random() < 0.05;
+                const isBomb = !isGolden && Math.random() < 0.08;
+                const isSuper = superEnabled && !isGolden && !isBomb && Math.random() < 0.18;
+                const isFire = isa.enraged && !isGolden && !isBomb && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1762,12 +1767,14 @@
                 if (isSuper) vy += 40;
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
+                else if (isGolden) vy += 100; // faster
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isBomb) type = 'bomb';
+                if (isGolden) type = 'golden';
+                else if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
 
@@ -1836,7 +1843,7 @@
                         if (isPerfect) slapEffect.type = 'perfect';
                         else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
 
-                        c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
+                                                c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
                         c.vy = isPerfect ? -550 : -300;
                         c.slapped = true;
                         c.isPerfect = isPerfect;
@@ -1844,6 +1851,14 @@
                         slappedAny = true;
                         comboCount++;
                         score += comboCount;
+
+                        if (c.type === 'golden') {
+                            gameData.coins += 15;
+                            gameData.stats.totalCoinsEarned += 15;
+                            score += 100;
+                            addFloatText('+15 💰', c.x, c.y - 30);
+                            playSound(1200, 0.3); // Cha-ching
+                        }
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
