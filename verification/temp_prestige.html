@@ -160,9 +160,9 @@
             const wrapper = document.querySelector('.wrapper');
 
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige' };
-            let state = STATE.TITLE;
+            var state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
+            var gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -182,7 +182,8 @@
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
-                if (!gameData.stats.wins) gameData.stats.wins = 1;
+                gameData.stats.wins = 15;
+if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.prestige) gameData.prestige = 0;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
@@ -235,13 +236,13 @@
             let winAnimationStart = 0;
             let shakeTimer = 0;
             let shakeIntensity = 0;
-            let hitStop = 0;
+            var hitStop = 0;
             let meteorTimer = 0;
             let impacts = [];
             let chainEffects = [];
             let comboCount = 0;
-            let fiestaMode = false;
-            let fiestaHue = 0;
+            var fiestaMode = false;
+            var fiestaHue = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
 
@@ -250,7 +251,7 @@
             let dashTimer = 0;
             let dashCooldown = 0;
             let dashDir = 0;
-            let dashTrails = [];
+            var dashTrails = [];
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -397,7 +398,8 @@
 
             function resetGame() {
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
-                if (!gameData.stats.wins) gameData.stats.wins = 1;
+                gameData.stats.wins = 15;
+if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.prestige) gameData.prestige = 0;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
