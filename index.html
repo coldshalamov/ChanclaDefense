@@ -233,6 +233,7 @@
             const slapEffect = { timer: 0, duration: 0.15 };
             let winAnimationStart = 0;
             let shakeTimer = 0;
+            let slowMoTimer = 0;
             let shakeIntensity = 0;
             let hitStop = 0;
             let meteorTimer = 0;
@@ -438,6 +439,7 @@
                 slapCooldown = 0;
                 winAnimationStart = 0;
                 shakeTimer = 0;
+                slowMoTimer = 0;
                 hitStop = 0;
                 meteorTimer = 0;
                 flash.timer = 0;
@@ -514,6 +516,11 @@
 
                 ctx.fillStyle = '#ffe066';
                 starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+
+                if (slowMoTimer > 0) {
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
             }
 
             function drawFlash() {
@@ -2117,7 +2124,16 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) continue; // I-frames during dash
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 30);
+                                triggerFlash(0.15, 'cyan');
+                                playSound(800, 0.3);
+                            }
+                            continue; // I-frames during dash
+                        }
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2138,7 +2154,16 @@
                             return;
                         }
                     } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
-                        if (dashTimer > 0) continue; // I-frames during dash shockwave
+                        if (dashTimer > 0) {
+                            if (!c.dodged) {
+                                c.dodged = true;
+                                slowMoTimer = 1.5;
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 30);
+                                triggerFlash(0.15, 'cyan');
+                                playSound(800, 0.3);
+                            }
+                            continue; // I-frames during dash shockwave
+                        }
                         triggerShake(30, 0.8);
                         triggerFlash(0.5, '#ff0000');
                         player.lives -= 1;
@@ -2309,8 +2334,14 @@
                 sayRandom('gameOver');
             }
 
-            function update(dt) {
+                        function update(dt) {
                 if (state !== STATE.PLAYING) return;
+
+                if (slowMoTimer > 0) {
+                    slowMoTimer -= dt; // Real dt
+                }
+                const gameDt = slowMoTimer > 0 ? dt * 0.3 : dt;
+
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
@@ -2370,7 +2401,7 @@
                     }
                 }
 
-                spawnTimer += dt;
+                spawnTimer += gameDt;
                 if (timeElapsed > 12) {
                     // Ramp up difficulty faster if enraged
                     const intervalDec = isa.enraged ? 0.05 : 0.02;
@@ -2387,7 +2418,7 @@
 
 
                 if (isa.enraged) {
-                    meteorTimer += dt;
+                    meteorTimer += gameDt;
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
                         meteorTimer = 0;
@@ -2413,11 +2444,11 @@
                     dashTrails[i].life -= dt;
                     if (dashTrails[i].life <= 0) dashTrails.splice(i, 1);
                 }
-                updateChanclas(dt);
-                updateSpecialProjectiles(dt);
-                updateImpacts(dt);
-                updateChainEffects(dt);
-                updateFloatTexts(dt);
+                updateChanclas(gameDt);
+                updateSpecialProjectiles(gameDt);
+                updateImpacts(gameDt);
+                updateChainEffects(gameDt);
+                updateFloatTexts(dt); // Keep float texts normal speed
 
                 // Update rose petals
                 for (let i = rosePetals.length - 1; i >= 0; i--) {
