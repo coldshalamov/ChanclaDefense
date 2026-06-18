@@ -1195,6 +1195,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'blackhole') emoji = '🌌';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1204,6 +1205,9 @@
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
+                    } else if (type === 'blackhole') {
+                        ctx.shadowColor = '#000';
+                        ctx.shadowBlur = 30;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1752,7 +1756,8 @@
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
+                const isBlackhole = superEnabled && !isBomb && !isHoming && Math.random() < 0.05;
+                const isSuper = superEnabled && !isBomb && !isHoming && !isBlackhole && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
@@ -1760,6 +1765,7 @@
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
+                else if (isBlackhole) { w = 40; h = 40; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1769,6 +1775,7 @@
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+                else if (isBlackhole) vy = baseSpeed * 0.4; // falls very slowly
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1778,6 +1785,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isBlackhole) type = 'blackhole';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -1832,6 +1840,36 @@
                     }
 
                     const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+
+                    if (c.type === 'blackhole' && !c.slapped) {
+                        const distToBH = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                        if (distToBH < slapRange) {
+                            slappedAny = true;
+                            c.slapped = true;
+                            c.type = 'fire'; // Convert black hole itself into a fire chancla
+                            c.vy = -600;
+                            c.vx = (isa.x - c.x) * 1.5;
+                            c.rotSpeed = 25;
+
+                            const burstCount = (c.absorbed || 0) + 3;
+                            for (let b = 0; b < burstCount; b++) {
+                                chanclas.push({
+                                    x: c.x, y: c.y,
+                                    vx: (Math.random() - 0.5) * 400,
+                                    vy: -500 - Math.random() * 300,
+                                    w: 32, h: 18, type: 'fire', rotation: 0, rotSpeed: (Math.random() - 0.5) * 20,
+                                    slapped: true // Instantly deadly to Isa
+                                });
+                            }
+
+                            addFloatText('GALAXY BURST! 🌌', c.x, c.y);
+                            playSound(1200, 0.5);
+                            triggerFlash(0.3, '#fff');
+                            triggerShake(15, 0.4);
+                            specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 30);
+                            continue;
+                        }
+                    }
 
                     if (dist < slapRange) {
                         // Slap the chancla away
@@ -2024,6 +2062,27 @@
                         }
                     }
 
+                    if (c.type === 'blackhole' && !c.slapped) {
+                        for (let j = chanclas.length - 1; j >= 0; j--) {
+                            if (i === j) continue;
+                            const other = chanclas[j];
+                            if (!other.slapped && other.type !== 'meteor' && other.type !== 'blackhole') {
+                                const distToBH = Math.sqrt(Math.pow(c.x - other.x, 2) + Math.pow(c.y - other.y, 2));
+                                if (distToBH < 180) {
+                                    // Pull towards black hole
+                                    const pullStrength = 150;
+                                    other.vx += Math.sign(c.x - other.x) * pullStrength * dt;
+                                    other.vy += Math.sign(c.y - other.y) * pullStrength * dt;
+
+                                    if (distToBH < 20) {
+                                        c.absorbed = (c.absorbed || 0) + 1;
+                                        chanclas.splice(j, 1);
+                                        if (j < i) i--;
+                                    }
+                                }
+                            }
+                        }
+                    }
                     c.x += c.vx * dt;
                     c.y += c.vy * dt;
                     c.rotation += c.rotSpeed * dt;

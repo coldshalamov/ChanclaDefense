@@ -149,8 +149,7 @@
         <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
     </div>
     <script>
-        (() => {
-            const canvas = document.getElementById('game');
+const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
             const overlayLeft = document.getElementById('overlay-left');
             const overlayRight = document.getElementById('overlay-right');
@@ -160,7 +159,7 @@
             const wrapper = document.querySelector('.wrapper');
 
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
-            let state = STATE.TITLE;
+            var state = STATE.TITLE;
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -214,8 +213,8 @@
             ];
 
 
-            let chanclas = [];
-            let floatTexts = [];
+            var chanclas = [];
+            var floatTexts = [];
             let rosePetals = [];
             let fireParticles = [];
             let specialProjectiles = [];
@@ -226,7 +225,7 @@
             let spawnTimer = 0;
             let baseSpeed = 140;
             let timeElapsed = 0;
-            let superEnabled = false;
+            var superEnabled = false;
             let specialAttackBar = 0;
             const maxSpecialAttack = 100;
             let slapCooldown = 0;
@@ -2084,7 +2083,7 @@
                         }
                     }
                     c.x += c.vx * dt;
-                    c.y += c.vy * dt;
+                    if (c.type === 'blackhole' || c.type === 'normal') { c.y += 0; } else { c.y += c.vy * dt; }
                     c.rotation += c.rotSpeed * dt;
 
                     // Remove slapped chanclas that fly off screen
@@ -3048,9 +3047,10 @@
                 sayRandom('start');
                 setDirectionsVisible(true);
             }
-            initTitle();
-        })();
+
+
     </script>
 </body>
 
 </html>
+resetGame();
