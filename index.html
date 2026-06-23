@@ -1784,8 +1784,8 @@
             }
 
 
-            function addFloatText(text, x, y) {
-                floatTexts.push({ text, x, y, time: 1.8, max: 1.8 });
+            function addFloatText(text, x, y, color = '#fff', fontSize = 14) {
+                floatTexts.push({ text, x, y, time: 1.8, max: 1.8, color, fontSize });
             }
 
 
@@ -2091,6 +2091,18 @@
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
+                            let dmgColor = '#ff4444';
+                            let dmgSize = 18;
+                            if (c.isPerfect || c.rallyCount > 0) {
+                                dmgColor = '#ffcc00';
+                                dmgSize = 24;
+                            }
+                            if (c.type === 'meteor') {
+                                dmgColor = '#ff8800';
+                                dmgSize = 28;
+                            }
+                            addFloatText(`-${damage}`, isa.x + (Math.random() - 0.5) * 40, isa.y - 40 + (Math.random() - 0.5) * 20, dmgColor, dmgSize);
+
                             if (c.type === 'bomb') {
                                 triggerShake(20, 0.5);
                                 triggerFlash(0.2, '#fff');
@@ -2204,9 +2216,12 @@
                 floatTexts.forEach(f => {
                     ctx.save();
                     ctx.globalAlpha = Math.max(0, f.time / f.max);
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '14px sans-serif';
+                    ctx.fillStyle = f.color || '#fff';
+                    ctx.font = `bold ${f.fontSize || 14}px sans-serif`;
                     ctx.textAlign = 'center';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 3;
+                    ctx.strokeText(f.text, f.x, f.y);
                     ctx.fillText(f.text, f.x, f.y);
                     ctx.restore();
                 });
@@ -2258,6 +2273,7 @@
                         let dmg = 20 + (gameData.upgrades.power || 0) * 5;
                         isa.anger = Math.max(0, isa.anger - dmg);
                         isa.hitTimer = 0.7;
+                        addFloatText(`-${dmg}`, isa.x + (Math.random() - 0.5) * 40, isa.y - 40, '#ff00ff', 26);
                         specialProjectiles.splice(i, 1);
 
                         // Play hit sound
