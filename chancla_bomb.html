@@ -237,6 +237,7 @@
             let hitStop = 0;
             let meteorTimer = 0;
             let impacts = [];
+                let hitParticles = [];
             let chainEffects = [];
             let comboCount = 0;
             let fiestaMode = false;
@@ -424,6 +425,7 @@
                 fireParticles = [];
                 specialProjectiles = [];
                 impacts = [];
+                hitParticles = [];
                 score = 0;
                 comboCount = 0;
                 fiestaMode = false;
@@ -569,6 +571,50 @@
 
             function spawnImpact(x, y, isBig = false) {
                 impacts.push({ x, y, timer: 0.25, maxTime: 0.25, rotation: Math.random() * Math.PI, isBig });
+            }
+
+
+            function spawnHitParticles(x, y, isPerfect) {
+                const count = isPerfect ? 20 : 10;
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * (isPerfect ? 300 : 150) + 50;
+                    hitParticles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 1.0,
+                        maxLife: 1.0,
+                        color: isPerfect ? '#ffd700' : '#ffffff',
+                        size: Math.random() * 3 + 2
+                    });
+                }
+            }
+
+            function updateHitParticles(dt) {
+                for (let i = hitParticles.length - 1; i >= 0; i--) {
+                    let p = hitParticles[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.vy += 600 * dt; // gravity
+                    p.life -= dt * 2; // fade out speed
+                    if (p.life <= 0) {
+                        hitParticles.splice(i, 1);
+                    }
+                }
+            }
+
+            function drawHitParticles() {
+                hitParticles.forEach(p => {
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
             }
 
             function updateImpacts(dt) {
@@ -1892,6 +1938,7 @@
                             gameData.stats.totalCoinsEarned += 2;
                             addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
                             spawnImpact(c.x, c.y, true);
+                            spawnHitParticles(c.x, c.y, true);
                             playSound(850, 0.15);
                             triggerShake(6, 0.2);
                             triggerFlash(0.15, '#fff');
@@ -1902,6 +1949,7 @@
                             gameData.stats.totalCoinsEarned += 1;
                             addFloatText('SLAP! +1💰' + comboText, c.x, c.y);
                             spawnImpact(c.x, c.y);
+                            spawnHitParticles(c.x, c.y, false);
                             playSound(600, 0.1);
                         }
 
@@ -2438,6 +2486,7 @@
                 updateChanclas(dt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
+                updateHitParticles(dt);
                 updateChainEffects(dt);
                 updateFloatTexts(dt);
 
@@ -2533,6 +2582,7 @@
                 drawDashTrails();
                 drawChainEffects();
                 drawImpacts();
+                drawHitParticles();
                 drawPlayer();
                 drawSlapEffect();
 
