@@ -223,9 +223,9 @@
             let bestScore = 0;
             let spawnInterval = 1.2;
             let minSpawnInterval = 0.45;
-            let spawnTimer = 0;
+            let spawnTimer = 5;
             let baseSpeed = 140;
-            let timeElapsed = 0;
+            let timeElapsed = 35;
             let superEnabled = false;
             let specialAttackBar = 0;
             const maxSpecialAttack = 100;
@@ -1760,7 +1760,7 @@
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isBlackHole = timeElapsed > 30 && !isBomb && !isHoming && Math.random() < 0.05;
+                const isBlackHole = true;
                 const isSuper = superEnabled && !isBomb && !isHoming && !isBlackHole && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isBlackHole && Math.random() < 0.25;
 
