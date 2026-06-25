@@ -193,7 +193,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
 
             const COSMETICS_LIST = [
                 { id: 'none', name: 'No Hat', icon: '', cost: 0 },
@@ -415,6 +415,7 @@
                 const wins = gameData.stats.wins || 1;
                 isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
+                isa.displayAnger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.enraged = false;
@@ -1383,6 +1384,21 @@
                 roundRect(ctx, angerBarX, angerBarY, angerBarWidth, angerBarHeight, 8);
                 ctx.fill();
 
+                // Delayed visual health (displayAnger)
+                if (isa.displayAnger > 0) {
+                    const displayProgress = isa.displayAnger / isa.maxAnger;
+                    const displayFillWidth = angerBarWidth * displayProgress;
+
+                    ctx.fillStyle = '#fff';
+                    ctx.save();
+                    ctx.beginPath();
+                    roundRect(ctx, angerBarX, angerBarY, displayFillWidth, angerBarHeight, 8);
+                    ctx.clip();
+                    roundRect(ctx, angerBarX, angerBarY, displayFillWidth, angerBarHeight, 8);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
                 // Fill bar
                 if (isa.anger > 0) {
                     const angerProgress = isa.anger / isa.maxAnger;
@@ -2349,6 +2365,14 @@
                 if (hitStop > 0) {
                     hitStop -= dt;
                     return;
+                }
+
+                if (isa.displayAnger === undefined) isa.displayAnger = isa.anger;
+                if (isa.displayAnger > isa.anger) {
+                    isa.displayAnger -= Math.max(30, (isa.displayAnger - isa.anger) * 5) * dt;
+                    if (isa.displayAnger < isa.anger) isa.displayAnger = isa.anger;
+                } else {
+                    isa.displayAnger = isa.anger;
                 }
 
                 if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
