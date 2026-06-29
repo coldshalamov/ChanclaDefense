@@ -1195,12 +1195,16 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'boomerang') emoji = '🪃';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
                     if (type === 'meteor') {
                         ctx.shadowColor = 'red';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'boomerang') {
+                        ctx.shadowColor = '#00ffff';
+                        ctx.shadowBlur = 15;
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
@@ -1754,12 +1758,14 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isBoomerang = superEnabled && !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.15;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
+                else if (isBoomerang) { w = 34; h = 34; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1769,6 +1775,7 @@
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+                else if (isBoomerang) vy = baseSpeed * 1.2;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1778,6 +1785,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isBoomerang) type = 'boomerang';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -2082,6 +2090,7 @@
 
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                            if (c.type === 'boomerang') damage = 20;
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
@@ -2132,7 +2141,7 @@
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
-                    if (c.y < -50 && c.isShrapnel) {
+                    if (c.y < -50 && (c.isShrapnel || c.type === 'boomerang')) {
                         chanclas.splice(i, 1);
                         continue;
                     }
@@ -2159,6 +2168,14 @@
                             endGame();
                             return;
                         }
+                    } else if (!c.slapped && c.type === 'boomerang' && !c.returning && c.y > canvas.height - 40) {
+                        c.returning = true;
+                        c.vy = -Math.abs(c.vy) * 1.3;
+                        c.vx = (player.x - c.x) * 1.5;
+                        c.rotSpeed = 30;
+                        addFloatText('¡REGRESA!', c.x, c.y - 20, '#00ffff');
+                        playSound(800, 0.4);
+                        continue;
                     } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
                         if (dashTimer > 0) continue; // I-frames during dash shockwave
                         triggerShake(30, 0.8);
