@@ -160,7 +160,7 @@
             const wrapper = document.querySelector('.wrapper');
 
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
-            let state = STATE.TITLE;
+            let state = STATE.PLAYING;
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -1754,11 +1754,11 @@
             }
 
             function spawnChancla() {
-                const isBomb = Math.random() < 0.08;
+                const isBomb = false;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
-                const isGolden = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.02;
+                const isGolden = true;
 
                 let w = 32;
                 let h = 18;
@@ -2361,6 +2361,24 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+                if (!window.injected) {
+                    window.injected = true;
+                    spawnChancla();
+                    chanclas[0].x = 200;
+                    chanclas[0].y = 350;
+                    chanclas[0].vx = 0;
+                    chanclas[0].vy = 0;
+                    player.x = 200;
+                    player.y = 450;
+                }
+
+                if (window.doSlapNow) {
+                    window.doSlapNow = false;
+                    player.x = 200;
+                    player.y = 350;
+                    trySlap();
+                }
+
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
@@ -2430,7 +2448,7 @@
                     baseSpeed += dt * speedInc;
                 }
                 if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval) {
+                if (false) {
                     spawnChancla();
                     spawnTimer = 0;
                 }
@@ -2969,6 +2987,24 @@
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+                if (!window.injected) {
+                    window.injected = true;
+                    spawnChancla();
+                    chanclas[0].x = 200;
+                    chanclas[0].y = 350;
+                    chanclas[0].vx = 0;
+                    chanclas[0].vy = 0;
+                    player.x = 200;
+                    player.y = 450;
+                }
+
+                if (window.doSlapNow) {
+                    window.doSlapNow = false;
+                    player.x = 200;
+                    player.y = 350;
+                    trySlap();
+                }
+
                     if (!touch[dir] && dashCooldown <= 0) {
                         if (dir === 'left') {
                             if (timeElapsed - lastTapLeft < 0.25) {
