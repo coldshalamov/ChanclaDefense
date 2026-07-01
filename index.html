@@ -1195,12 +1195,16 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'golden') emoji = '🌟';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
                     if (type === 'meteor') {
                         ctx.shadowColor = 'red';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'golden') {
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 25;
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
@@ -1750,14 +1754,16 @@
             }
 
             function spawnChancla() {
-                const isBomb = Math.random() < 0.08;
-                const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isGolden = Math.random() < 0.03; // 3% chance
+                const isBomb = !isGolden && Math.random() < 0.08;
+                const isHoming = superEnabled && !isGolden && !isBomb && Math.random() < 0.10;
+                const isSuper = superEnabled && !isGolden && !isBomb && !isHoming && Math.random() < 0.18;
+                const isFire = isa.enraged && !isGolden && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
-                if (isSuper) { w = 46; h = 26; }
+                if (isGolden) { w = 30; h = 18; }
+                else if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
 
@@ -1765,7 +1771,8 @@
                 const y = isa.y + 40;
 
                 let vy = baseSpeed + Math.random() * 60;
-                if (isSuper) vy += 40;
+                if (isGolden) vy += 150;
+                else if (isSuper) vy += 40;
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
@@ -1774,7 +1781,8 @@
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isBomb) type = 'bomb';
+                if (isGolden) type = 'golden';
+                else if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
@@ -1784,8 +1792,8 @@
             }
 
 
-            function addFloatText(text, x, y) {
-                floatTexts.push({ text, x, y, time: 1.8, max: 1.8 });
+            function addFloatText(text, x, y, color = '#fff', fontSize = 14) {
+                floatTexts.push({ text, x, y, time: 1.8, max: 1.8, color, fontSize });
             }
 
 
@@ -1876,6 +1884,14 @@
 
                         const comboPhrase = getComboPhrase(comboCount);
                         const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
+
+                        if (c.type === 'golden') {
+                            gameData.coins += 50;
+                            gameData.stats.totalCoinsEarned += 50;
+                            addFloatText('JACKPOT! +50💰', c.x, c.y - 40, '#ffd700', 20);
+                            playSound(1200, 0.4);
+                            triggerFlash(0.2, '#ffd700');
+                        }
 
                         if (c.rallyCount > 0) {
                             score += 20 * c.rallyCount;
@@ -2085,6 +2101,7 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'golden') damage = 50;
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
@@ -2145,6 +2162,12 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
+                        if (c.type === 'golden') {
+                            const loss = Math.min(gameData.coins, 20);
+                            gameData.coins -= loss;
+                            addFloatText(`GREED! -${loss}💰`, player.x, player.y - 40, '#ff4d4d', 18);
+                            playSound(150, 0.3);
+                        }
                         const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
@@ -2171,6 +2194,16 @@
                         if (player.lives <= 0) endGame();
                         continue;
                     } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
+                        if (c.type === 'golden' && !c.slapped) {
+                            const loss = Math.min(gameData.coins, 20);
+                            gameData.coins -= loss;
+                            addFloatText(`MISSED GOLD! -${loss}💰`, Math.max(20, Math.min(canvas.width - 20, c.x)), canvas.height - 40, '#ff4d4d', 18);
+                            comboCount = 0;
+                            if (fiestaMode) {
+                                fiestaMode = false;
+                                addFloatText('Combo Breaker!', player.x, player.y - 30);
+                            }
+                        }
                         if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
                             triggerFlash(0.1, '#fff');
@@ -2204,9 +2237,12 @@
                 floatTexts.forEach(f => {
                     ctx.save();
                     ctx.globalAlpha = Math.max(0, f.time / f.max);
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '14px sans-serif';
+                    ctx.fillStyle = f.color || '#fff';
+                    ctx.font = `bold ${f.fontSize || 14}px sans-serif`;
                     ctx.textAlign = 'center';
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#000';
+                    ctx.strokeText(f.text, f.x, f.y);
                     ctx.fillText(f.text, f.x, f.y);
                     ctx.restore();
                 });
