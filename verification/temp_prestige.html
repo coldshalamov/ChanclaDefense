@@ -149,27 +149,26 @@
         <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
     </div>
     <script>
-        (() => {
-            const canvas = document.getElementById('game');
-            const ctx = canvas.getContext('2d');
-            const overlayLeft = document.getElementById('overlay-left');
-            const overlayRight = document.getElementById('overlay-right');
-            const touchLeft = document.querySelector('.touch-left');
-            const touchRight = document.querySelector('.touch-right');
-            const body = document.body;
-            const wrapper = document.querySelector('.wrapper');
+var canvas = document.getElementById('game');
+            var ctx = canvas.getContext('2d');
+            var overlayLeft = document.getElementById('overlay-left');
+            var overlayRight = document.getElementById('overlay-right');
+            var touchLeft = document.querySelector('.touch-left');
+            var touchRight = document.querySelector('.touch-right');
+            var body = document.body;
+            var wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige' };
-            let state = STATE.TITLE;
+            var STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige' };
+            var state = STATE.TITLE;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none', prestige: 0 };
+            var gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none', prestige: 0 };
             try {
-                const saved = localStorage.getItem('chancla_bomb_save');
+                var saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
                     gameData = JSON.parse(saved);
                     // Backward compatibility for old boolean saves and missing speed
                     if (gameData.upgrades) {
-                        for (let key in gameData.upgrades) {
+                        for (var key in gameData.upgrades) {
                             if (typeof gameData.upgrades[key] === 'boolean') {
                                 gameData.upgrades[key] = gameData.upgrades[key] ? 1 : 0;
                             }
@@ -182,7 +181,7 @@
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
-                if (!gameData.stats.wins) gameData.stats.wins = 1;
+                gameData.stats.wins = 15;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
@@ -193,10 +192,10 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
+            var player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            var isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
 
-            const COSMETICS_LIST = [
+            var COSMETICS_LIST = [
                 { id: 'none', name: 'No Hat', icon: '', cost: 0 },
                 { id: 'cap', name: 'Baseball Cap', icon: '🧢', cost: 100 },
                 { id: 'cowboy', name: 'Cowboy Hat', icon: '🤠', cost: 250 },
@@ -205,7 +204,7 @@
                 { id: 'tophat', name: 'Top Hat', icon: '🎩', cost: 300 }
             ];
 
-            const ACHIEVEMENTS_LIST = [
+            var ACHIEVEMENTS_LIST = [
                 { id: 'first_slap', name: 'First Slap', desc: 'Slap your first chancla', reward: 10, check: () => gameData.stats.totalSlaps >= 1 },
                 { id: 'slap_master', name: 'Slap Master', desc: 'Slap 500 chanclas', reward: 100, check: () => gameData.stats.totalSlaps >= 500 },
                 { id: 'perfect_timing', name: 'Perfect Timing', desc: 'Get 50 perfect slaps', reward: 50, check: () => gameData.stats.perfectSlaps >= 50 },
@@ -215,54 +214,54 @@
             ];
 
 
-            let chanclas = [];
-            let floatTexts = [];
-            let rosePetals = [];
-            let fireParticles = [];
-            let specialProjectiles = [];
-            let score = 0;
-            let bestScore = 0;
-            let spawnInterval = 1.2;
-            let minSpawnInterval = 0.45;
-            let spawnTimer = 0;
-            let baseSpeed = 140;
-            let timeElapsed = 0;
-            let superEnabled = false;
-            let specialAttackBar = 0;
-            const maxSpecialAttack = 100;
-            let slapCooldown = 0;
-            const slapEffect = { timer: 0, duration: 0.15 };
-            let winAnimationStart = 0;
-            let shakeTimer = 0;
-            let shakeIntensity = 0;
-            let hitStop = 0;
-            let meteorTimer = 0;
-            let impacts = [];
-            let chainEffects = [];
-            let comboCount = 0;
-            let fiestaMode = false;
-            let fiestaHue = 0;
-            const flash = { timer: 0, maxTime: 0, color: '#fff' };
-            let specialReadyTriggered = false;
+            var chanclas = [];
+            var floatTexts = [];
+            var rosePetals = [];
+            var fireParticles = [];
+            var specialProjectiles = [];
+            var score = 0;
+            var bestScore = 0;
+            var spawnInterval = 1.2;
+            var minSpawnInterval = 0.45;
+            var spawnTimer = 0;
+            var baseSpeed = 140;
+            var timeElapsed = 0;
+            var superEnabled = false;
+            var specialAttackBar = 0;
+            var maxSpecialAttack = 100;
+            var slapCooldown = 0;
+            var slapEffect = { timer: 0, duration: 0.15 };
+            var winAnimationStart = 0;
+            var shakeTimer = 0;
+            var shakeIntensity = 0;
+            var hitStop = 0;
+            var meteorTimer = 0;
+            var impacts = [];
+            var chainEffects = [];
+            var comboCount = 0;
+            var fiestaMode = false;
+            var fiestaHue = 0;
+            var flash = { timer: 0, maxTime: 0, color: '#fff' };
+            var specialReadyTriggered = false;
 
-            let lastTapLeft = 0;
-            let lastTapRight = 0;
-            let dashTimer = 0;
-            let dashCooldown = 0;
-            let dashDir = 0;
-            let dashTrails = [];
+            var lastTapLeft = 0;
+            var lastTapRight = 0;
+            var dashTimer = 0;
+            var dashCooldown = 0;
+            var dashDir = 0;
+            var dashTrails = [];
 
-            let dialogueTimer = 0;
-            let playerDialogueTimer = 0;
-            let dialogueText = '';
-            let playerDialogueText = '';
-            const dialogueDuration = 3.3;
+            var dialogueTimer = 0;
+            var playerDialogueTimer = 0;
+            var dialogueText = '';
+            var playerDialogueText = '';
+            var dialogueDuration = 3.3;
 
-            const keys = { left: false, right: false };
-            const touch = { left: false, right: false };
+            var keys = { left: false, right: false };
+            var touch = { left: false, right: false };
 
             // Audio context for sound effects (reuse to avoid browser limits)
-            let audioContext = null;
+            var audioContext = null;
             function getAudioContext() {
                 if (!audioContext) {
                     try {
@@ -274,7 +273,7 @@
                 return audioContext;
             }
 
-            const dialogue = {
+            var dialogue = {
                 start: [
                     "Ya no me amas, verdad?!",
                     "¡Ya sé que lo hiciste en la ducha sin grabarlo para mí!",
@@ -334,7 +333,7 @@
                 ]
             };
 
-            const gringoLines = {
+            var gringoLines = {
                 fireSpecial: [
                     "I got something that will calm you down!",
                     "Hora del jamón, cariño!",
@@ -364,7 +363,7 @@
             };
 
             function sayPlayer(category) {
-                const lines = gringoLines[category];
+                var lines = gringoLines[category];
                 if (!lines || !lines.length) return;
                 playerDialogueText = lines[Math.floor(Math.random() * lines.length)];
                 playerDialogueTimer = 2.5;
@@ -378,7 +377,7 @@
             }
 
             function sayRandom(category) {
-                const lines = dialogue[category];
+                var lines = dialogue[category];
                 if (!lines || !lines.length) return;
                 dialogueText = lines[Math.floor(Math.random() * lines.length)];
                 dialogueTimer = dialogueDuration;
@@ -397,7 +396,7 @@
 
             function resetGame() {
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
-                if (!gameData.stats.wins) gameData.stats.wins = 1;
+                gameData.stats.wins = 15;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
@@ -413,7 +412,7 @@
                 dashCooldown = 0;
                 dashDir = 0;
                 dashTrails = [];
-                const wins = gameData.stats.wins || 1;
+                var wins = gameData.stats.wins || 1;
                 isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
                 isa.x = canvas.width / 2;
@@ -460,33 +459,33 @@
                 return "";
             }
 
-            const cityShapes = [];
-            const cactusShapes = [];
-            const starDots = [];
+            var cityShapes = [];
+            var cactusShapes = [];
+            var starDots = [];
 
             function buildBackgroundElements() {
                 cityShapes.length = 0;
                 cactusShapes.length = 0;
                 starDots.length = 0;
-                for (let i = 0; i < 6; i++) {
-                    const w = 40 + Math.random() * 30;
-                    const h = 60 + Math.random() * 80;
-                    const x = (canvas.width / 6) * i + Math.random() * 20;
-                    const y = canvas.height - h - 20;
+                for (var i = 0; i < 6; i++) {
+                    var w = 40 + Math.random() * 30;
+                    var h = 60 + Math.random() * 80;
+                    var x = (canvas.width / 6) * i + Math.random() * 20;
+                    var y = canvas.height - h - 20;
                     cityShapes.push({ x, y, w, h });
                 }
-                for (let i = 0; i < 3; i++) {
-                    const baseX = 60 + i * 120 + Math.random() * 40;
-                    const baseY = canvas.height - 30;
+                for (var i = 0; i < 3; i++) {
+                    var baseX = 60 + i * 120 + Math.random() * 40;
+                    var baseY = canvas.height - 30;
                     cactusShapes.push({ baseX, baseY });
                 }
-                for (let i = 0; i < 30; i++) {
+                for (var i = 0; i < 30; i++) {
                     starDots.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.6 });
                 }
             }
 
             function drawBackground() {
-                const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                var grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
                 if (fiestaMode) {
                     grad.addColorStop(0, `hsl(${Math.floor(fiestaHue)}, 80%, 30%)`);
                     grad.addColorStop(1, `hsl(${Math.floor((fiestaHue + 60) % 360)}, 80%, 10%)`);
@@ -519,7 +518,7 @@
 
             function drawFlash() {
                 if (flash.timer <= 0) return;
-                const alpha = (flash.timer / flash.maxTime) * 0.45;
+                var alpha = (flash.timer / flash.maxTime) * 0.45;
                 ctx.save();
                 ctx.fillStyle = flash.color;
                 ctx.globalAlpha = alpha;
@@ -553,9 +552,9 @@
             }
 
             function spawnRoseExplosion(x, y) {
-                for (let i = 0; i < 12; i++) {
-                    const angle = (Math.PI * 2 * i) / 12;
-                    const speed = 150 + Math.random() * 100;
+                for (var i = 0; i < 12; i++) {
+                    var angle = (Math.PI * 2 * i) / 12;
+                    var speed = 150 + Math.random() * 100;
                     rosePetals.push({
                         x: x,
                         y: y,
@@ -573,8 +572,8 @@
             }
 
             function updateImpacts(dt) {
-                for (let i = impacts.length - 1; i >= 0; i--) {
-                    const imp = impacts[i];
+                for (var i = impacts.length - 1; i >= 0; i--) {
+                    var imp = impacts[i];
                     imp.timer -= dt;
                     if (imp.timer <= 0) impacts.splice(i, 1);
                 }
@@ -585,20 +584,20 @@
                     ctx.save();
                     ctx.translate(imp.x, imp.y);
                     ctx.rotate(imp.rotation);
-                    const p = imp.timer / imp.maxTime;
-                    const scale = (0.5 + (1 - p) * 1.5) * (imp.isBig ? 1.4 : 1); // Expand quickly
+                    var p = imp.timer / imp.maxTime;
+                    var scale = (0.5 + (1 - p) * 1.5) * (imp.isBig ? 1.4 : 1); // Expand quickly
                     ctx.scale(scale, scale);
                     ctx.globalAlpha = p;
 
                     // Draw a jagged hit shape (starburst)
                     ctx.fillStyle = imp.isBig ? '#fffce0' : '#fff';
                     ctx.beginPath();
-                    const spikes = 8;
-                    const outerRadius = 30;
-                    const innerRadius = 12;
-                    for (let i = 0; i < spikes * 2; i++) {
-                        const r = (i % 2 === 0) ? outerRadius : innerRadius;
-                        const a = (Math.PI * i) / spikes;
+                    var spikes = 8;
+                    var outerRadius = 30;
+                    var innerRadius = 12;
+                    for (var i = 0; i < spikes * 2; i++) {
+                        var r = (i % 2 === 0) ? outerRadius : innerRadius;
+                        var a = (Math.PI * i) / spikes;
                         ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
                     }
                     ctx.closePath();
@@ -617,7 +616,7 @@
             }
 
             function updateChainEffects(dt) {
-                for (let i = chainEffects.length - 1; i >= 0; i--) {
+                for (var i = chainEffects.length - 1; i >= 0; i--) {
                     chainEffects[i].timer -= dt;
                     if (chainEffects[i].timer <= 0) chainEffects.splice(i, 1);
                 }
@@ -636,7 +635,7 @@
             function drawChainEffects() {
                 chainEffects.forEach(eff => {
                     ctx.save();
-                    const p = eff.timer / eff.maxTime;
+                    var p = eff.timer / eff.maxTime;
                     ctx.globalAlpha = p;
                     // Cyan electricity glow
                     ctx.shadowColor = '#00e5ff';
@@ -646,24 +645,24 @@
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
 
-                    const segments = 6;
+                    var segments = 6;
                     ctx.beginPath();
                     ctx.moveTo(eff.x1, eff.y1);
 
-                    const dx = (eff.x2 - eff.x1) / segments;
-                    const dy = (eff.y2 - eff.y1) / segments;
+                    var dx = (eff.x2 - eff.x1) / segments;
+                    var dy = (eff.y2 - eff.y1) / segments;
 
                     // Vector for jitter direction (perpendicular)
-                    const len = Math.sqrt(dx * dx + dy * dy);
-                    const nx = -dy / (len || 1);
-                    const ny = dx / (len || 1);
+                    var len = Math.sqrt(dx * dx + dy * dy);
+                    var nx = -dy / (len || 1);
+                    var ny = dx / (len || 1);
 
-                    for (let i = 1; i < segments; i++) {
+                    for (var i = 1; i < segments; i++) {
                         // More jitter in the middle, less at ends
-                        const midFactor = 1 - Math.abs(i - segments / 2) / (segments / 2);
-                        const jitter = (Math.random() - 0.5) * 40 * midFactor;
-                        const tx = eff.x1 + dx * i + nx * jitter;
-                        const ty = eff.y1 + dy * i + ny * jitter;
+                        var midFactor = 1 - Math.abs(i - segments / 2) / (segments / 2);
+                        var jitter = (Math.random() - 0.5) * 40 * midFactor;
+                        var tx = eff.x1 + dx * i + nx * jitter;
+                        var ty = eff.y1 + dy * i + ny * jitter;
                         ctx.lineTo(tx, ty);
                     }
                     ctx.lineTo(eff.x2, eff.y2);
@@ -685,11 +684,11 @@
                 ctx.save();
                 ctx.translate(player.x, player.y - 15);
 
-                const p = 1 - (slapEffect.timer / slapEffect.duration);
-                const dir = slapEffect.swipeDir || 1;
-                let color = '255, 255, 255';
-                let width = 4;
-                const alpha = Math.max(0, 1.0 - Math.pow(p, 3));
+                var p = 1 - (slapEffect.timer / slapEffect.duration);
+                var dir = slapEffect.swipeDir || 1;
+                var color = '255, 255, 255';
+                var width = 4;
+                var alpha = Math.max(0, 1.0 - Math.pow(p, 3));
 
                 if (slapEffect.type === 'hit') {
                     color = '255, 179, 71'; // #ffb347 orange
@@ -705,19 +704,19 @@
                 ctx.lineWidth = width;
                 ctx.lineCap = 'round';
 
-                const baseAngle = 1.5 * Math.PI;
-                const sweep = 0.7 * Math.PI;
-                const centerAngle = baseAngle + (p - 0.5) * sweep * dir;
-                const arcWidth = 0.25 * Math.PI;
+                var baseAngle = 1.5 * Math.PI;
+                var sweep = 0.7 * Math.PI;
+                var centerAngle = baseAngle + (p - 0.5) * sweep * dir;
+                var arcWidth = 0.25 * Math.PI;
 
                 ctx.beginPath();
                 ctx.arc(0, 0, 75, centerAngle - arcWidth / 2, centerAngle + arcWidth / 2);
                 ctx.stroke();
 
                 // Draw Hand
-                const handAngle = dir === 1 ? centerAngle + arcWidth / 2 : centerAngle - arcWidth / 2;
-                const handX = Math.cos(handAngle) * 75;
-                const handY = Math.sin(handAngle) * 75;
+                var handAngle = dir === 1 ? centerAngle + arcWidth / 2 : centerAngle - arcWidth / 2;
+                var handX = Math.cos(handAngle) * 75;
+                var handY = Math.sin(handAngle) * 75;
 
                 ctx.translate(handX, handY);
                 ctx.rotate(handAngle + Math.PI / 2);
@@ -739,7 +738,7 @@
                 ctx.fillText('GRINGO', x, y - h / 2 - 10);
 
                 // Determine expression
-                let expression = 'normal';
+                var expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (comboCount >= 5) expression = 'cocky';
@@ -757,8 +756,8 @@
 
             function drawIsa() {
                 ctx.save();
-                let drawX = isa.x;
-                let drawY = isa.y;
+                var drawX = isa.x;
+                var drawY = isa.y;
                 if (isa.hitTimer > 0) {
                     drawX += (Math.random() - 0.5) * 12;
                     drawY += (Math.random() - 0.5) * 12;
@@ -791,10 +790,10 @@
             function drawIsaAvatar(ctx, x, y, size, isHit) {
                 ctx.save();
                 ctx.translate(x, y);
-                const faceW = size * 0.72;
-                const faceH = size * 0.82;
-                const hairColor = '#3a2522';
-                const skin = '#e7b28f';
+                var faceW = size * 0.72;
+                var faceH = size * 0.82;
+                var hairColor = '#3a2522';
+                var skin = '#e7b28f';
 
                 // Flowing hair and bun
                 ctx.fillStyle = hairColor;
@@ -835,8 +834,8 @@
                     // X Eyes
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 3;
-                    const drawXEye = (centerX, centerY) => {
-                        const r = faceW * 0.09;
+                    var drawXEye = (centerX, centerY) => {
+                        var r = faceW * 0.09;
                         ctx.beginPath();
                         ctx.moveTo(centerX - r, centerY - r);
                         ctx.lineTo(centerX + r, centerY + r);
@@ -855,7 +854,7 @@
                     ctx.fill();
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 2.2;
-                    const lash = (sx, dir) => {
+                    var lash = (sx, dir) => {
                         ctx.beginPath();
                         ctx.moveTo(sx, -faceH * 0.15);
                         ctx.quadraticCurveTo(sx + dir * 6, -faceH * 0.18, sx + dir * 12, -faceH * 0.16);
@@ -900,8 +899,8 @@
                 ctx.fill();
 
                 // Headband label
-                const labelW = faceW * 0.76;
-                const labelH = 20;
+                var labelW = faceW * 0.76;
+                var labelH = 20;
                 ctx.fillStyle = '#ff7fb6';
                 roundRect(ctx, -labelW / 2, -faceH / 2 - labelH - 2, labelW, labelH, 10);
                 ctx.fill();
@@ -943,18 +942,18 @@
                     ctx.restore();
                 }
 
-                const headW = size * 1.1;
-                const headH = size * 0.9;
-                const skin = '#f3d9bf';
-                const hair = '#362417';
-                const beard = '#3b2418';
+                var headW = size * 1.1;
+                var headH = size * 0.9;
+                var skin = '#f3d9bf';
+                var hair = '#362417';
+                var beard = '#3b2418';
 
                 ctx.fillStyle = skin;
                 roundRect(ctx, -headW / 2, -headH / 2, headW, headH, headW * 0.2);
                 ctx.fill();
 
                 // Draw Hat
-                const hat = COSMETICS_LIST.find(h => h.id === gameData.currentHat);
+                var hat = COSMETICS_LIST.find(h => h.id === gameData.currentHat);
                 if (hat && hat.icon) {
                     ctx.save();
                     ctx.font = '36px Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji, sans-serif';
@@ -1015,8 +1014,8 @@
                     // X Eyes
                     ctx.strokeStyle = '#2a1b12';
                     ctx.lineWidth = 2.5;
-                    const drawXEye = (cx, cy) => {
-                        const r = headW * 0.08;
+                    var drawXEye = (cx, cy) => {
+                        var r = headW * 0.08;
                         ctx.beginPath();
                         ctx.moveTo(cx - r, cy - r);
                         ctx.lineTo(cx + r, cy + r);
@@ -1141,8 +1140,8 @@
 
                 // Rose in mouth (Tango style)
                 if (hasRose) {
-                    const roseX = headW * 0.15;
-                    const roseY = headH * 0.22;
+                    var roseX = headW * 0.15;
+                    var roseY = headH * 0.22;
                     // Stem
                     ctx.strokeStyle = '#2d6a4f';
                     ctx.lineWidth = 1.5;
@@ -1191,7 +1190,7 @@
                 ctx.translate(x, y);
 
                 // Use the thong sandal emoji for the classic "Chancla" look
-                let emoji = '🩴💨';
+                var emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
@@ -1215,9 +1214,9 @@
 
             function drawDialogue() {
                 if (dialogueTimer <= 0 || !dialogueText) return;
-                const bubbleWidth = 280;
-                const x = isa.x - bubbleWidth / 2;
-                const y = isa.y + 30;
+                var bubbleWidth = 280;
+                var x = isa.x - bubbleWidth / 2;
+                var y = isa.y + 30;
                 ctx.save();
                 ctx.fillStyle = 'rgba(31,64,104,0.9)';
                 roundRect(ctx, x, y, bubbleWidth, 70, 12);
@@ -1236,9 +1235,9 @@
 
             function drawPlayerDialogue() {
                 if (playerDialogueTimer <= 0 || !playerDialogueText) return;
-                const bubbleWidth = 220;
-                const x = player.x - bubbleWidth / 2;
-                const y = player.y - player.h - 80;
+                var bubbleWidth = 220;
+                var x = player.x - bubbleWidth / 2;
+                var y = player.y - player.h - 80;
                 ctx.save();
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                 roundRect(ctx, x, y, bubbleWidth, 60, 12);
@@ -1265,12 +1264,12 @@
             }
 
             function wrapText(context, text, x, y, maxWidth, lineHeight) {
-                const words = text.split(' ');
-                let line = '';
-                let lines = [];
-                for (let n = 0; n < words.length; n++) {
-                    const test = line + words[n] + ' ';
-                    const metrics = context.measureText(test);
+                var words = text.split(' ');
+                var line = '';
+                var lines = [];
+                for (var n = 0; n < words.length; n++) {
+                    var test = line + words[n] + ' ';
+                    var metrics = context.measureText(test);
                     if (metrics.width > maxWidth && n > 0) {
                         lines.push(line);
                         line = words[n] + ' ';
@@ -1286,10 +1285,10 @@
                 if (player.lives > 1) return;
 
                 ctx.save();
-                const pulse = (Math.sin(timeElapsed * 8) + 1) / 2;
-                const alpha = 0.05 + pulse * 0.25; // Oscillates between 0.05 and 0.3
+                var pulse = (Math.sin(timeElapsed * 8) + 1) / 2;
+                var alpha = 0.05 + pulse * 0.25; // Oscillates between 0.05 and 0.3
 
-                const gradient = ctx.createRadialGradient(
+                var gradient = ctx.createRadialGradient(
                     canvas.width / 2, canvas.height / 2, canvas.width * 0.3,
                     canvas.width / 2, canvas.height / 2, canvas.height * 0.8
                 );
@@ -1318,10 +1317,10 @@
                 ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width - 12, 22);
 
                 // Draw special attack bar
-                const barWidth = 180;
-                const barHeight = 20;
-                const barX = canvas.width / 2 - barWidth / 2;
-                const barY = 40;
+                var barWidth = 180;
+                var barHeight = 20;
+                var barX = canvas.width / 2 - barWidth / 2;
+                var barY = 40;
 
                 // Background
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -1330,10 +1329,10 @@
 
                 // Fill bar with gradient from blue to red
                 if (specialAttackBar > 0) {
-                    const progress = specialAttackBar / maxSpecialAttack;
-                    const fillWidth = barWidth * progress;
+                    var progress = specialAttackBar / maxSpecialAttack;
+                    var fillWidth = barWidth * progress;
 
-                    const gradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
+                    var gradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
                     gradient.addColorStop(0, '#4a90e2');
                     gradient.addColorStop(0.5, progress > 0.5 ? '#9b4ae2' : '#4a90e2');
                     gradient.addColorStop(1, progress > 0.7 ? '#e24a4a' : (progress > 0.5 ? '#9b4ae2' : '#4a90e2'));
@@ -1354,14 +1353,14 @@
                 roundRect(ctx, barX, barY, barWidth, barHeight, 10);
                 ctx.stroke();
 
-                const p = Math.min(1, specialAttackBar / maxSpecialAttack);
+                var p = Math.min(1, specialAttackBar / maxSpecialAttack);
 
                 // "READY!" text
                 if (p >= 1) {
                     ctx.save();
                     ctx.translate(barX + barWidth / 2, barY + barHeight + 20);
-                    const textPulse = Math.sin(timeElapsed * 12);
-                    const scale = 1 + textPulse * 0.1;
+                    var textPulse = Math.sin(timeElapsed * 12);
+                    var scale = 1 + textPulse * 0.1;
                     ctx.scale(scale, scale);
 
                     ctx.fillStyle = '#ff79c6';
@@ -1374,10 +1373,10 @@
                 }
 
                 // Draw Isa's anger bar
-                const angerBarWidth = 150;
-                const angerBarHeight = 15;
-                const angerBarX = canvas.width / 2 - angerBarWidth / 2;
-                const angerBarY = 8;
+                var angerBarWidth = 150;
+                var angerBarHeight = 15;
+                var angerBarX = canvas.width / 2 - angerBarWidth / 2;
+                var angerBarY = 8;
 
                 // Background
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -1386,8 +1385,8 @@
 
                 // Fill bar
                 if (isa.anger > 0) {
-                    const angerProgress = isa.anger / isa.maxAnger;
-                    const angerFillWidth = angerBarWidth * angerProgress;
+                    var angerProgress = isa.anger / isa.maxAnger;
+                    var angerFillWidth = angerBarWidth * angerProgress;
 
                     ctx.fillStyle = angerProgress > 0.5 ? '#e24a4a' : '#e2a04a';
                     ctx.save();
@@ -1432,12 +1431,12 @@
                 ctx.font = '24px sans-serif';
                 ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 95);
 
-                let y = 130;
+                var y = 130;
                 ACHIEVEMENTS_LIST.forEach(a => {
-                    const status = gameData.achievements[a.id];
-                    const unlocked = a.check();
+                    var status = gameData.achievements[a.id];
+                    var unlocked = a.check();
 
-                    let bgColor = '#555'; // Locked
+                    var bgColor = '#555'; // Locked
                     if (status === 'claimed') bgColor = '#4caf50';
                     else if (unlocked) bgColor = '#ff9f1c'; // Unlocked but not claimed
 
@@ -1503,7 +1502,7 @@
                 ctx.font = '24px sans-serif';
                 ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 120);
 
-                const upgrades = [
+                var upgrades = [
                     { id: 'lives', name: 'Extra Life', icon: '❤️', baseCost: 100, maxLevel: 5, desc: '+1 Life per level' },
                     { id: 'shield', name: 'Start Shield', icon: '🛡️', baseCost: 150, maxLevel: 1, desc: 'Start with shield' },
                     { id: 'cooldown', name: 'Fast Hands', icon: '⚡', baseCost: 200, maxLevel: 5, desc: '-15ms Cooldown/lvl' },
@@ -1511,12 +1510,12 @@
                     { id: 'power', name: 'Slap Power', icon: '💥', baseCost: 150, maxLevel: 5, desc: '+Damage/lvl' }
                 ];
 
-                let y = 160;
+                var y = 160;
                 upgrades.forEach(u => {
-                    const level = gameData.upgrades[u.id] || 0;
-                    const isMax = level >= u.maxLevel;
-                    const cost = Math.floor(u.baseCost * Math.pow(1.5, level));
-                    const affordable = gameData.coins >= cost;
+                    var level = gameData.upgrades[u.id] || 0;
+                    var isMax = level >= u.maxLevel;
+                    var cost = Math.floor(u.baseCost * Math.pow(1.5, level));
+                    var affordable = gameData.coins >= cost;
 
                     // Button bg
                     ctx.fillStyle = isMax ? '#4caf50' : (affordable ? '#2196f3' : '#555');
@@ -1627,13 +1626,13 @@
                 ctx.font = '24px sans-serif';
                 ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 120);
 
-                let y = 140;
+                var y = 140;
                 COSMETICS_LIST.forEach(c => {
-                    const unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
-                    const equipped = gameData.currentHat === c.id;
-                    const affordable = gameData.coins >= c.cost;
+                    var unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
+                    var equipped = gameData.currentHat === c.id;
+                    var affordable = gameData.coins >= c.cost;
 
-                    let bgColor = '#555';
+                    var bgColor = '#555';
                     if (equipped) bgColor = '#4caf50';
                     else if (unlocked) bgColor = '#2196f3';
 
@@ -1766,7 +1765,7 @@
 
                 ctx.fillStyle = '#ffd700';
                 ctx.font = '18px sans-serif';
-                const earned = Math.floor(score / 10);
+                var earned = Math.floor(score / 10);
                 ctx.fillText(`Coins Earned: +${earned}`, canvas.width / 2, canvas.height / 2 + 70);
                 ctx.font = '14px sans-serif';
                 ctx.fillText(`Total Coins: ${gameData.coins}`, canvas.width / 2, canvas.height / 2 + 90);
@@ -1786,12 +1785,12 @@
 
 
             function spawnMeteor() {
-                const w = 120;
-                const h = 120;
-                const x = canvas.width / 2;
-                const y = -100;
-                const vy = 35;
-                const vx = 0;
+                var w = 120;
+                var h = 120;
+                var x = canvas.width / 2;
+                var y = -100;
+                var vy = 35;
+                var vx = 0;
                 chanclas.push({
                     x, y, vx, vy, w, h, type: 'meteor', rotation: 0, rotSpeed: 0.2,
                     slapsNeeded: 12, currentSlaps: 0, isMeteor: true
@@ -1802,30 +1801,30 @@
             }
 
             function spawnChancla() {
-                const isBomb = Math.random() < 0.08;
-                const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                var isBomb = Math.random() < 0.08;
+                var isHoming = superEnabled && !isBomb && Math.random() < 0.10;
+                var isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
+                var isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
 
-                let w = 32;
-                let h = 18;
+                var w = 32;
+                var h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
 
-                const x = 40 + Math.random() * (canvas.width - 80);
-                const y = isa.y + 40;
+                var x = 40 + Math.random() * (canvas.width - 80);
+                var y = isa.y + 40;
 
-                let vy = baseSpeed + Math.random() * 60;
+                var vy = baseSpeed + Math.random() * 60;
                 if (isSuper) vy += 40;
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
 
-                const vx = (Math.random() - 0.5) * 60;
-                const rotSpeed = (Math.random() - 0.5) * 5;
+                var vx = (Math.random() - 0.5) * 60;
+                var rotSpeed = (Math.random() - 0.5) * 5;
 
-                let type = 'normal';
+                var type = 'normal';
                 if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
@@ -1848,17 +1847,17 @@
                 slapEffect.type = 'miss';
                 slapEffect.swipeDir = Math.random() < 0.5 ? 1 : -1;
 
-                const slapRange = fiestaMode ? 140 : 80;
-                const perfectRange = fiestaMode ? 90 : 50;
+                var slapRange = fiestaMode ? 140 : 80;
+                var perfectRange = fiestaMode ? 90 : 50;
 
-                let slappedAny = false;
-                let slappedMeteor = false;
+                var slappedAny = false;
+                var slappedMeteor = false;
 
-                                for (let i = chanclas.length - 1; i >= 0; i--) {
-                    const c = chanclas[i];
+                                for (var i = chanclas.length - 1; i >= 0; i--) {
+                    var c = chanclas[i];
 
                     if (c.type === 'meteor' && !c.slapped) {
-                        const distToMeteor = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y + c.h/2 - player.y, 2));
+                        var distToMeteor = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y + c.h/2 - player.y, 2));
                         if (distToMeteor < 150) {
                             c.currentSlaps++;
                             c.vy -= 15;
@@ -1883,11 +1882,11 @@
                         }
                     }
 
-                    const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                    var dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
 
                     if (dist < slapRange) {
                         // Slap the chancla away
-                        const isPerfect = dist < perfectRange;
+                        var isPerfect = dist < perfectRange;
 
                         gameData.stats.totalSlaps++;
                         if (isPerfect) gameData.stats.perfectSlaps++;
@@ -1911,10 +1910,10 @@
                         if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
                             specialReadyTriggered = true;
                             // HUD egg icon approx location
-                            const eggX = canvas.width / 2;
-                            const eggY = 50;
+                            var eggX = canvas.width / 2;
+                            var eggY = 50;
                             spawnImpact(eggX, eggY, true);
-                            for (let k = 0; k < 8; k++) {
+                            for (var k = 0; k < 8; k++) {
                                 rosePetals.push({
                                     x: eggX, y: eggY,
                                     vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200,
@@ -1926,8 +1925,8 @@
                             triggerShake(5, 0.2);
                         }
 
-                        const comboPhrase = getComboPhrase(comboCount);
-                        const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
+                        var comboPhrase = getComboPhrase(comboCount);
+                        var comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
 
                         if (c.rallyCount > 0) {
                             score += 20 * c.rallyCount * (1 + (gameData.prestige || 0) * 0.5);
@@ -1962,7 +1961,7 @@
                 }
 
                 if (slappedAny) {
-                    const cdLevel = gameData.upgrades.cooldown || 0;
+                    var cdLevel = gameData.upgrades.cooldown || 0;
                     slapCooldown = slappedMeteor ? 0.08 : (0.3 - 0.015 * cdLevel);
                     if (fiestaMode) slapCooldown *= 0.5;
 
@@ -2010,17 +2009,17 @@
 
             function playWhoosh() {
                 try {
-                    const audioCtx = getAudioContext();
+                    var audioCtx = getAudioContext();
                     if (!audioCtx) return;
 
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
+                    var osc = audioCtx.createOscillator();
+                    var gain = audioCtx.createGain();
 
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
 
                     // Frequency sweep for whoosh
-                    const now = audioCtx.currentTime;
+                    var now = audioCtx.currentTime;
                     osc.frequency.setValueAtTime(400, now);
                     osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
 
@@ -2036,11 +2035,11 @@
             function playSound(frequency, duration) {
                 // Simple beep sound using Web Audio API
                 try {
-                    const audioCtx = getAudioContext();
+                    var audioCtx = getAudioContext();
                     if (!audioCtx) return;
 
-                    const oscillator = audioCtx.createOscillator();
-                    const gainNode = audioCtx.createGain();
+                    var oscillator = audioCtx.createOscillator();
+                    var gainNode = audioCtx.createGain();
 
                     oscillator.connect(gainNode);
                     gainNode.connect(audioCtx.destination);
@@ -2060,17 +2059,17 @@
 
 
             function updateChanclas(dt) {
-                for (let i = chanclas.length - 1; i >= 0; i--) {
-                    const c = chanclas[i];
+                for (var i = chanclas.length - 1; i >= 0; i--) {
+                    var c = chanclas[i];
 
                     // Homing Logic
                     if (c.type === 'homing' && !c.slapped) {
-                        const targetX = player.x;
-                        const directionX = Math.sign(targetX - c.x);
+                        var targetX = player.x;
+                        var directionX = Math.sign(targetX - c.x);
                         // Smoothly accelerate towards the player's X coordinate
                         c.vx += directionX * 200 * dt; // Acceleration factor
                         // Cap maximum horizontal speed to ensure it's still dodgeable
-                        const maxHomingSpeed = 150;
+                        var maxHomingSpeed = 150;
                         if (Math.abs(c.vx) > maxHomingSpeed) {
                             c.vx = Math.sign(c.vx) * maxHomingSpeed;
                         }
@@ -2083,16 +2082,16 @@
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
                         // Check for chain reaction with other chanclas
-                        for (let j = 0; j < chanclas.length; j++) {
+                        for (var j = 0; j < chanclas.length; j++) {
                             if (i === j) continue;
-                            const other = chanclas[j];
+                            var other = chanclas[j];
                             if (!other.slapped) {
-                                const distToOther = Math.sqrt(Math.pow(c.x - other.x, 2) + Math.pow(c.y - other.y, 2));
+                                var distToOther = Math.sqrt(Math.pow(c.x - other.x, 2) + Math.pow(c.y - other.y, 2));
                                 if (distToOther < (c.w + other.w) / 2) {
                                     // Chain reaction!
                                     other.slapped = true;
                                     // Push away from the hitting chancla, plus some transferred momentum
-                                    let pushX = (other.x - c.x);
+                                    var pushX = (other.x - c.x);
                                     // Ensure some horizontal movement if perfectly aligned
                                     if (Math.abs(pushX) < 1) pushX = (Math.random() - 0.5) * 10;
 
@@ -2100,7 +2099,7 @@
                                     other.vy = -300 + (Math.random() - 0.5) * 100;
 
                                     comboCount++;
-                                    const comboPhrase = getComboPhrase(comboCount);
+                                    var comboPhrase = getComboPhrase(comboCount);
                                     addFloatText(`CHAIN! x${comboCount} ${comboPhrase}`, other.x, other.y);
                                     spawnImpact(other.x, other.y);
                                     spawnChainEffect(c.x, c.y, other.x, other.y);
@@ -2112,7 +2111,7 @@
 
                         // Check collision with Isa for slapped chanclas
                         // Isa radius approx 40. c radius approx w/2.
-                        const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
+                        var distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
                             // Ping-Pong Rally (Dead Man's Volley) mechanic
                             if (Math.random() < 0.3) {
@@ -2133,7 +2132,7 @@
                             }
 
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                            var damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
@@ -2147,7 +2146,7 @@
                                 triggerShake(20, 0.5);
                                 triggerFlash(0.2, '#fff');
                                 addFloatText('BOOM! 💣', isa.x, isa.y + 30);
-                                for (let k = 0; k < 10; k++) {
+                                for (var k = 0; k < 10; k++) {
                                     fireParticles.push({
                                         x: isa.x + (Math.random() - 0.5) * 40,
                                         y: isa.y + (Math.random() - 0.5) * 40,
@@ -2198,7 +2197,7 @@
                                 specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
                                 addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
                                 playSound(850, 0.1);
-                                for(let k = 0; k < 5; k++) {
+                                for(var k = 0; k < 5; k++) {
                                     fireParticles.push({
                                         x: player.x + (Math.random() - 0.5) * 40,
                                         y: player.y + (Math.random() - 0.5) * 40,
@@ -2217,9 +2216,9 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
+                        var dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
                         comboCount = 0;
-                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
+                        var shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
@@ -2248,7 +2247,7 @@
                             triggerFlash(0.1, '#fff');
                             playSound(1000, 0.4);
                             addFloatText('SHRAPNEL! 💥', c.x, canvas.height - 20);
-                            for (let j = 0; j < 3; j++) {
+                            for (var j = 0; j < 3; j++) {
                                 chanclas.push({
                                     x: c.x,
                                     y: canvas.height - 10,
@@ -2261,7 +2260,7 @@
                             }
                         } else {
                             score += 1 * (1 + (gameData.prestige || 0) * 0.5);
-                            const prevBest = bestScore;
+                            var prevBest = bestScore;
                             bestScore = Math.max(bestScore, score);
                             if (score > prevBest && score % 10 === 0) sayRandom('highScore');
                             if (Math.random() < 0.2) sayRandom('nearMiss');
@@ -2293,8 +2292,8 @@
 
 
             function updateFloatTexts(dt) {
-                for (let i = floatTexts.length - 1; i >= 0; i--) {
-                    const f = floatTexts[i];
+                for (var i = floatTexts.length - 1; i >= 0; i--) {
+                    var f = floatTexts[i];
                     f.y -= 18 * dt;
                     f.time -= dt;
                     if (f.time <= 0) floatTexts.splice(i, 1);
@@ -2302,13 +2301,13 @@
             }
 
             function updateSpecialProjectiles(dt) {
-                for (let i = specialProjectiles.length - 1; i >= 0; i--) {
-                    const proj = specialProjectiles[i];
+                for (var i = specialProjectiles.length - 1; i >= 0; i--) {
+                    var proj = specialProjectiles[i];
 
                     // Move towards Isa
-                    const dx = proj.targetX - proj.x;
-                    const dy = proj.targetY - proj.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    var dx = proj.targetX - proj.x;
+                    var dy = proj.targetY - proj.y;
+                    var dist = Math.sqrt(dx * dx + dy * dy);
 
                     // Rotate projectile
                     proj.rotation += proj.rotSpeed * dt;
@@ -2330,7 +2329,7 @@
 
                     if (dist < 15) {
                         // Hit Isa!
-                        let dmg = 20 + (gameData.upgrades.power || 0) * 5;
+                        var dmg = 20 + (gameData.upgrades.power || 0) * 5;
                         isa.anger = Math.max(0, isa.anger - dmg);
                         isa.hitTimer = 0.7;
                         specialProjectiles.splice(i, 1);
@@ -2338,15 +2337,15 @@
                         // Play hit sound
                         playSound(1000, 0.15);
 
-                        const hitWords = dialogue.hitBySpecial;
-                        const word = hitWords[Math.floor(Math.random() * hitWords.length)];
+                        var hitWords = dialogue.hitBySpecial;
+                        var word = hitWords[Math.floor(Math.random() * hitWords.length)];
                         addFloatText(word + ' ❤️', isa.x, isa.y);
                         sayRandom('hitBySpecial');
 
                         // Spawn Impact Explosion
-                        for (let k = 0; k < 15; k++) {
-                            const angle = (Math.PI * 2 * k) / 15;
-                            const speed = 150 + Math.random() * 150;
+                        for (var k = 0; k < 15; k++) {
+                            var angle = (Math.PI * 2 * k) / 15;
+                            var speed = 150 + Math.random() * 150;
                             rosePetals.push({
                                 x: isa.x,
                                 y: isa.y,
@@ -2386,8 +2385,8 @@
 
 
             function triggerWin() {
-                const defeatedLevel = gameData.stats.wins || 1;
-                const bonus = Math.floor((50 + (defeatedLevel - 1) * 50) * (1 + (gameData.prestige || 0) * 0.5));
+                var defeatedLevel = gameData.stats.wins || 1;
+                var bonus = Math.floor((50 + (defeatedLevel - 1) * 50) * (1 + (gameData.prestige || 0) * 0.5));
                 gameData.coins += bonus;
                 gameData.stats.totalCoinsEarned += bonus;
                 gameData.stats.wins = defeatedLevel + 1;
@@ -2398,7 +2397,7 @@
 
             function endGame() {
                 state = STATE.GAMEOVER;
-                const earned = Math.floor(score / 10);
+                var earned = Math.floor(score / 10);
                 gameData.coins += earned;
                 gameData.stats.totalCoinsEarned += earned;
                 gameData.bestScore = Math.max(gameData.bestScore, score);
@@ -2411,8 +2410,8 @@
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
-                    const dx = (Math.random() - 0.5) * shakeIntensity * 2;
-                    const dy = (Math.random() - 0.5) * shakeIntensity * 2;
+                    var dx = (Math.random() - 0.5) * shakeIntensity * 2;
+                    var dy = (Math.random() - 0.5) * shakeIntensity * 2;
                     wrapper.style.transform = `translate(${dx}px, ${dy}px)`;
                     if (shakeTimer <= 0) wrapper.style.transform = 'none';
                 }
@@ -2451,8 +2450,8 @@
 
                     // Spawn confetti
                     if (Math.random() < 0.2) {
-                        const emojis = ['🎉', '✨', '🎊'];
-                        const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                        var emojis = ['🎉', '✨', '🎊'];
+                        var emoji = emojis[Math.floor(Math.random() * emojis.length)];
                         rosePetals.push({
                             x: Math.random() * canvas.width,
                             y: -20,
@@ -2470,8 +2469,8 @@
                 spawnTimer += dt;
                 if (timeElapsed > 12) {
                     // Ramp up difficulty faster if enraged
-                    const intervalDec = isa.enraged ? 0.05 : 0.02;
-                    const speedInc = isa.enraged ? 10 : 5;
+                    var intervalDec = isa.enraged ? 0.05 : 0.02;
+                    var speedInc = isa.enraged ? 10 : 5;
 
                     spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
                     baseSpeed += dt * speedInc;
@@ -2495,9 +2494,9 @@
                     player.x += dashDir * 800 * dt;
                     dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
                 } else {
-                    const speed = player.speed;
-                    const moveLeft = keys.left || touch.left;
-                    const moveRight = keys.right || touch.right;
+                    var speed = player.speed;
+                    var moveLeft = keys.left || touch.left;
+                    var moveRight = keys.right || touch.right;
                     if (moveLeft) player.x -= speed * dt;
                     if (moveRight) player.x += speed * dt;
                 }
@@ -2506,7 +2505,7 @@
                 if (dashTimer > 0) dashTimer -= dt;
                 if (dashCooldown > 0) dashCooldown -= dt;
 
-                for (let i = dashTrails.length - 1; i >= 0; i--) {
+                for (var i = dashTrails.length - 1; i >= 0; i--) {
                     dashTrails[i].life -= dt;
                     if (dashTrails[i].life <= 0) dashTrails.splice(i, 1);
                 }
@@ -2517,8 +2516,8 @@
                 updateFloatTexts(dt);
 
                 // Update rose petals
-                for (let i = rosePetals.length - 1; i >= 0; i--) {
-                    const p = rosePetals[i];
+                for (var i = rosePetals.length - 1; i >= 0; i--) {
+                    var p = rosePetals[i];
 
                     if (p.vx !== undefined) {
                         p.x += p.vx * dt;
@@ -2551,8 +2550,8 @@
                 }
 
                 // Update fire particles
-                for (let i = fireParticles.length - 1; i >= 0; i--) {
-                    const p = fireParticles[i];
+                for (var i = fireParticles.length - 1; i >= 0; i--) {
+                    var p = fireParticles[i];
                     p.x += p.vx * dt;
                     p.y += p.vy * dt;
                     p.life -= dt;
@@ -2589,7 +2588,7 @@
                 ctx.save();
                 ctx.globalCompositeOperation = 'lighter';
                 fireParticles.forEach(p => {
-                    const alpha = p.life / p.maxLife;
+                    var alpha = p.life / p.maxLife;
                     ctx.fillStyle = `rgba(255, ${Math.floor(100 + 155 * alpha)}, 0, ${alpha})`;
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
@@ -2621,7 +2620,7 @@
 
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                for (var c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
             }
 
             function drawWinScreen() {
@@ -2631,15 +2630,15 @@
 
                 // Draw Isa moving down and embracing
                 if (winAnimationStart === 0) winAnimationStart = Date.now();
-                const winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
-                const isaWinY = 70 + (player.y - 100 - 70) * winProgress;
+                var winProgress = Math.min(1, (Date.now() - winAnimationStart) / 3000);
+                var isaWinY = 70 + (player.y - 100 - 70) * winProgress;
                 drawIsaAvatar(ctx, isa.x, isaWinY, 78);
 
                 // Speech bubble
                 if (winProgress > 0.7) {
-                    const bubbleWidth = 280;
-                    const bubbleX = canvas.width / 2 - bubbleWidth / 2;
-                    const bubbleY = isaWinY + 50;
+                    var bubbleWidth = 280;
+                    var bubbleX = canvas.width / 2 - bubbleWidth / 2;
+                    var bubbleY = isaWinY + 50;
 
                     ctx.fillStyle = 'rgba(255, 192, 203, 0.95)';
                     roundRect(ctx, bubbleX, bubbleY, bubbleWidth, 70, 12);
@@ -2676,10 +2675,10 @@
                 ctx.restore();
             }
 
-            let last = 0;
+            var last = 0;
             function loop(ts) {
-                const now = ts / 1000;
-                const dt = last ? Math.min(0.05, now - last) : 0;
+                var now = ts / 1000;
+                var dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
                 if (state === STATE.TITLE) drawTitleScreen();
@@ -2707,9 +2706,9 @@
             }
 
             function getMousePos(canvas, evt) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
+                var rect = canvas.getBoundingClientRect();
+                var scaleX = canvas.width / rect.width;
+                var scaleY = canvas.height / rect.height;
                 return {
                     x: (evt.clientX - rect.left) * scaleX,
                     y: (evt.clientY - rect.top) * scaleY
@@ -2717,7 +2716,7 @@
             }
 
             canvas.addEventListener('click', (e) => {
-                const pos = getMousePos(canvas, e);
+                var pos = getMousePos(canvas, e);
 
                 if (state === STATE.TITLE) {
                     // Check Play Button (110, 380, w, 46)
@@ -2746,19 +2745,19 @@
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
-                    const upgrades = [
+                    var upgrades = [
                         { id: 'lives', baseCost: 100, maxLevel: 5 },
                         { id: 'shield', baseCost: 150, maxLevel: 1 },
                         { id: 'cooldown', baseCost: 200, maxLevel: 5 },
                         { id: 'speed', baseCost: 150, maxLevel: 5 },
                         { id: 'power', baseCost: 150, maxLevel: 5 }
                     ];
-                    let y = 160;
+                    var y = 160;
                     // Button height 80, margin 20
-                    for (let u of upgrades) {
+                    for (var u of upgrades) {
                         if (pos.y >= y && pos.y <= y + 80 && pos.x >= 40 && pos.x <= canvas.width - 40) {
-                            const level = gameData.upgrades[u.id] || 0;
-                            const cost = Math.floor(u.baseCost * Math.pow(1.5, level));
+                            var level = gameData.upgrades[u.id] || 0;
+                            var cost = Math.floor(u.baseCost * Math.pow(1.5, level));
                             if (level < u.maxLevel && gameData.coins >= cost) {
                                 gameData.coins -= cost;
                                 gameData.upgrades[u.id] = level + 1;
@@ -2777,11 +2776,11 @@
                         state = STATE.TITLE;
                     }
                 } else if (state === STATE.ACHIEVEMENTS) {
-                    let y = 130;
-                    for (let a of ACHIEVEMENTS_LIST) {
+                    var y = 130;
+                    for (var a of ACHIEVEMENTS_LIST) {
                         if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
-                            const status = gameData.achievements[a.id];
-                            const unlocked = a.check();
+                            var status = gameData.achievements[a.id];
+                            var unlocked = a.check();
                             if (unlocked && status !== 'claimed') {
                                 gameData.coins += a.reward;
                                 gameData.achievements[a.id] = 'claimed';
@@ -2812,10 +2811,10 @@
                         state = STATE.TITLE;
                     }
                 } else if (state === STATE.COSMETICS) {
-                    let y = 140;
-                    for (let c of COSMETICS_LIST) {
+                    var y = 140;
+                    for (var c of COSMETICS_LIST) {
                         if (pos.y >= y && pos.y <= y + 70 && pos.x >= 40 && pos.x <= canvas.width - 40) {
-                            const unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
+                            var unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
                             if (unlocked) {
                                 gameData.currentHat = c.id;
                                 saveGameData();
@@ -2852,11 +2851,11 @@
                 // Prevent default touch behaviors like scrolling
                 if (e.target === canvas) e.preventDefault();
 
-                const touchPoint = e.touches[0];
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                const pos = {
+                var touchPoint = e.touches[0];
+                var rect = canvas.getBoundingClientRect();
+                var scaleX = canvas.width / rect.width;
+                var scaleY = canvas.height / rect.height;
+                var pos = {
                     x: (touchPoint.clientX - rect.left) * scaleX,
                     y: (touchPoint.clientY - rect.top) * scaleY
                 };
@@ -2885,11 +2884,11 @@
                 if (state === STATE.GAMEOVER || state === STATE.WIN) { resetGame(); return; }
 
                                 if (state === STATE.ACHIEVEMENTS) {
-                    let y = 130;
-                    for (let a of ACHIEVEMENTS_LIST) {
+                    var y = 130;
+                    for (var a of ACHIEVEMENTS_LIST) {
                         if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
-                            const status = gameData.achievements[a.id];
-                            const unlocked = a.check();
+                            var status = gameData.achievements[a.id];
+                            var unlocked = a.check();
                             if (unlocked && status !== 'claimed') {
                                 gameData.coins += a.reward;
                                 gameData.achievements[a.id] = 'claimed';
@@ -2924,10 +2923,10 @@
                     }
                 }
                 if (state === STATE.COSMETICS) {
-                    let y = 140;
-                    for (let c of COSMETICS_LIST) {
+                    var y = 140;
+                    for (var c of COSMETICS_LIST) {
                         if (pos.y >= y && pos.y <= y + 70 && pos.x >= 40 && pos.x <= canvas.width - 40) {
-                            const unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
+                            var unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
                             if (unlocked) {
                                 gameData.currentHat = c.id;
                                 saveGameData();
@@ -2954,18 +2953,18 @@
 
                 if (state === STATE.SHOP) {
                      // Check Upgrade Buttons
-                    const upgrades = [
+                    var upgrades = [
                         { id: 'lives', baseCost: 100, maxLevel: 5 },
                         { id: 'shield', baseCost: 150, maxLevel: 1 },
                         { id: 'cooldown', baseCost: 200, maxLevel: 5 },
                         { id: 'speed', baseCost: 150, maxLevel: 5 },
                         { id: 'power', baseCost: 150, maxLevel: 5 }
                     ];
-                    let y = 160;
-                    for (let u of upgrades) {
+                    var y = 160;
+                    for (var u of upgrades) {
                         if (pos.y >= y && pos.y <= y + 80 && pos.x >= 40 && pos.x <= canvas.width - 40) {
-                            const level = gameData.upgrades[u.id] || 0;
-                            const cost = Math.floor(u.baseCost * Math.pow(1.5, level));
+                            var level = gameData.upgrades[u.id] || 0;
+                            var cost = Math.floor(u.baseCost * Math.pow(1.5, level));
                             if (level < u.maxLevel && gameData.coins >= cost) {
                                 gameData.coins -= cost;
                                 gameData.upgrades[u.id] = level + 1;
@@ -2986,7 +2985,7 @@
                 }
 
                 if (state === STATE.PLAYING) {
-                    const relativeY = pos.y / canvas.height;
+                    var relativeY = pos.y / canvas.height;
 
                     // If tapping in the upper area (not movement zones at bottom), trigger slap
                     if (relativeY < 0.6) {
@@ -3090,12 +3089,12 @@
             }, { passive: true });
 
             function resize() {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
+                var rect = canvas.getBoundingClientRect();
+                var scaleX = canvas.width / rect.width;
+                var scaleY = canvas.height / rect.height;
                 canvas.dataset.scaleX = scaleX;
                 canvas.dataset.scaleY = scaleY;
-                const control = document.getElementById('mobile-controls');
+                var control = document.getElementById('mobile-controls');
                 control.style.width = rect.width + 'px';
                 buildBackgroundElements();
             }
@@ -3107,7 +3106,7 @@
                 setDirectionsVisible(true);
             }
             initTitle();
-        })();
+
     </script>
 </body>
 
