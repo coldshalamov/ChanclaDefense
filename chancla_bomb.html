@@ -161,6 +161,8 @@
 
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
             let state = STATE.TITLE;
+            let witchTimeTimer = 0;
+
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -239,6 +241,8 @@
             let impacts = [];
             let chainEffects = [];
             let comboCount = 0;
+                witchTimeTimer = 0;
+
             let fiestaMode = false;
             let fiestaHue = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
@@ -426,6 +430,7 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
+                witchTimeTimer = 0;
                 fiestaMode = false;
                 fiestaHue = 0;
                 spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
@@ -1917,6 +1922,7 @@
                 } else {
                     slapCooldown = 0.15;
                     comboCount = 0;
+                witchTimeTimer = 0;
                     playWhoosh();
                     rosePetals.push({
                         x: player.x + (Math.random() - 0.5) * 20,
@@ -2008,6 +2014,7 @@
 
 
             function updateChanclas(dt) {
+                let enemyDt = typeof witchTimeTimer !== 'undefined' && witchTimeTimer > 0 ? dt * 0.3 : dt;
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
@@ -2016,7 +2023,7 @@
                         const targetX = player.x;
                         const directionX = Math.sign(targetX - c.x);
                         // Smoothly accelerate towards the player's X coordinate
-                        c.vx += directionX * 200 * dt; // Acceleration factor
+                        c.vx += directionX * 200 * enemyDt; // Acceleration factor
                         // Cap maximum horizontal speed to ensure it's still dodgeable
                         const maxHomingSpeed = 150;
                         if (Math.abs(c.vx) > maxHomingSpeed) {
@@ -2024,9 +2031,9 @@
                         }
                     }
 
-                    c.x += c.vx * dt;
-                    c.y += c.vy * dt;
-                    c.rotation += c.rotSpeed * dt;
+                    c.x += c.vx * enemyDt;
+                    c.y += c.vy * enemyDt;
+                    c.rotation += c.rotSpeed * enemyDt;
 
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
@@ -2144,7 +2151,9 @@
                                 c.grazed = true;
                                 score += 5;
                                 specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
-                                addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
+                                witchTimeTimer = 1.5;
+                                addFloatText('WITCH TIME!', player.x, player.y - 30, '#cc00ff');
+                                triggerFlash(0.2, '#cc00ff');
                                 playSound(850, 0.1);
                                 for(let k = 0; k < 5; k++) {
                                     fireParticles.push({
@@ -2167,6 +2176,7 @@
                         }
                         const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
                         comboCount = 0;
+                witchTimeTimer = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
@@ -2374,6 +2384,12 @@
                     return;
                 }
 
+                if (witchTimeTimer > 0) {
+                    witchTimeTimer -= dt;
+                }
+
+                let enemyDt = witchTimeTimer > 0 ? dt * 0.3 : dt;
+
                 if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
                     isa.enraged = true;
                     // Rage phase entry effects
@@ -2415,14 +2431,14 @@
                     }
                 }
 
-                spawnTimer += dt;
+                spawnTimer += enemyDt;
                 if (timeElapsed > 12) {
                     // Ramp up difficulty faster if enraged
                     const intervalDec = isa.enraged ? 0.05 : 0.02;
                     const speedInc = isa.enraged ? 10 : 5;
 
-                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
-                    baseSpeed += dt * speedInc;
+                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - enemyDt * intervalDec);
+                    baseSpeed += enemyDt * speedInc;
                 }
                 if (timeElapsed > 18) superEnabled = true;
                 if (spawnTimer >= spawnInterval) {
@@ -2432,7 +2448,7 @@
 
 
                 if (isa.enraged) {
-                    meteorTimer += dt;
+                    meteorTimer += enemyDt;
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
                         meteorTimer = 0;
@@ -2560,6 +2576,12 @@
                 drawSlapEffect();
 
                 drawLowHealthVignette();
+                if (typeof witchTimeTimer !== 'undefined' && witchTimeTimer > 0) {
+                    ctx.save();
+                    ctx.fillStyle = `rgba(204, 0, 255, ${Math.min(0.2, witchTimeTimer * 0.2)})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                }
                 drawFlash();
                 drawHUD();
                 drawFloatTexts();
