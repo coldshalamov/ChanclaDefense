@@ -193,7 +193,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, displayAnger: 100, hitTimer: 0, enraged: false };
 
             const COSMETICS_LIST = [
                 { id: 'none', name: 'No Hat', icon: '', cost: 0 },
@@ -415,6 +415,7 @@
                 const wins = gameData.stats.wins || 1;
                 isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
+                isa.displayAnger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.enraged = false;
@@ -1302,29 +1303,103 @@
 
             function drawHUD() {
                 ctx.save();
+
+                // Top HUD: Score & Coins
                 ctx.fillStyle = '#fff';
                 ctx.font = '16px sans-serif';
                 ctx.textAlign = 'left';
                 ctx.fillText('Score: ' + score, 12, 22);
-                ctx.textAlign = 'center';
-                ctx.fillStyle = '#ffd700';
-                ctx.font = '14px sans-serif';
-                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 16);
 
                 ctx.textAlign = 'right';
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '14px sans-serif';
+                ctx.fillText('💰 ' + gameData.coins, canvas.width - 12, 22);
+
+                // Lives moved to bottom left
+                ctx.textAlign = 'left';
                 ctx.fillStyle = '#fff';
                 ctx.font = '16px sans-serif';
-                ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width - 12, 22);
+                ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), 12, canvas.height - 12);
 
-                // Draw special attack bar
-                const barWidth = 180;
-                const barHeight = 20;
+                // EPIC BOSS HEALTH BAR at top
+                const bossBarWidth = 300;
+                const bossBarHeight = 18;
+                const bossBarX = canvas.width / 2 - bossBarWidth / 2;
+                const bossBarY = 45;
+
+                // Boss Name
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.letterSpacing = '1px';
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 4;
+                ctx.fillText("ISA, LA REINA DE LAS CHANCLAS", canvas.width / 2, bossBarY - 8);
+                ctx.shadowBlur = 0; // reset
+                ctx.letterSpacing = 'normal';
+
+                // Background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                roundRect(ctx, bossBarX, bossBarY, bossBarWidth, bossBarHeight, 6);
+                ctx.fill();
+
+                // Outline Boss Bar
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = 2;
+                roundRect(ctx, bossBarX, bossBarY, bossBarWidth, bossBarHeight, 6);
+                ctx.stroke();
+
+                if (isa.maxAnger > 0) {
+                    // Yellow delayed damage bar
+                    const displayProgress = Math.max(0, isa.displayAnger) / isa.maxAnger;
+                    if (displayProgress > 0) {
+                        const displayFillWidth = bossBarWidth * displayProgress;
+                        ctx.fillStyle = '#ffd700'; // Yellow
+                        ctx.save();
+                        ctx.beginPath();
+                        roundRect(ctx, bossBarX, bossBarY, displayFillWidth, bossBarHeight, 6);
+                        ctx.clip();
+                        roundRect(ctx, bossBarX, bossBarY, displayFillWidth, bossBarHeight, 6);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+
+                    // Red actual health bar
+                    const angerProgress = Math.max(0, isa.anger) / isa.maxAnger;
+                    if (angerProgress > 0) {
+                        const angerFillWidth = bossBarWidth * angerProgress;
+
+                        const gradient = ctx.createLinearGradient(bossBarX, 0, bossBarX + bossBarWidth, 0);
+                        gradient.addColorStop(0, '#8b0000'); // Dark red
+                        gradient.addColorStop(1, '#ff3333'); // Bright red
+
+                        ctx.fillStyle = gradient;
+                        ctx.save();
+                        ctx.beginPath();
+                        roundRect(ctx, bossBarX, bossBarY, angerFillWidth, bossBarHeight, 6);
+                        ctx.clip();
+                        roundRect(ctx, bossBarX, bossBarY, angerFillWidth, bossBarHeight, 6);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+
+                // Border around the health bar fill
+                ctx.strokeStyle = '#eee';
+                ctx.lineWidth = 1.5;
+                roundRect(ctx, bossBarX, bossBarY, bossBarWidth, bossBarHeight, 6);
+                ctx.stroke();
+
+
+                // Draw special attack bar (Moved to bottom center)
+                const barWidth = 140;
+                const barHeight = 16;
                 const barX = canvas.width / 2 - barWidth / 2;
-                const barY = 40;
+                const barY = canvas.height - 30;
 
                 // Background
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                roundRect(ctx, barX, barY, barWidth, barHeight, 10);
+                roundRect(ctx, barX, barY, barWidth, barHeight, 8);
                 ctx.fill();
 
                 // Fill bar with gradient from blue to red
@@ -1340,9 +1415,9 @@
                     ctx.fillStyle = gradient;
                     ctx.save();
                     ctx.beginPath();
-                    roundRect(ctx, barX, barY, fillWidth, barHeight, 10);
+                    roundRect(ctx, barX, barY, fillWidth, barHeight, 8);
                     ctx.clip();
-                    roundRect(ctx, barX, barY, fillWidth, barHeight, 10);
+                    roundRect(ctx, barX, barY, fillWidth, barHeight, 8);
                     ctx.fill();
                     ctx.restore();
                 }
@@ -1350,7 +1425,7 @@
                 // Border
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
-                roundRect(ctx, barX, barY, barWidth, barHeight, 10);
+                roundRect(ctx, barX, barY, barWidth, barHeight, 8);
                 ctx.stroke();
 
                 const p = Math.min(1, specialAttackBar / maxSpecialAttack);
@@ -1358,7 +1433,7 @@
                 // "READY!" text
                 if (p >= 1) {
                     ctx.save();
-                    ctx.translate(barX + barWidth / 2, barY + barHeight + 20);
+                    ctx.translate(barX + barWidth / 2, barY - 15);
                     const textPulse = Math.sin(timeElapsed * 12);
                     const scale = 1 + textPulse * 0.1;
                     ctx.scale(scale, scale);
@@ -1372,47 +1447,8 @@
                     ctx.restore();
                 }
 
-                // Draw Isa's anger bar
-                const angerBarWidth = 150;
-                const angerBarHeight = 15;
-                const angerBarX = canvas.width / 2 - angerBarWidth / 2;
-                const angerBarY = 8;
-
-                // Background
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                roundRect(ctx, angerBarX, angerBarY, angerBarWidth, angerBarHeight, 8);
-                ctx.fill();
-
-                // Fill bar
-                if (isa.anger > 0) {
-                    const angerProgress = isa.anger / isa.maxAnger;
-                    const angerFillWidth = angerBarWidth * angerProgress;
-
-                    ctx.fillStyle = angerProgress > 0.5 ? '#e24a4a' : '#e2a04a';
-                    ctx.save();
-                    ctx.beginPath();
-                    roundRect(ctx, angerBarX, angerBarY, angerFillWidth, angerBarHeight, 8);
-                    ctx.clip();
-                    roundRect(ctx, angerBarX, angerBarY, angerFillWidth, angerBarHeight, 8);
-                    ctx.fill();
-                    ctx.restore();
-                }
-
-                // Border
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1.5;
-                roundRect(ctx, angerBarX, angerBarY, angerBarWidth, angerBarHeight, 8);
-                ctx.stroke();
-
-                // Label
-                ctx.fillStyle = '#fff';
-                ctx.font = '10px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText("Isa's Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
-
                 ctx.restore();
             }
-
 
             function drawAchievements() {
                 drawBackground();
@@ -2356,6 +2392,13 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+
+                if (isa.displayAnger > isa.anger) {
+                    isa.displayAnger -= 50 * dt;
+                }
+                if (isa.displayAnger < isa.anger) {
+                    isa.displayAnger = isa.anger;
+                }
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
