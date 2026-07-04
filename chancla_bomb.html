@@ -235,6 +235,7 @@
             let shakeTimer = 0;
             let shakeIntensity = 0;
             let hitStop = 0;
+            let witchTimeTimer = 0;
             let meteorTimer = 0;
             let impacts = [];
             let chainEffects = [];
@@ -502,6 +503,11 @@
 
                 ctx.fillStyle = isa.enraged ? '#1a0508' : '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+
+                if (witchTimeTimer > 0) {
+                    ctx.fillStyle = 'rgba(138, 43, 226, 0.2)'; // Purple overlay
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
 
                 ctx.fillStyle = '#1b8c6e';
                 cactusShapes.forEach(c => {
@@ -1201,6 +1207,9 @@
                     if (type === 'meteor') {
                         ctx.shadowColor = 'red';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'golden') {
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 15;
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
@@ -1750,14 +1759,16 @@
             }
 
             function spawnChancla() {
-                const isBomb = Math.random() < 0.08;
+                const isGolden = Math.random() < 0.03;
+                const isBomb = !isGolden && Math.random() < 0.08;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
-                if (isSuper) { w = 46; h = 26; }
+                if (isGolden) { w = 40; h = 22; }
+                else if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
 
@@ -1765,7 +1776,8 @@
                 const y = isa.y + 40;
 
                 let vy = baseSpeed + Math.random() * 60;
-                if (isSuper) vy += 40;
+                if (isGolden) vy += 100; // Fast
+                else if (isSuper) vy += 40;
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
@@ -1774,7 +1786,8 @@
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isBomb) type = 'bomb';
+                if (isGolden) type = 'golden';
+                else if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
@@ -1887,7 +1900,14 @@
                         }
 
                         // Add float text
-                        if (isPerfect) {
+                        if (c.type === 'golden') {
+                                gameData.coins += 50;
+                                gameData.stats.totalCoinsEarned += 50;
+                                addFloatText('GOLDEN! +50💰', c.x, c.y - 20, '#ffd700');
+                                spawnImpact(c.x, c.y, true);
+                                playSound(850, 0.15);
+                                triggerShake(10, 0.2);
+                            } else if (isPerfect) {
                             gameData.coins += 2;
                             gameData.stats.totalCoinsEarned += 2;
                             addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
@@ -2082,6 +2102,7 @@
 
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                            if (c.type === 'golden') damage = 50;
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
@@ -2145,6 +2166,8 @@
                                 score += 5;
                                 specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
                                 addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
+                                witchTimeTimer = 2.0; // Witch Time!
+
                                 playSound(850, 0.1);
                                 for(let k = 0; k < 5; k++) {
                                     fireParticles.push({
@@ -2191,6 +2214,12 @@
                         if (player.lives <= 0) endGame();
                         continue;
                     } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
+                        if (c.type === 'golden') {
+                            const penalty = Math.min(20, gameData.coins);
+                            gameData.coins -= penalty;
+                            comboCount = 0; // Reset combo
+                            addFloatText('-' + penalty + ' COINS!', canvas.width/2, canvas.height - 40, '#ff4d4d');
+                        }
                         if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
                             triggerFlash(0.1, '#fff');
@@ -2383,7 +2412,13 @@
                     addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
                 }
 
-                timeElapsed += dt;
+
+                if (witchTimeTimer > 0) {
+                    witchTimeTimer -= dt;
+                }
+                const enemyDt = witchTimeTimer > 0 ? dt * 0.3 : dt;
+
+                timeElapsed += enemyDt;
                 if (comboCount >= 10 && !fiestaMode) {
                     fiestaMode = true;
                     playSound(600, 0.4);
@@ -2415,14 +2450,14 @@
                     }
                 }
 
-                spawnTimer += dt;
+                spawnTimer += enemyDt;
                 if (timeElapsed > 12) {
                     // Ramp up difficulty faster if enraged
                     const intervalDec = isa.enraged ? 0.05 : 0.02;
                     const speedInc = isa.enraged ? 10 : 5;
 
                     spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
-                    baseSpeed += dt * speedInc;
+                    baseSpeed += enemyDt * speedInc;
                 }
                 if (timeElapsed > 18) superEnabled = true;
                 if (spawnTimer >= spawnInterval) {
@@ -2432,7 +2467,7 @@
 
 
                 if (isa.enraged) {
-                    meteorTimer += dt;
+                    meteorTimer += enemyDt;
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
                         meteorTimer = 0;
@@ -2458,7 +2493,7 @@
                     dashTrails[i].life -= dt;
                     if (dashTrails[i].life <= 0) dashTrails.splice(i, 1);
                 }
-                updateChanclas(dt);
+                updateChanclas(enemyDt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
