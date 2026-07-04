@@ -1,0 +1,20 @@
+I can implement a "Prestige" system like in many clicker/arcade games.
+
+When the user reaches level 10 (`gameData.stats.wins >= 10`), they can prestige.
+Prestiging resets their `coins`, `upgrades`, and `stats.wins`, but increments a new stat: `gameData.prestige`.
+
+Each point of prestige will give them:
+- 50% more coins from slaps/bonuses.
+- 50% more points from slaps/bonuses.
+
+Steps:
+1. Add `prestige: 0` to `gameData` initialization.
+2. In `drawTitleScreen()`, if `gameData.stats.wins >= 10`, draw a "Prestige / Prestigio" button below Cosmetics (e.g., at y=620).
+3. In click/touch listeners for `STATE.TITLE`, add logic for the Prestige button. Clicking it sets `gameData.prestige = (gameData.prestige || 0) + 1`, resets `coins = 0`, `upgrades` to 0, `stats.wins = 1`, and saves.
+4. When adding to `score` or `gameData.coins`, multiply by `(1 + (gameData.prestige || 0) * 0.5)`.
+
+Wait, the memory says:
+* The game includes a 'Prestige' system (`STATE.PRESTIGE`). When a player reaches 10 wins (`gameData.stats.wins >= 10`), they can prestige to reset their wins, coins, and upgrades in exchange for incrementing `gameData.prestige`, which grants a permanent 0.5x multiplier to most coin and score calculations (`1 + gameData.prestige * 0.5`).
+* On the Title Screen (`STATE.TITLE`), the 'Prestige / Prestigio' button is rendered at `y = 620` and is visible conditionally when `gameData.stats.wins >= 10`.
+
+This implies the system might be described in a branch or I should implement EXACTLY this system because the memory references it!
