@@ -160,7 +160,7 @@
             const wrapper = document.querySelector('.wrapper');
 
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
-            let state = STATE.TITLE;
+            let state = STATE.PLAYING;
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -193,7 +193,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
 
             const COSMETICS_LIST = [
                 { id: 'none', name: 'No Hat', icon: '', cost: 0 },
@@ -415,7 +415,6 @@
                 const wins = gameData.stats.wins || 1;
                 isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
-                isa.displayAnger = isa.maxAnger;
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.enraged = false;
@@ -1388,21 +1387,6 @@
                 roundRect(ctx, angerBarX, angerBarY, angerBarWidth, angerBarHeight, 8);
                 ctx.fill();
 
-                // Delayed visual health (white decay)
-                if (isa.displayAnger > 0) {
-                    const displayProgress = isa.displayAnger / isa.maxAnger;
-                    const displayFillWidth = angerBarWidth * displayProgress;
-
-                    ctx.fillStyle = '#fff';
-                    ctx.save();
-                    ctx.beginPath();
-                    roundRect(ctx, angerBarX, angerBarY, displayFillWidth, angerBarHeight, 8);
-                    ctx.clip();
-                    roundRect(ctx, angerBarX, angerBarY, displayFillWidth, angerBarHeight, 8);
-                    ctx.fill();
-                    ctx.restore();
-                }
-
                 // Fill bar
                 if (isa.anger > 0) {
                     const angerProgress = isa.anger / isa.maxAnger;
@@ -1770,11 +1754,11 @@
             }
 
             function spawnChancla() {
-                const isBomb = Math.random() < 0.08;
+                const isBomb = false;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
-                const isGolden = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.02;
+                const isGolden = true;
 
                 let w = 32;
                 let h = 18;
@@ -2183,27 +2167,7 @@
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
-                        if (dashTimer > 0) { // I-frames during dash -> Perfect Dodge (Graze)
-                            if (!c.grazed) {
-                                c.grazed = true;
-                                score += 5;
-                                specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
-                                addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
-                                playSound(850, 0.1);
-                                for(let k = 0; k < 5; k++) {
-                                    fireParticles.push({
-                                        x: player.x + (Math.random() - 0.5) * 40,
-                                        y: player.y + (Math.random() - 0.5) * 40,
-                                        vx: (Math.random() - 0.5) * 150,
-                                        vy: (Math.random() - 0.5) * 150,
-                                        life: 0.3 + Math.random() * 0.3,
-                                        maxLife: 0.6,
-                                        size: 5 + Math.random() * 5
-                                    });
-                                }
-                            }
-                            continue;
-                        }
+                        if (dashTimer > 0) continue; // I-frames during dash
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2268,12 +2232,9 @@
                 floatTexts.forEach(f => {
                     ctx.save();
                     ctx.globalAlpha = Math.max(0, f.time / f.max);
-                    ctx.font = `bold ${f.fontSize || 14}px sans-serif`;
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '14px sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.fillStyle = f.color || '#fff';
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 3;
-                    ctx.strokeText(f.text, f.x, f.y);
                     ctx.fillText(f.text, f.x, f.y);
                     ctx.restore();
                 });
@@ -2400,6 +2361,24 @@
 
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
+                if (!window.injected) {
+                    window.injected = true;
+                    spawnChancla();
+                    chanclas[0].x = 200;
+                    chanclas[0].y = 350;
+                    chanclas[0].vx = 0;
+                    chanclas[0].vy = 0;
+                    player.x = 200;
+                    player.y = 450;
+                }
+
+                if (window.doSlapNow) {
+                    window.doSlapNow = false;
+                    player.x = 200;
+                    player.y = 350;
+                    trySlap();
+                }
+
 
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
@@ -2425,13 +2404,6 @@
                     triggerFlash(0.3, '#ff4d4d');
                     playSound(1000, 0.3);
                     addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
-                }
-
-                if (isa.displayAnger > isa.anger) {
-                    isa.displayAnger -= (isa.maxAnger * 0.5) * dt;
-                    if (isa.displayAnger < isa.anger) isa.displayAnger = isa.anger;
-                } else if (isa.displayAnger < isa.anger) {
-                    isa.displayAnger = isa.anger;
                 }
 
                 timeElapsed += dt;
@@ -2476,7 +2448,7 @@
                     baseSpeed += dt * speedInc;
                 }
                 if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval) {
+                if (false) {
                     spawnChancla();
                     spawnTimer = 0;
                 }
@@ -3015,6 +2987,24 @@
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
+                if (!window.injected) {
+                    window.injected = true;
+                    spawnChancla();
+                    chanclas[0].x = 200;
+                    chanclas[0].y = 350;
+                    chanclas[0].vx = 0;
+                    chanclas[0].vy = 0;
+                    player.x = 200;
+                    player.y = 450;
+                }
+
+                if (window.doSlapNow) {
+                    window.doSlapNow = false;
+                    player.x = 200;
+                    player.y = 350;
+                    trySlap();
+                }
+
                     if (!touch[dir] && dashCooldown <= 0) {
                         if (dir === 'left') {
                             if (timeElapsed - lastTapLeft < 0.25) {
