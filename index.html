@@ -161,6 +161,7 @@
 
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
             let state = STATE.TITLE;
+            let witchTimeTimer = 0;
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -442,6 +443,7 @@
                 hitStop = 0;
                 meteorTimer = 0;
                 flash.timer = 0;
+                witchTimeTimer = 0;
                 specialReadyTriggered = false;
                 chainEffects = [];
                 wrapper.style.transform = 'none';
@@ -518,6 +520,12 @@
             }
 
             function drawFlash() {
+                if (witchTimeTimer > 0) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(138, 43, 226, 0.2)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                }
                 if (flash.timer <= 0) return;
                 const alpha = (flash.timer / flash.maxTime) * 0.45;
                 ctx.save();
@@ -2158,21 +2166,7 @@
                         if (dashTimer > 0) { // I-frames during dash -> Perfect Dodge (Graze)
                             if (!c.grazed) {
                                 c.grazed = true;
-                                score += 5;
-                                specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
-                                addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
-                                playSound(850, 0.1);
-                                for(let k = 0; k < 5; k++) {
-                                    fireParticles.push({
-                                        x: player.x + (Math.random() - 0.5) * 40,
-                                        y: player.y + (Math.random() - 0.5) * 40,
-                                        vx: (Math.random() - 0.5) * 150,
-                                        vy: (Math.random() - 0.5) * 150,
-                                        life: 0.3 + Math.random() * 0.3,
-                                        maxLife: 0.6,
-                                        size: 5 + Math.random() * 5
-                                    });
-                                }
+                                triggerGraze();
                             }
                             continue;
                         }
@@ -2255,6 +2249,25 @@
                 return Math.abs(a.x - b.x) < (a.w / 2 + b.w / 2) && Math.abs(a.y - b.y) < (a.h / 2 + b.h / 2);
             }
 
+
+            function triggerGraze() {
+                score += 5;
+                specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
+                addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
+                playSound(850, 0.1);
+                for(let k = 0; k < 5; k++) {
+                    fireParticles.push({
+                        x: player.x + (Math.random() - 0.5) * 40,
+                        y: player.y + (Math.random() - 0.5) * 40,
+                        vx: (Math.random() - 0.5) * 150,
+                        vy: (Math.random() - 0.5) * 150,
+                        life: 0.3 + Math.random() * 0.3,
+                        maxLife: 0.6,
+                        size: 5 + Math.random() * 5
+                    });
+                }
+                witchTimeTimer = 2.0;
+            }
 
             function updateFloatTexts(dt) {
                 for (let i = floatTexts.length - 1; i >= 0; i--) {
@@ -2349,6 +2362,8 @@
             }
 
 
+
+
             function triggerWin() {
                 const defeatedLevel = gameData.stats.wins || 1;
                 const bonus = 50 + (defeatedLevel - 1) * 50;
@@ -2388,6 +2403,14 @@
                 if (hitStop > 0) {
                     hitStop -= dt;
                     return;
+                }
+
+                if (witchTimeTimer > 0) {
+                    witchTimeTimer -= dt;
+                }
+                let enemyDt = dt;
+                if (witchTimeTimer > 0) {
+                    enemyDt = dt * 0.3;
                 }
 
                 if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
@@ -2438,14 +2461,14 @@
                     }
                 }
 
-                spawnTimer += dt;
+                spawnTimer += enemyDt;
                 if (timeElapsed > 12) {
                     // Ramp up difficulty faster if enraged
                     const intervalDec = isa.enraged ? 0.05 : 0.02;
                     const speedInc = isa.enraged ? 10 : 5;
 
-                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
-                    baseSpeed += dt * speedInc;
+                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - enemyDt * intervalDec);
+                    baseSpeed += enemyDt * speedInc;
                 }
                 if (timeElapsed > 18) superEnabled = true;
                 if (spawnTimer >= spawnInterval) {
@@ -2455,7 +2478,7 @@
 
 
                 if (isa.enraged) {
-                    meteorTimer += dt;
+                    meteorTimer += enemyDt;
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
                         meteorTimer = 0;
@@ -2481,7 +2504,7 @@
                     dashTrails[i].life -= dt;
                     if (dashTrails[i].life <= 0) dashTrails.splice(i, 1);
                 }
-                updateChanclas(dt);
+                updateChanclas(enemyDt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
