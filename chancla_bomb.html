@@ -159,10 +159,11 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige' };
             let state = STATE.TITLE;
+            function getPrestigeMult() { return 1 + (gameData.prestige || 0) * 0.5; }
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none', prestige: 0 };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -178,6 +179,8 @@
                 }
                 if (!gameData.upgrades) gameData.upgrades = { lives: 0, shield: 0, cooldown: 0, speed: 0 };
                 if (gameData.upgrades.speed === undefined) gameData.upgrades.speed = 0;
+                if (gameData.prestige === undefined) gameData.prestige = 0;
+                if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (gameData.upgrades.power === undefined) gameData.upgrades.power = 0;
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
@@ -1659,55 +1662,113 @@
                 ctx.restore();
             }
 
+
+            function drawPrestige() {
+                drawBackground();
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#ffd700';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 36px sans-serif';
+                ctx.fillText('PRESTIGE', canvas.width / 2, 100);
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '16px sans-serif';
+                ctx.fillText('Current Prestige: ' + (gameData.prestige || 0), canvas.width / 2, 150);
+                ctx.fillText('Multiplier: ' + getPrestigeMult() + 'x', canvas.width / 2, 180);
+
+                ctx.fillStyle = '#ff9999';
+                ctx.fillText('WARNING: Prestiging will reset', canvas.width / 2, 230);
+                ctx.fillText('your Wins, Coins, and Upgrades!', canvas.width / 2, 260);
+
+                ctx.fillStyle = '#99ff99';
+                ctx.fillText('You will gain +0.5x permanent multiplier', canvas.width / 2, 310);
+
+                // Confirm Prestige Button (y = 400)
+                ctx.fillStyle = '#ff3333';
+                roundRect(ctx, 50, 400, canvas.width - 100, 60, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 24px sans-serif';
+                ctx.fillText('CONFIRM PRESTIGE', canvas.width / 2, 440);
+
+                // Back Button (y = canvas.height - 70)
+                ctx.fillStyle = '#ff9f1c';
+                roundRect(ctx, 100, canvas.height - 70, canvas.width - 200, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 38);
+
+                ctx.restore();
+            }
+
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                roundRect(ctx, 30, 260, canvas.width - 60, 200, 16);
+                const panelY = (gameData.stats.wins >= 10) ? 230 : 260;
+                const panelHeight = (gameData.stats.wins >= 10) ? 450 : 380;
+                roundRect(ctx, 30, panelY, canvas.width - 60, panelHeight, 16);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
                 ctx.font = '24px sans-serif';
-                ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
+                const textOffset = (gameData.stats.wins >= 10) ? -30 : 0;
+                ctx.fillText('Chancla Bomb', canvas.width / 2, 300 + textOffset);
                 ctx.font = '16px sans-serif';
-                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
+                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330 + textOffset);
                 ctx.font = '14px sans-serif';
-                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
-                ctx.fillText('Level ' + (gameData.stats.wins || 1), canvas.width / 2, 345);
+                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360 + textOffset);
+                ctx.fillText('Level ' + (gameData.stats.wins || 1), canvas.width / 2, 345 + textOffset);
+
+                const btnOffset = (gameData.stats.wins >= 10) ? -30 : 0;
 
                 // Play Button
                 ctx.fillStyle = '#ff9f1c';
-                roundRect(ctx, 110, 380, canvas.width - 220, 46, 12);
+                roundRect(ctx, 110, 380 + btnOffset, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#222';
                 ctx.font = '18px sans-serif';
-                ctx.fillText('Jugar / Play', canvas.width / 2, 410);
+                ctx.fillText('Jugar / Play', canvas.width / 2, 410 + btnOffset);
 
                 // Shop Button
                 ctx.fillStyle = '#2196f3';
-                roundRect(ctx, 110, 440, canvas.width - 220, 46, 12);
+                roundRect(ctx, 110, 440 + btnOffset, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.font = '18px sans-serif';
-                ctx.fillText('Shop / Tienda', canvas.width / 2, 470);
+                ctx.fillText('Shop / Tienda', canvas.width / 2, 470 + btnOffset);
 
                 // Achievements Button
                 ctx.fillStyle = '#9c27b0';
-                roundRect(ctx, 110, 500, canvas.width - 220, 46, 12);
+                roundRect(ctx, 110, 500 + btnOffset, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.font = '18px sans-serif';
-                ctx.fillText('Logros / Achiev.', canvas.width / 2, 530);
+                ctx.fillText('Logros / Achiev.', canvas.width / 2, 530 + btnOffset);
 
                 // Cosmetics Button
                 ctx.fillStyle = '#e91e63';
-                roundRect(ctx, 110, 560, canvas.width - 220, 46, 12);
+                roundRect(ctx, 110, 560 + btnOffset, canvas.width - 220, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.font = '18px sans-serif';
-                ctx.fillText('Cosmetics / Cosm.', canvas.width / 2, 590);
+                ctx.fillText('Cosmetics / Cosm.', canvas.width / 2, 590 + btnOffset);
+
+                if (gameData.stats.wins >= 10) {
+                    ctx.fillStyle = '#ffd700'; // Gold
+                    roundRect(ctx, 110, 620 + btnOffset, canvas.width - 220, 46, 12);
+                    ctx.fill();
+                    ctx.fillStyle = '#222';
+                    ctx.font = 'bold 18px sans-serif';
+                    ctx.fillText('Prestige / Prestigio', canvas.width / 2, 650 + btnOffset);
+                }
 
                 ctx.restore();
             }
@@ -1867,7 +1928,7 @@
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
                         slappedAny = true;
                         comboCount++;
-                        score += comboCount;
+                        score += comboCount * getPrestigeMult();
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
@@ -1894,8 +1955,8 @@
                         const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
 
                         if (c.rallyCount > 0) {
-                            score += 20 * c.rallyCount;
-                            gameData.coins += 5 * c.rallyCount;
+                            score += 20 * c.rallyCount * getPrestigeMult();
+                            gameData.coins += 5 * c.rallyCount * getPrestigeMult();
                             gameData.stats.totalCoinsEarned += 5 * c.rallyCount;
                             addFloatText('MEGA HIT! 💥', c.x, c.y - 30);
                             playSound(950, 0.2);
@@ -1904,7 +1965,7 @@
 
                         // Add float text
                         if (isPerfect) {
-                            gameData.coins += 2;
+                            gameData.coins += 2 * getPrestigeMult();
                             gameData.stats.totalCoinsEarned += 2;
                             addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
                             spawnImpact(c.x, c.y, true);
@@ -1914,7 +1975,7 @@
                             hitStop = 0.15;
                             spawnRoseExplosion(c.x, c.y);
                         } else {
-                            gameData.coins += 1;
+                            gameData.coins += 1 * getPrestigeMult();
                             gameData.stats.totalCoinsEarned += 1;
                             addFloatText('SLAP! +1💰' + comboText, c.x, c.y);
                             spawnImpact(c.x, c.y);
@@ -2069,7 +2130,7 @@
                                     spawnImpact(other.x, other.y);
                                     spawnChainEffect(c.x, c.y, other.x, other.y);
                                     playSound(700, 0.1);
-                                    score += 5 + comboCount; // Bonus score for chaotic skill
+                                    score += (5 + comboCount) * getPrestigeMult(); // Bonus score for chaotic skill
                                 }
                             }
                         }
@@ -2158,7 +2219,7 @@
                         if (dashTimer > 0) { // I-frames during dash -> Perfect Dodge (Graze)
                             if (!c.grazed) {
                                 c.grazed = true;
-                                score += 5;
+                                score += 5 * getPrestigeMult();
                                 specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
                                 addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
                                 playSound(850, 0.1);
@@ -2224,7 +2285,7 @@
                                 });
                             }
                         } else {
-                            score += 1;
+                            score += 1 * getPrestigeMult();
                             const prevBest = bestScore;
                             bestScore = Math.max(bestScore, score);
                             if (score > prevBest && score % 10 === 0) sayRandom('highScore');
@@ -2351,7 +2412,7 @@
 
             function triggerWin() {
                 const defeatedLevel = gameData.stats.wins || 1;
-                const bonus = 50 + (defeatedLevel - 1) * 50;
+                const bonus = (50 + (defeatedLevel - 1) * 50) * getPrestigeMult();
                 gameData.coins += bonus;
                 gameData.stats.totalCoinsEarned += bonus;
                 gameData.stats.wins = defeatedLevel + 1;
@@ -2418,7 +2479,7 @@
 
                 if (fiestaMode) {
                     fiestaHue = (fiestaHue + dt * 200) % 360;
-                    score += dt * 50; // passive score
+                    score += dt * 50 * getPrestigeMult(); // passive score
 
                     // Spawn confetti
                     if (Math.random() < 0.2) {
@@ -2657,6 +2718,7 @@
                 else if (state === STATE.SHOP) drawShop();
                 else if (state === STATE.ACHIEVEMENTS) drawAchievements();
                 else if (state === STATE.COSMETICS) drawCosmetics();
+                else if (state === STATE.PRESTIGE) drawPrestige();
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
@@ -2709,7 +2771,33 @@
                         setDirectionsVisible(false);
                         state = STATE.COSMETICS;
                     }
-                } else if (state === STATE.SHOP) {
+                    else if (gameData.stats.wins >= 10 && pos.y >= 620 && pos.y <= 666 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.PRESTIGE;
+                    }
+                    // Check Prestige Button
+                    else if (gameData.stats.wins >= 10 && pos.y >= 620 && pos.y <= 666 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.PRESTIGE;
+                    }
+                } else                 if (state === STATE.PRESTIGE) {
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 20 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        state = STATE.TITLE;
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
+                    } else if (pos.y >= 400 && pos.y <= 460 && pos.x >= 50 && pos.x <= canvas.width - 50) {
+                        gameData.prestige = (gameData.prestige || 0) + 1;
+                        gameData.stats.wins = 1;
+                        gameData.coins = 0;
+                        gameData.upgrades = { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 };
+                        saveGameData();
+                        playSound(1200, 0.5);
+                        state = STATE.TITLE;
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
+                    }
+                    return;
+                }
+
+                if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
                     const upgrades = [
                         { id: 'lives', baseCost: 100, maxLevel: 5 },
@@ -2738,7 +2826,7 @@
 
                     // Check Back Button
                     if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50 && pos.x >= 100 && pos.x <= canvas.width - 100) {
-                        setDirectionsVisible(true);
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
                         state = STATE.TITLE;
                     }
                 } else if (state === STATE.ACHIEVEMENTS) {
@@ -2758,7 +2846,7 @@
                     }
                     // Check Back Button
                     if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
-                        setDirectionsVisible(true);
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
                         state = STATE.TITLE;
                     }
                 } else if (state === STATE.COSMETICS) {
@@ -2785,8 +2873,23 @@
 
                     // Check Back Button
                     if (pos.y >= canvas.height - 80 && pos.y <= canvas.height - 30 && pos.x >= 100 && pos.x <= canvas.width - 100) {
-                        setDirectionsVisible(true);
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
                         state = STATE.TITLE;
+                    }
+                                } else if (state === STATE.PRESTIGE) {
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 20 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        state = STATE.TITLE;
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
+                    } else if (pos.y >= 400 && pos.y <= 460 && pos.x >= 50 && pos.x <= canvas.width - 50) {
+                        // Confirm prestige
+                        gameData.prestige = (gameData.prestige || 0) + 1;
+                        gameData.stats.wins = 1;
+                        gameData.coins = 0;
+                        gameData.upgrades = { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 };
+                        saveGameData();
+                        playSound(1200, 0.5); // cha-ching
+                        state = STATE.TITLE;
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
                     }
                 } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
                     // Play Again Button (110, 550, w, 50)
@@ -2812,18 +2915,23 @@
                 };
 
                 if (state === STATE.TITLE) {
-                    if (pos.y >= 380 && pos.y <= 426 && pos.x >= 110 && pos.x <= canvas.width - 110) startGameFromTitle();
-                    else if (pos.y >= 440 && pos.y <= 486 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                    const btnOffset = (gameData.stats.wins >= 10) ? -30 : 0;
+                    if (pos.y >= 380 + btnOffset && pos.y <= 426 + btnOffset && pos.x >= 110 && pos.x <= canvas.width - 110) startGameFromTitle();
+                    else if (pos.y >= 440 + btnOffset && pos.y <= 486 + btnOffset && pos.x >= 110 && pos.x <= canvas.width - 110) {
                         setDirectionsVisible(false);
                         state = STATE.SHOP;
                     }
-                    else if (pos.y >= 500 && pos.y <= 546 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                    else if (pos.y >= 500 + btnOffset && pos.y <= 546 + btnOffset && pos.x >= 110 && pos.x <= canvas.width - 110) {
                         setDirectionsVisible(false);
                         state = STATE.ACHIEVEMENTS;
                     }
-                    else if (pos.y >= 560 && pos.y <= 606 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                    else if (pos.y >= 560 + btnOffset && pos.y <= 606 + btnOffset && pos.x >= 110 && pos.x <= canvas.width - 110) {
                         setDirectionsVisible(false);
                         state = STATE.COSMETICS;
+                    }
+                    else if (gameData.stats.wins >= 10 && pos.y >= 620 + btnOffset && pos.y <= 666 + btnOffset && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                        setDirectionsVisible(false);
+                        state = STATE.PRESTIGE;
                     }
                     return;
                 }
@@ -2846,7 +2954,7 @@
                     }
                     // Check Back Button
                     if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
-                        setDirectionsVisible(true);
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
                         state = STATE.TITLE;
                     }
                     return;
@@ -2875,8 +2983,25 @@
                     }
                     // Check Back Button
                     if (pos.y >= canvas.height - 80 && pos.y <= canvas.height - 30 && pos.x >= 100 && pos.x <= canvas.width - 100) {
-                        setDirectionsVisible(true);
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
                         state = STATE.TITLE;
+                    }
+                    return;
+                }
+
+                                if (state === STATE.PRESTIGE) {
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 20 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        state = STATE.TITLE;
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
+                    } else if (pos.y >= 400 && pos.y <= 460 && pos.x >= 50 && pos.x <= canvas.width - 50) {
+                        gameData.prestige = (gameData.prestige || 0) + 1;
+                        gameData.stats.wins = 1;
+                        gameData.coins = 0;
+                        gameData.upgrades = { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 };
+                        saveGameData();
+                        playSound(1200, 0.5);
+                        state = STATE.TITLE;
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
                     }
                     return;
                 }
@@ -2908,7 +3033,7 @@
                     }
                     // Check Back Button
                     if (pos.y >= canvas.height - 100 && pos.y <= canvas.height - 50 && pos.x >= 100 && pos.x <= canvas.width - 100) {
-                        setDirectionsVisible(true);
+                        setDirectionsVisible((gameData.stats.wins || 1) < 10);
                         state = STATE.TITLE;
                     }
                     return;
@@ -3033,7 +3158,7 @@
 
             function initTitle() {
                 sayRandom('start');
-                setDirectionsVisible(true);
+                setDirectionsVisible((gameData.stats.wins || 1) < 10);
             }
             initTitle();
         })();
