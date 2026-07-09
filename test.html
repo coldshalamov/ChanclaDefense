@@ -1196,7 +1196,6 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
-                else if (type === 'ghost') emoji = '👻';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1766,7 +1765,7 @@
                 triggerShake(15, 1.5);
             }
 
-            function spawnChancla() {
+                        function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
                 const isGhost = !isBomb && Math.random() < 0.12;
                 const isHoming = superEnabled && !isBomb && !isGhost && Math.random() < 0.10;
@@ -1803,6 +1802,7 @@
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, invisible: false });
                 if (isSuper) sayPlayer('super');
             }
+
 
 
             function addFloatText(text, x, y, color = '#fff', fontSize = 14) {
@@ -1857,12 +1857,6 @@
                     if (dist < slapRange) {
                         // Slap the chancla away
                         const isPerfect = dist < perfectRange;
-
-                        if (c.type === 'ghost' && c.invisible) {
-                            c.invisible = false;
-                            score += 20;
-                            addFloatText('GHOST BUSTED! 👻', c.x, c.y - 50, '#ff00ff');
-                        }
 
                         gameData.stats.totalSlaps++;
                         if (isPerfect) gameData.stats.perfectSlaps++;
@@ -2038,13 +2032,6 @@
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
-                    // Ghost Logic
-                    if (c.type === 'ghost' && !c.slapped) {
-                        if (c.y > canvas.height * 0.4) {
-                            c.invisible = true;
-                        }
-                    }
-
                     // Homing Logic
                     if (c.type === 'homing' && !c.slapped) {
                         const targetX = player.x;
@@ -2119,7 +2106,6 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
-                            if (c.type === 'ghost') damage = 10;
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
@@ -2203,7 +2189,6 @@
                         const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
-                        if (c.type === 'ghost') c.invisible = false;
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
@@ -2612,10 +2597,7 @@
 
 
             function drawChanclasAll() {
-                for (const c of chanclas) {
-                    if (c.invisible) continue;
-                    drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
-                }
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
             }
 
             function drawWinScreen() {
