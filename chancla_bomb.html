@@ -1201,12 +1201,16 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'blackhole') emoji = '🌌';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
                     if (type === 'meteor') {
                         ctx.shadowColor = 'red';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'blackhole') {
+                        ctx.shadowColor = '#800080';
+                        ctx.shadowBlur = 25;
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
@@ -1783,7 +1787,8 @@
 
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
-                const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
+                const isBlackhole = !isBomb && Math.random() < 0.05;
+                const isHoming = superEnabled && !isBomb && !isBlackhole && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
 
@@ -1791,6 +1796,7 @@
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
+                else if (isBlackhole) { w = 40; h = 40; }
                 else if (isHoming) { w = 36; h = 36; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
@@ -1800,6 +1806,7 @@
                 if (isSuper) vy += 40;
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
+                else if (isBlackhole) vy = baseSpeed * 0.4;
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
 
                 const vx = (Math.random() - 0.5) * 60;
@@ -1807,11 +1814,12 @@
 
                 let type = 'normal';
                 if (isBomb) type = 'bomb';
+                else if (isBlackhole) type = 'blackhole';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, absorbed: 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1836,6 +1844,36 @@
 
                                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    if (c.type === 'blackhole' && !c.slapped) {
+                        const distToBH = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                        if (distToBH < slapRange) {
+                            // GALAXY BURST
+                            slappedAny = true;
+                            addFloatText('GALAXY BURST! 🌌', c.x, c.y);
+                            triggerShake(15, 0.4);
+                            triggerFlash(0.3, '#800080');
+                            playSound(1200, 0.5);
+
+                            const burstCount = (c.absorbed || 0) + 3;
+                            for (let b = 0; b < burstCount; b++) {
+                                const angle = -Math.PI/4 - Math.random() * (Math.PI/2);
+                                const speed = 400 + Math.random() * 200;
+                                chanclas.push({
+                                    x: c.x, y: c.y,
+                                    vx: Math.cos(angle) * speed,
+                                    vy: Math.sin(angle) * speed,
+                                    w: 32, h: 18,
+                                    type: 'fire',
+                                    rotation: 0, rotSpeed: 15,
+                                    slapped: true, isPerfect: true,
+                                    rallyCount: 1
+                                });
+                            }
+                            chanclas.splice(i, 1);
+                            continue;
+                        }
+                    }
 
                     if (c.type === 'meteor' && !c.slapped) {
                         const distToMeteor = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y + c.h/2 - player.y, 2));
@@ -2056,6 +2094,31 @@
                         }
                     }
 
+                    // Blackhole Logic
+                    if (c.type === 'blackhole' && !c.slapped) {
+                        for (let j = chanclas.length - 1; j >= 0; j--) {
+                            if (i === j) continue;
+                            const other = chanclas[j];
+                            if (!other.slapped && other.type !== 'meteor' && other.type !== 'blackhole') {
+                                const dist = Math.sqrt(Math.pow(c.x - other.x, 2) + Math.pow(c.y - other.y, 2));
+                                if (dist < 180) {
+                                    // Gravitational pull
+                                    other.vx += Math.sign(c.x - other.x) * 100 * dt;
+                                    other.vy += Math.sign(c.y - other.y) * 100 * dt;
+                                }
+                                if (dist < 20) {
+                                    // Absorb
+                                    c.absorbed = (c.absorbed || 0) + 1;
+                                    c.w = Math.min(80, c.w + 2);
+                                    c.h = Math.min(80, c.h + 2);
+                                    chanclas.splice(j, 1);
+                                    // If we removed an element before our current index 'i', we must decrement 'i' to not skip elements
+                                    if (j < i) i--;
+                                }
+                            }
+                        }
+                    }
+
                     c.x += c.vx * dt;
                     c.y += c.vy * dt;
                     c.rotation += c.rotSpeed * dt;
@@ -2169,7 +2232,7 @@
                         continue;
                     }
 
-                    if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
+                    if (!c.slapped && c.type !== 'meteor' && c.type !== 'blackhole' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
                         if (dashTimer > 0) { // I-frames during dash -> Perfect Dodge (Graze)
                             if (!c.grazed) {
@@ -2211,6 +2274,18 @@
                             endGame();
                             return;
                         }
+                    } else if (!c.slapped && c.type === 'blackhole' && rectsOverlap(player, {x: c.x + c.w/4, y: c.y + c.h/4, w: c.w/2, h: c.h/2})) {
+                        // Black hole hits player (tighter hitbox)
+                        if (dashTimer > 0) continue; // I-frames
+                        const bhDamage = 25 + (c.absorbed || 0) * 5;
+                        gameData.lives -= bhDamage;
+                        player.hitTimer = 0.5;
+                        triggerShake(20, 0.4);
+                        triggerFlash(0.3, '#ff0000');
+                        playSound(300, 0.3);
+                        chanclas.splice(i, 1);
+                        updateLivesDisplay();
+                        if (gameData.lives <= 0) endGame();
                     } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
                         if (dashTimer > 0) continue; // I-frames during dash shockwave
                         triggerShake(30, 0.8);
@@ -2222,7 +2297,7 @@
                         chanclas.splice(i, 1);
                         if (player.lives <= 0) endGame();
                         continue;
-                    } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
+                    } else if (c.y > canvas.height + c.h && c.type !== 'meteor' && c.type !== 'blackhole') {
                         if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
                             triggerFlash(0.1, '#fff');
