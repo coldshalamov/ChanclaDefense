@@ -1200,16 +1200,11 @@
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
-                else if (type === 'homing') emoji = '🪬';
-
                 // Prioritize Noto Color Emoji and system emoji fonts
 
                     if (type === 'meteor') {
                         ctx.shadowColor = 'red';
                         ctx.shadowBlur = 20;
-                    } else if (type === 'homing') {
-                        ctx.shadowColor = '#8a2be2';
-                        ctx.shadowBlur = 15;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1783,16 +1778,13 @@
 
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
-                const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isSuper = superEnabled && !isBomb && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
-                else if (isHoming) { w = 36; h = 36; }
-
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
 
@@ -1800,8 +1792,6 @@
                 if (isSuper) vy += 40;
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
-                else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
-
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
@@ -1809,8 +1799,6 @@
                 if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
-                else if (isHoming) type = 'homing';
-
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
             }
@@ -2042,19 +2030,6 @@
             function updateChanclas(dt) {
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
-
-                    // Homing Logic
-                    if (c.type === 'homing' && !c.slapped) {
-                        const targetX = player.x;
-                        const directionX = Math.sign(targetX - c.x);
-                        // Smoothly accelerate towards the player's X coordinate
-                        c.vx += directionX * 200 * dt; // Acceleration factor
-                        // Cap maximum horizontal speed to ensure it's still dodgeable
-                        const maxHomingSpeed = 150;
-                        if (Math.abs(c.vx) > maxHomingSpeed) {
-                            c.vx = Math.sign(c.vx) * maxHomingSpeed;
-                        }
-                    }
 
                     c.x += c.vx * dt;
                     c.y += c.vy * dt;
