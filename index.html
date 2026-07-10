@@ -165,6 +165,7 @@
                 return 1 + (gameData.prestige || 0) * 0.5;
             }
             let state = STATE.TITLE;
+            let witchTimeTimer = 0;
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -251,6 +252,7 @@
 
             let lastTapLeft = 0;
             let lastTapRight = 0;
+                witchTimeTimer = 0;
             let dashTimer = 0;
             let dashCooldown = 0;
             let dashDir = 0;
@@ -413,6 +415,7 @@
                 player.hitTimer = 0;
                 lastTapLeft = 0;
                 lastTapRight = 0;
+                witchTimeTimer = 0;
                 dashTimer = 0;
                 dashCooldown = 0;
                 dashDir = 0;
@@ -2178,6 +2181,7 @@
                                 specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
                                 addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
                                 playSound(850, 0.1);
+                                witchTimeTimer = 2.0;
                                 for(let k = 0; k < 5; k++) {
                                     fireParticles.push({
                                         x: player.x + (Math.random() - 0.5) * 40,
@@ -2389,6 +2393,11 @@
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
 
+                if (witchTimeTimer > 0) {
+                    witchTimeTimer -= dt;
+                }
+                const enemyDt = witchTimeTimer > 0 ? dt * 0.3 : dt;
+
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
                     const dx = (Math.random() - 0.5) * shakeIntensity * 2;
@@ -2416,13 +2425,13 @@
                 }
 
                 if (isa.displayAnger > isa.anger) {
-                    isa.displayAnger -= (isa.maxAnger * 0.5) * dt;
+                    isa.displayAnger -= (isa.maxAnger * 0.5) * enemyDt;
                     if (isa.displayAnger < isa.anger) isa.displayAnger = isa.anger;
                 } else if (isa.displayAnger < isa.anger) {
                     isa.displayAnger = isa.anger;
                 }
 
-                timeElapsed += dt;
+                timeElapsed += enemyDt;
                 if (comboCount >= 10 && !fiestaMode) {
                     fiestaMode = true;
                     playSound(600, 0.4);
@@ -2454,7 +2463,7 @@
                     }
                 }
 
-                spawnTimer += dt;
+                spawnTimer += enemyDt;
                 if (timeElapsed > 12) {
                     // Ramp up difficulty faster if enraged
                     const intervalDec = isa.enraged ? 0.05 : 0.02;
@@ -2471,7 +2480,7 @@
 
 
                 if (isa.enraged) {
-                    meteorTimer += dt;
+                    meteorTimer += enemyDt;
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
                         meteorTimer = 0;
@@ -2497,8 +2506,8 @@
                     dashTrails[i].life -= dt;
                     if (dashTrails[i].life <= 0) dashTrails.splice(i, 1);
                 }
-                updateChanclas(dt);
-                updateSpecialProjectiles(dt);
+                updateChanclas(enemyDt);
+                updateSpecialProjectiles(enemyDt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
                 updateFloatTexts(dt);
@@ -2587,6 +2596,12 @@
 
             function draw() {
                 drawBackground();
+                if (witchTimeTimer > 0) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(128, 0, 128, 0.2)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                }
                 drawIsa();
                 drawFireParticles();
                 drawChanclasAll();
