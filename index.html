@@ -167,7 +167,7 @@
             let state = STATE.TITLE;
             let witchTimeTimer = 0;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -187,7 +187,9 @@
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
                 if (gameData.prestige === undefined) gameData.prestige = 0;
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 };
+                if (gameData.stats.xp === undefined) gameData.stats.xp = 0;
+                if (gameData.stats.rank === undefined) gameData.stats.rank = 1;
                 if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
@@ -196,6 +198,27 @@
 
             function saveGameData() {
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
+            }
+
+            function getXpRequired(rank) {
+                return 1000 + (rank - 1) * 500;
+            }
+
+            function grantXp(amount) {
+                gameData.stats.xp += amount;
+                let leveledUp = false;
+                while (gameData.stats.xp >= getXpRequired(gameData.stats.rank)) {
+                    gameData.stats.xp -= getXpRequired(gameData.stats.rank);
+                    gameData.stats.rank++;
+                    const bonus = gameData.stats.rank * 50;
+                    gameData.coins += bonus;
+                    gameData.stats.totalCoinsEarned += bonus;
+                    leveledUp = true;
+                }
+                if (leveledUp) {
+                    playSound(1200, 0.4); // Level up sound (Cha-ching!)
+                }
+                saveGameData();
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
@@ -402,7 +425,9 @@
             }
 
             function resetGame() {
-                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
+                if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 };
+                if (gameData.stats.xp === undefined) gameData.stats.xp = 0;
+                if (gameData.stats.rank === undefined) gameData.stats.rank = 1;
                 if (!gameData.stats.wins) gameData.stats.wins = 1;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
@@ -1727,6 +1752,27 @@
                     ctx.fillText('Prestige / Prestigio', canvas.width / 2, 650);
                 }
 
+                // Render XP Bar
+                const xpReq = getXpRequired(gameData.stats.rank);
+                const xpFill = Math.min(1, gameData.stats.xp / xpReq);
+                const barWidth = canvas.width - 60;
+                const barY = canvas.height - 40;
+                ctx.fillStyle = '#333';
+                roundRect(ctx, 30, barY, barWidth, 20, 10);
+                ctx.fill();
+                ctx.fillStyle = '#4caf50';
+                roundRect(ctx, 30, barY, barWidth * xpFill, 20, 10);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                roundRect(ctx, 30, barY, barWidth, 20, 10);
+                ctx.stroke();
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Gringo Rank ${gameData.stats.rank} - ${Math.floor(gameData.stats.xp)}/${xpReq} XP`, canvas.width / 2, barY + 14);
+
                 ctx.restore();
             }
 
@@ -2376,6 +2422,7 @@
                 gameData.coins += bonus;
                 gameData.stats.totalCoinsEarned += bonus;
                 gameData.stats.wins = defeatedLevel + 1;
+                grantXp(score + 500); // 500 bonus XP for winning
                 saveGameData();
                 state = STATE.WIN;
                 sayRandom('win');
@@ -2387,6 +2434,7 @@
                 gameData.coins += earned;
                 gameData.stats.totalCoinsEarned += earned;
                 gameData.bestScore = Math.max(gameData.bestScore, score);
+                grantXp(score);
                 saveGameData();
                 sayRandom('gameOver');
             }
