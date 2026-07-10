@@ -165,6 +165,7 @@
                 return 1 + (gameData.prestige || 0) * 0.5;
             }
             let state = STATE.TITLE;
+            let witchTimeTimer = 0;
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -248,6 +249,7 @@
             let fiestaHue = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
+                witchTimeTimer = 0;
 
             let lastTapLeft = 0;
             let lastTapRight = 0;
@@ -2039,7 +2041,7 @@
             }
 
 
-            function updateChanclas(dt) {
+            function updateChanclas(dt, enemyDt) {
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
@@ -2048,7 +2050,7 @@
                         const targetX = player.x;
                         const directionX = Math.sign(targetX - c.x);
                         // Smoothly accelerate towards the player's X coordinate
-                        c.vx += directionX * 200 * dt; // Acceleration factor
+                        c.vx += directionX * 200 * (c.slapped ? dt : enemyDt); // Acceleration factor
                         // Cap maximum horizontal speed to ensure it's still dodgeable
                         const maxHomingSpeed = 150;
                         if (Math.abs(c.vx) > maxHomingSpeed) {
@@ -2056,9 +2058,10 @@
                         }
                     }
 
-                    c.x += c.vx * dt;
-                    c.y += c.vy * dt;
-                    c.rotation += c.rotSpeed * dt;
+                    const currentDt = c.slapped ? dt : enemyDt;
+                    c.x += c.vx * currentDt;
+                    c.y += c.vy * currentDt;
+                    c.rotation += c.rotSpeed * currentDt;
 
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
@@ -2178,6 +2181,8 @@
                                 specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
                                 addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
                                 playSound(850, 0.1);
+                                witchTimeTimer = 2.0;
+                                triggerFlash(0.2, '#cc00ff');
                                 for(let k = 0; k < 5; k++) {
                                     fireParticles.push({
                                         x: player.x + (Math.random() - 0.5) * 40,
@@ -2389,6 +2394,9 @@
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
 
+                if (witchTimeTimer > 0) witchTimeTimer -= dt;
+                const enemyDt = witchTimeTimer > 0 ? dt * 0.3 : dt;
+
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
                     const dx = (Math.random() - 0.5) * shakeIntensity * 2;
@@ -2416,7 +2424,7 @@
                 }
 
                 if (isa.displayAnger > isa.anger) {
-                    isa.displayAnger -= (isa.maxAnger * 0.5) * dt;
+                    isa.displayAnger -= (isa.maxAnger * 0.5) * enemyDt;
                     if (isa.displayAnger < isa.anger) isa.displayAnger = isa.anger;
                 } else if (isa.displayAnger < isa.anger) {
                     isa.displayAnger = isa.anger;
@@ -2454,7 +2462,7 @@
                     }
                 }
 
-                spawnTimer += dt;
+                spawnTimer += enemyDt;
                 if (timeElapsed > 12) {
                     // Ramp up difficulty faster if enraged
                     const intervalDec = isa.enraged ? 0.05 : 0.02;
@@ -2471,7 +2479,7 @@
 
 
                 if (isa.enraged) {
-                    meteorTimer += dt;
+                    meteorTimer += enemyDt;
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
                         meteorTimer = 0;
@@ -2497,7 +2505,7 @@
                     dashTrails[i].life -= dt;
                     if (dashTrails[i].life <= 0) dashTrails.splice(i, 1);
                 }
-                updateChanclas(dt);
+                updateChanclas(dt, enemyDt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
@@ -2588,6 +2596,12 @@
             function draw() {
                 drawBackground();
                 drawIsa();
+                if (witchTimeTimer > 0) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(128, 0, 128, 0.2)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                }
                 drawFireParticles();
                 drawChanclasAll();
                 drawSpecialProjectiles();
