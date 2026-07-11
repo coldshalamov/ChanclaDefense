@@ -1,0 +1,429 @@
+--- spawnChancla ---
+function spawnChancla() {
+                const isBomb = Math.random() < 0.08;
+                const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
+                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+
+                let w = 32;
+                let h = 18;
+                if (isSuper) { w = 46; h = 26; }
+                else if (isBomb) { w = 38; h = 38; }
+                else if (isHoming) { w = 36; h = 36; }
+
+                const x = 40 + Math.random() * (canvas.width - 80);
+                const y = isa.y + 40;
+
+                let vy = baseSpeed + Math.random() * 60;
+                if (isSuper) vy += 40;
+                else if (isFire) vy += 80;
+                else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
+                else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+
+                const vx = (Math.random() - 0.5) * 60;
+                const rotSpeed = (Math.random() - 0.5) * 5;
+
+                let type = 'normal';
+                if (isBomb) type = 'bomb';
+                else if (isFire) type = 'fire';
+                else if (isSuper) type = 'super';
+                else if (isHoming) type = 'homing';
+
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                if (isSuper) sayPlayer('super');
+            }
+
+
+
+--- updateChanclas ---
+function updateChanclas(dt) {
+                for (let i = chanclas.length - 1; i >= 0; i--) {
+                    const c = chanclas[i];
+
+                    // Homing Logic
+                    if (c.type === 'homing' && !c.slapped) {
+                        const targetX = player.x;
+                        const directionX = Math.sign(targetX - c.x);
+                        // Smoothly accelerate towards the player's X coordinate
+                        c.vx += directionX * 200 * dt; // Acceleration factor
+                        // Cap maximum horizontal speed to ensure it's still dodgeable
+                        const maxHomingSpeed = 150;
+                        if (Math.abs(c.vx) > maxHomingSpeed) {
+                            c.vx = Math.sign(c.vx) * maxHomingSpeed;
+                        }
+                    }
+
+                    c.x += c.vx * dt;
+                    c.y += c.vy * dt;
+                    c.rotation += c.rotSpeed * dt;
+
+                    // Remove slapped chanclas that fly off screen
+                    if (c.slapped) {
+                        // Check for chain reaction with other chanclas
+                        for (let j = 0; j < chanclas.length; j++) {
+                            if (i === j) continue;
+                            const other = chanclas[j];
+                            if (!other.slapped) {
+                                const distToOther = Math.sqrt(Math.pow(c.x - other.x, 2) + Math.pow(c.y - other.y, 2));
+                                if (distToOther < (c.w + other.w) / 2) {
+                                    // Chain reaction!
+                                    other.slapped = true;
+                                    // Push away from the hitting chancla, plus some transferred momentum
+                                    let pushX = (other.x - c.x);
+                                    // Ensure some horizontal movement if perfectly aligned
+                                    if (Math.abs(pushX) < 1) pushX = (Math.random() - 0.5) * 10;
+
+                                    other.vx = pushX * 8 + c.vx * 0.3;
+                                    other.vy = -300 + (Math.random() - 0.5) * 100;
+
+                                    comboCount++;
+                                    const comboPhrase = getComboPhrase(comboCount);
+                                    addFloatText(`CHAIN! x${comboCount} ${comboPhrase}`, other.x, other.y);
+                                    spawnImpact(other.x, other.y);
+                                    spawnChainEffect(c.x, c.y, other.x, other.y);
+                                    playSound(700, 0.1);
+                                    score += 5 + comboCount; // Bonus score for chaotic skill
+                                }
+                            }
+                        }
+
+                        // Check collision with Isa for slapped chanclas
+                        // Isa radius approx 40. c radius approx w/2.
+                        const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
+                        if (distToIsa < 40 + c.w / 2) {
+                            // Ping-Pong Rally (Dead Man's Volley) mechanic
+                            if (Math.random() < 0.3) {
+                                c.slapped = false;
+                                c.rallyCount = (c.rallyCount || 0) + 1;
+                                c.type = 'fire';
+                                c.vy = baseSpeed + (c.rallyCount * 100);
+                                c.vx = (player.x - c.x) * 2;
+
+                                addFloatText('PARRY! 🏓', isa.x, isa.y + 30);
+                                playSound(1000, 0.1);
+                                spawnImpact(isa.x, isa.y, true);
+                                triggerFlash(0.1, '#ff4d4d');
+
+                                // Give Isa some I-frames visually
+                                isa.hitTimer = 0.2;
+                                continue;
+                            }
+
+                            // Hit Isa
+                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                            if (c.rallyCount > 0) damage += 10 * c.rallyCount;
+                            if (c.type === 'meteor') damage = 40;
+                            if (c.type === 'bomb') damage = 20;
+                            if (c.isPerfect) damage += 7;
+                            damage += (gameData.upgrades.power || 0) * 2;
+
+                            isa.anger = Math.max(0, isa.anger - damage);
+                            isa.hitTimer = 0.5;
+
+                            if (c.type === 'bomb') {
+                                triggerShake(20, 0.5);
+                                triggerFlash(0.2, '#fff');
+                                addFloatText('BOOM! 💣', isa.x, isa.y + 30);
+                                for (let k = 0; k < 10; k++) {
+                                    fireParticles.push({
+                                        x: isa.x + (Math.random() - 0.5) * 40,
+                                        y: isa.y + (Math.random() - 0.5) * 40,
+                                        vx: (Math.random() - 0.5) * 200,
+                                        vy: (Math.random() - 0.5) * 200,
+                                        life: 0.5 + Math.random() * 0.5,
+                                        maxLife: 1.0,
+                                        size: 15 + Math.random() * 15
+                                    });
+                                }
+                            } else if (c.isPerfect) {
+                                addFloatText('CRITICAL! 💥', isa.x, isa.y + 30);
+                                hitStop = 0.1;
+                            } else {
+                                addFloatText('REFLECTED! ↩️', isa.x, isa.y + 10);
+                            }
+
+                            playSound(900, 0.1); // Higher pitch for success
+                            chanclas.splice(i, 1);
+
+                            // Check win
+                            if (isa.anger <= 0) {
+                                triggerWin();
+                            }
+                            continue;
+                        }
+
+                        if (c.x < -50 || c.x > canvas.width + 50 || c.y < -50) {
+                            chanclas.splice(i, 1);
+                            continue;
+                        }
+                    }
+
+                    if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
+                    if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
+
+                    if (c.y < -50 && c.isShrapnel) {
+                        chanclas.splice(i, 1);
+                        continue;
+                    }
+
+                    if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
+                        if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
+                        if (dashTimer > 0) { // I-frames during dash -> Perfect Dodge (Graze)
+                            if (!c.grazed) {
+                                c.grazed = true;
+                                score += 5;
+                                specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
+                                addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
+                                playSound(850, 0.1);
+                                for(let k = 0; k < 5; k++) {
+                                    fireParticles.push({
+                                        x: player.x + (Math.random() - 0.5) * 40,
+                                        y: player.y + (Math.random() - 0.5) * 40,
+                                        vx: (Math.random() - 0.5) * 150,
+                                        vy: (Math.random() - 0.5) * 150,
+                                        life: 0.3 + Math.random() * 0.3,
+                                        maxLife: 0.6,
+                                        size: 5 + Math.random() * 5
+                                    });
+                                }
+                            }
+                            continue;
+                        }
+                        if (player.shield) {
+                            player.shield = false;
+                            chanclas.splice(i, 1);
+                            continue;
+                        }
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
+                        comboCount = 0;
+                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
+                        triggerShake(shakeAmt, 0.4);
+                        player.lives -= dmg;
+                        player.hitTimer = 0.5;
+                        chanclas.splice(i, 1);
+                        sayRandom(c.type === 'super' ? 'hitSuper' : 'hitNormal');
+                        sayPlayer('hit');
+                        if (player.lives === 1) sayRandom('lowHealth');
+                        if (player.lives <= 0) {
+                            endGame();
+                            return;
+                        }
+                    } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
+                        if (dashTimer > 0) continue; // I-frames during dash shockwave
+                        triggerShake(30, 0.8);
+                        triggerFlash(0.5, '#ff0000');
+                        player.lives -= 1;
+                        player.hitTimer = 1.0;
+                        addFloatText('💥 SHOCKWAVE!', canvas.width/2, canvas.height - 100);
+                        sayPlayer('hit');
+                        chanclas.splice(i, 1);
+                        if (player.lives <= 0) endGame();
+                        continue;
+                    } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
+                        if (c.type === 'bomb') {
+                            triggerShake(15, 0.3);
+                            triggerFlash(0.1, '#fff');
+                            playSound(1000, 0.4);
+                            addFloatText('SHRAPNEL! 💥', c.x, canvas.height - 20);
+                            for (let j = 0; j < 3; j++) {
+                                chanclas.push({
+                                    x: c.x,
+                                    y: canvas.height - 10,
+                                    vx: (Math.random() - 0.5) * 150,
+                                    vy: -400 - Math.random() * 200,
+                                    w: 32, h: 18, type: 'fire', rotation: 0, rotSpeed: (Math.random() - 0.5) * 15,
+                                    slapped: false, // Mark as false so they don't hit Isa
+                                    isShrapnel: true
+                                });
+                            }
+                        } else {
+                            score += 1;
+                            const prevBest = bestScore;
+                            bestScore = Math.max(bestScore, score);
+                            if (score > prevBest && score % 10 === 0) sayRandom('highScore');
+                            if (Math.random() < 0.2) sayRandom('nearMiss');
+                            if (Math.random() < 0.25) sayPlayer('nearMiss');
+                        }
+                        chanclas.splice(i, 1);
+                    }
+                }
+            }
+
+
+--- drawChancla ---
+function drawChancla(ctx, x, y, w, h, type, rotation) {
+                ctx.save();
+                ctx.translate(x, y);
+
+                // Use the thong sandal emoji for the classic "Chancla" look
+                let emoji = '🩴💨';
+                if (type === 'super') emoji = '🩴💥';
+                else if (type === 'fire') emoji = '🔥';
+                else if (type === 'bomb') emoji = '💣';
+                else if (type === 'homing') emoji = '🪬';
+
+                // Prioritize Noto Color Emoji and system emoji fonts
+
+                    if (type === 'meteor') {
+                        ctx.shadowColor = 'red';
+                        ctx.shadowBlur = 20;
+                    } else if (type === 'homing') {
+                        ctx.shadowColor = '#8a2be2';
+                        ctx.shadowBlur = 15;
+                    }
+                    ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.rotate(rotation);
+                ctx.fillText(emoji, 0, h * 0.2);
+                ctx.restore();
+            }
+
+
+--- drawChanclasAll ---
+function drawChanclasAll() {
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+            }
+
+
+--- trySlap ---
+function trySlap() {
+                if (slapCooldown > 0) return;
+
+                slapEffect.timer = slapEffect.duration;
+                slapEffect.type = 'miss';
+                slapEffect.swipeDir = Math.random() < 0.5 ? 1 : -1;
+
+                const slapRange = fiestaMode ? 140 : 80;
+                const perfectRange = fiestaMode ? 90 : 50;
+
+                let slappedAny = false;
+                let slappedMeteor = false;
+
+                                for (let i = chanclas.length - 1; i >= 0; i--) {
+                    const c = chanclas[i];
+
+                    if (c.type === 'meteor' && !c.slapped) {
+                        const distToMeteor = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y + c.h/2 - player.y, 2));
+                        if (distToMeteor < 150) {
+                            c.currentSlaps++;
+                            c.vy -= 15;
+                            c.y -= 5;
+                            spawnImpact(player.x, player.y - 40, true);
+                            addFloatText(`MASH! ${c.currentSlaps}/${c.slapsNeeded}`, c.x + (Math.random()-0.5)*40, c.y + c.h/2 + (Math.random()-0.5)*20);
+                            triggerShake(5, 0.1);
+                            slappedAny = true;
+                            slappedMeteor = true;
+
+                            if (c.currentSlaps >= c.slapsNeeded) {
+                                c.slapped = true;
+                                c.vy = -600;
+                                c.vx = (isa.x - c.x) * 1.5;
+                                c.rotSpeed = 15;
+                                addFloatText('METEOR REFLECTED! ☄️', c.x, c.y);
+                                playSound(1200, 0.5);
+                                triggerFlash(0.3, '#fff');
+                                specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 50);
+                            }
+                            continue;
+                        }
+                    }
+
+                    const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+
+                    if (dist < slapRange) {
+                        // Slap the chancla away
+                        const isPerfect = dist < perfectRange;
+
+                        gameData.stats.totalSlaps++;
+                        if (isPerfect) gameData.stats.perfectSlaps++;
+
+                        // Upgrade visual effect
+                        if (isPerfect) slapEffect.type = 'perfect';
+                        else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
+
+                        c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
+                        c.vy = isPerfect ? -550 : -300;
+                        c.slapped = true;
+                        c.isPerfect = isPerfect;
+                        c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
+                        slappedAny = true;
+                        comboCount++;
+                        score += comboCount;
+
+                        // Increase special attack bar
+                        specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
+
+                        if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
+                            specialReadyTriggered = true;
+                            // HUD egg icon approx location
+                            const eggX = canvas.width / 2;
+                            const eggY = 50;
+                            spawnImpact(eggX, eggY, true);
+                            for (let k = 0; k < 8; k++) {
+                                rosePetals.push({
+                                    x: eggX, y: eggY,
+                                    vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200,
+                                    rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
+                                    emoji: '✨', size: 20
+                                });
+                            }
+                            playSound(1200, 0.25);
+                            triggerShake(5, 0.2);
+                        }
+
+                        const comboPhrase = getComboPhrase(comboCount);
+                        const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
+
+                        if (c.rallyCount > 0) {
+                            score += 20 * c.rallyCount;
+                            gameData.coins += 5 * c.rallyCount;
+                            gameData.stats.totalCoinsEarned += 5 * c.rallyCount;
+                            addFloatText('MEGA HIT! 💥', c.x, c.y - 30);
+                            playSound(950, 0.2);
+                            triggerShake(10 + c.rallyCount * 2, 0.3);
+                        }
+
+                        // Add float text
+                        if (isPerfect) {
+                            gameData.coins += 2;
+                            gameData.stats.totalCoinsEarned += 2;
+                            addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
+                            spawnImpact(c.x, c.y, true);
+                            playSound(850, 0.15);
+                            triggerShake(6, 0.2);
+                            triggerFlash(0.15, '#fff');
+                            hitStop = 0.15;
+                            spawnRoseExplosion(c.x, c.y);
+                        } else {
+                            gameData.coins += 1;
+                            gameData.stats.totalCoinsEarned += 1;
+                            addFloatText('SLAP! +1💰' + comboText, c.x, c.y);
+                            spawnImpact(c.x, c.y);
+                            playSound(600, 0.1);
+                        }
+
+                        if (Math.random() < 0.3) sayRandom('slapSuccess');
+                    }
+                }
+
+                if (slappedAny) {
+                    const cdLevel = gameData.upgrades.cooldown || 0;
+                    slapCooldown = slappedMeteor ? 0.08 : (0.3 - 0.015 * cdLevel);
+                    if (fiestaMode) slapCooldown *= 0.5;
+
+                } else {
+                    slapCooldown = 0.15;
+                    comboCount = 0;
+                    playWhoosh();
+                    rosePetals.push({
+                        x: player.x + (Math.random() - 0.5) * 20,
+                        y: player.y - 40,
+                        vx: (Math.random() - 0.5) * 50,
+                        vy: -50,
+                        rotation: Math.random() * Math.PI * 2,
+                        rotSpeed: (Math.random() - 0.5) * 5,
+                        emoji: '💨',
+                        size: 24
+                    });
+                }
+            }
