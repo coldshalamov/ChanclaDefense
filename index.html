@@ -1203,6 +1203,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'ghost') emoji = '👻';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1212,6 +1213,10 @@
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
+                    } else if (type === 'ghost') {
+                        ctx.globalAlpha = 0.8;
+                        ctx.shadowColor = '#ffffff';
+                        ctx.shadowBlur = 10;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1788,12 +1793,14 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isGhost = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.12;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
+                else if (isGhost) { w = 34; h = 34; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1812,8 +1819,9 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isGhost) type = 'ghost';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, invisible: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1886,6 +1894,12 @@
                         slappedAny = true;
                         comboCount++;
                         score += Math.floor(comboCount * getPrestigeMultiplier());
+
+                        if (c.type === 'ghost') {
+                            c.invisible = false;
+                            score += Math.floor(20 * getPrestigeMultiplier());
+                            addFloatText('GHOST BUSTED! 👻', c.x, c.y - 40, '#a854f7');
+                        }
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
@@ -2044,6 +2058,13 @@
             function updateChanclas(dt, enemyDt) {
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    // Ghost Logic
+                    if (c.type === 'ghost' && !c.slapped) {
+                        if (c.y > canvas.height * 0.4) {
+                            c.invisible = true;
+                        }
+                    }
 
                     // Homing Logic
                     if (c.type === 'homing' && !c.slapped) {
@@ -2622,7 +2643,10 @@
 
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                for (const c of chanclas) {
+                    if (c.invisible) continue;
+                    drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                }
             }
 
 
