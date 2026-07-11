@@ -2414,6 +2414,11 @@
                     return;
                 }
 
+                // Modern Game Improvement: Dynamic Boss Movement
+                const moveSpeed = isa.enraged ? 3 : 1.5;
+                const moveAmp = isa.enraged ? 120 : 80;
+                isa.x = (canvas.width / 2) + Math.sin(timeElapsed * moveSpeed) * moveAmp;
+
                 if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
                     isa.enraged = true;
                     // Rage phase entry effects
