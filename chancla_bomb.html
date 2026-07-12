@@ -1207,6 +1207,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'golden') emoji = '✨🩴';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1216,6 +1217,9 @@
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
+                    } else if (type === 'golden') {
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 25;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1813,6 +1817,7 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isGolden = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.05;
 
                 let w = 32;
                 let h = 18;
@@ -1828,8 +1833,9 @@
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+                else if (isGolden) vy += 60;
 
-                const vx = (Math.random() - 0.5) * 60;
+                const vx = isGolden ? (Math.random() - 0.5) * 120 : (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
@@ -1837,6 +1843,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isGolden) type = 'golden';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -1895,6 +1902,35 @@
                     if (dist < slapRange) {
                         // Slap the chancla away
                         const isPerfect = dist < perfectRange;
+
+                        if (c.type === 'golden') {
+                            gameData.stats.totalSlaps++;
+                            if (isPerfect) gameData.stats.perfectSlaps++;
+                            c.slapped = true;
+                            c.vy = -600;
+                            c.vx = (isa.x - c.x) * 1.5;
+                            c.rotSpeed = 25;
+                            const goldenBonus = Math.floor(500 * getPrestigeMultiplier());
+                            score += goldenBonus;
+                            const coinBonus = Math.floor(25 * getPrestigeMultiplier());
+                            gameData.coins += coinBonus;
+                            gameData.stats.totalCoinsEarned += coinBonus;
+                            addFloatText('GOLDEN JACKPOT! +25💰', c.x, c.y, '#ffd700', 20);
+                            triggerFlash(0.4, '#ffd700');
+                            playSound(1500, 0.6);
+                            triggerShake(15, 0.5);
+
+                            chanclas.forEach(otherC => {
+                                if (otherC !== c && !otherC.slapped && otherC.type !== 'meteor') {
+                                    otherC.slapped = true;
+                                    otherC.vy = -800;
+                                    otherC.type = 'fire';
+                                    otherC.vx = (isa.x - otherC.x) * 1.5;
+                                }
+                            });
+                            slappedAny = true;
+                            continue;
+                        }
 
                         gameData.stats.totalSlaps++;
                         if (isPerfect) gameData.stats.perfectSlaps++;
@@ -2145,6 +2181,7 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'golden') damage = 35;
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
