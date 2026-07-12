@@ -167,7 +167,7 @@
             let state = STATE.TITLE;
             let witchTimeTimer = 0;
 
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none', lastLogin: null, loginStreak: 0 };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -194,7 +194,35 @@
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
+                if (gameData.lastLogin === undefined) gameData.lastLogin = null;
+                if (gameData.loginStreak === undefined) gameData.loginStreak = 0;
             } catch (e) { console.error(e); }
+
+            let dailyRewardMessage = '';
+            let dailyRewardTimer = 0;
+
+            function checkDailyReward() {
+                const today = new Date().toDateString();
+                const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+                if (gameData.lastLogin !== today) {
+                    if (gameData.lastLogin === yesterday) {
+                        gameData.loginStreak++;
+                    } else {
+                        gameData.loginStreak = 1;
+                    }
+
+                    const baseReward = 50;
+                    const reward = Math.min(500, gameData.loginStreak * baseReward);
+                    gameData.coins += reward;
+                    gameData.lastLogin = today;
+                    saveGameData();
+
+                    dailyRewardMessage = `Daily Reward: +${reward} 💰 (Streak: ${gameData.loginStreak})`;
+                    dailyRewardTimer = 5;
+                    playSound(1200, 0.4);
+                }
+            }
 
             function saveGameData() {
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
@@ -1688,6 +1716,11 @@
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                if (dailyRewardTimer > 0) {
+                    ctx.fillStyle = '#4caf50';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillText(dailyRewardMessage, canvas.width / 2, 280);
+                }
 
                 const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1);
                 ctx.font = 'bold 16px sans-serif';
@@ -2776,6 +2809,7 @@
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
+                if (dailyRewardTimer > 0) dailyRewardTimer -= dt;
                 if (state === STATE.TITLE) drawTitleScreen();
                 else if (state === STATE.SHOP) drawShop();
                 else if (state === STATE.ACHIEVEMENTS) drawAchievements();
@@ -2788,6 +2822,7 @@
                     draw();
                     if (state === STATE.GAMEOVER) drawGameOver();
                 }
+                checkDailyReward();
                 requestAnimationFrame(loop);
             }
             requestAnimationFrame(loop);
