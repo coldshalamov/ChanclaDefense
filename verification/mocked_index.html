@@ -226,6 +226,13 @@
                 if (!gameData.currentHat) gameData.currentHat = 'none';
                 if (!gameData.lastLogin) gameData.lastLogin = null;
                 if (!gameData.loginStreak) gameData.loginStreak = 0;
+            try {
+                gameData.lastLogin = new Date(new Date().setDate(new Date().getDate() - 1)).toDateString();
+                gameData.loginStreak = 2;
+                gameData.stats.wins = 15; // To show prestige button too
+                saveGameData();
+            } catch(e) {}
+
             } catch (e) { console.error(e); }
 
             function saveGameData() {
