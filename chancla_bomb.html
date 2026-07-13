@@ -266,7 +266,86 @@
             let playerDialogueText = '';
             const dialogueDuration = 3.3;
 
+
             const keys = { left: false, right: false };
+            const gamepadState = { left: false, right: false };
+            let prevGamepadButtons = [];
+            let lastGamepadLeft = 0;
+            let lastGamepadRight = 0;
+
+            function updateGamepad() {
+                const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+                if (!gamepads) return;
+
+                let gp = null;
+                for (let i = 0; i < gamepads.length; i++) {
+                    if (gamepads[i]) {
+                        gp = gamepads[i];
+                        break;
+                    }
+                }
+
+                if (!gp) {
+                    gamepadState.left = false;
+                    gamepadState.right = false;
+                    return;
+                }
+
+                const buttons = gp.buttons;
+                const axes = gp.axes;
+
+                const leftPressed = (buttons[14] && buttons[14].pressed) || (axes[0] < -0.5);
+                const rightPressed = (buttons[15] && buttons[15].pressed) || (axes[0] > 0.5);
+
+                const slapPressed = (buttons[0] && buttons[0].pressed) || (buttons[2] && buttons[2].pressed) || (buttons[7] && buttons[7].pressed);
+                const startPressed = (buttons[9] && buttons[9].pressed);
+
+                if (state === STATE.PLAYING) {
+                    if (leftPressed && !gamepadState.left && dashCooldown <= 0) {
+                        if (timeElapsed - lastGamepadLeft < 0.25) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = -1;
+                        }
+                        lastGamepadLeft = timeElapsed;
+                    }
+                    if (rightPressed && !gamepadState.right && dashCooldown <= 0) {
+                        if (timeElapsed - lastGamepadRight < 0.25) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = 1;
+                        }
+                        lastGamepadRight = timeElapsed;
+                    }
+
+                    const prevSlap = prevGamepadButtons[0] || prevGamepadButtons[2] || prevGamepadButtons[7];
+                    if (slapPressed && !prevSlap) {
+                        if (specialAttackBar >= maxSpecialAttack) {
+                            fireSpecialAttack();
+                        } else {
+                            trySlap();
+                        }
+                    }
+                } else {
+                    const prevStart = prevGamepadButtons[9];
+                    if (startPressed && !prevStart && state !== STATE.PLAYING) {
+                        if (state === STATE.TITLE) {
+                            startGameFromTitle();
+                        } else if (state === STATE.GAMEOVER || state === STATE.WIN) {
+                            resetGame();
+                        }
+                    }
+                }
+
+                gamepadState.left = leftPressed;
+                gamepadState.right = rightPressed;
+
+                prevGamepadButtons = [];
+                for (let i = 0; i < buttons.length; i++) {
+                    prevGamepadButtons[i] = buttons[i].pressed;
+                }
+            }
+
             const touch = { left: false, right: false };
 
             // Audio context for sound effects (reuse to avoid browser limits)
@@ -2535,8 +2614,8 @@
                     dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
                 } else {
                     const speed = player.speed;
-                    const moveLeft = keys.left || touch.left;
-                    const moveRight = keys.right || touch.right;
+                    const moveLeft = keys.left || touch.left || gamepadState.left;
+                    const moveRight = keys.right || touch.right || gamepadState.right;
                     if (moveLeft) player.x -= speed * dt;
                     if (moveRight) player.x += speed * dt;
                 }
@@ -2772,6 +2851,7 @@
 
             let last = 0;
             function loop(ts) {
+                updateGamepad();
                 const now = ts / 1000;
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
