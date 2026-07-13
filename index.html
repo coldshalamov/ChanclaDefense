@@ -166,6 +166,36 @@
             }
             let state = STATE.TITLE;
             let witchTimeTimer = 0;
+            let dailyRewardMessage = '';
+            let dailyRewardTimer = 0;
+
+            function checkDailyReward() {
+                const today = new Date().toDateString();
+                if (gameData.lastLogin !== today) {
+                    let streak = gameData.loginStreak || 0;
+                    if (gameData.lastLogin) {
+                        const lastLoginDate = new Date(gameData.lastLogin);
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        if (lastLoginDate.toDateString() === yesterday.toDateString()) {
+                            streak++;
+                        } else {
+                            streak = 1;
+                        }
+                    } else {
+                        streak = 1;
+                    }
+                    gameData.lastLogin = today;
+                    gameData.loginStreak = streak;
+                    const reward = Math.min(500, 50 * streak);
+                    gameData.coins += reward;
+                    if (!gameData.stats.totalCoinsEarned) gameData.stats.totalCoinsEarned = 0;
+                    gameData.stats.totalCoinsEarned += reward;
+                    dailyRewardMessage = `¡Recompensa Diaria! Día ${streak}: +${reward} Monedas`;
+                    dailyRewardTimer = 5; // display for 5 seconds
+                    saveGameData();
+                }
+            }
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -194,6 +224,8 @@
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
+                if (!gameData.lastLogin) gameData.lastLogin = null;
+                if (!gameData.loginStreak) gameData.loginStreak = 0;
             } catch (e) { console.error(e); }
 
             function saveGameData() {
@@ -1752,6 +1784,13 @@
                     ctx.fillText('Prestige / Prestigio', canvas.width / 2, 700);
                 }
 
+                if (dailyRewardTimer > 0) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(dailyRewardMessage, canvas.width / 2, 240);
+                }
+
                 ctx.restore();
             }
 
@@ -2775,6 +2814,10 @@
                 const now = ts / 1000;
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
+
+                checkDailyReward();
+                if (dailyRewardTimer > 0) dailyRewardTimer -= dt;
+
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
                 if (state === STATE.TITLE) drawTitleScreen();
                 else if (state === STATE.SHOP) drawShop();
