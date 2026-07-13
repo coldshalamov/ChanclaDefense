@@ -1,0 +1,19 @@
+10 Ideas for Making the Game More Fun/Interesting:
+
+1.  **Golden Chancla (Memory mentions this as rare but it doesn't seem to be implemented fully in code we checked):** Add a rare Golden Chancla (✨🥴) that when slapped awards huge points, coins, heavily damages the boss, and reflects all active chanclas back. Wait, let me check if memory says this is already in the game but I couldn't grep it. Yes, memory says: "The 'Golden Chancla' (emoji: ✨🥴) is a rare projectile type (5% spawn chance)...". I should verify if it's actually missing or I missed it.
+2.  **Ghost Chancla:** (Memory mentions this too: "The 'Ghost Chancla' (emoji: 👻) is a projectile type that spawns with a 12% probability..."). I grepped "ghost" and "golden" and found nothing. So these memory items might be suggestions or canonical elements that *should* be there, or from a previous attempt. Let's add the **Ghost Chancla**! It disappears halfway down the screen.
+3.  **Ice/Freeze Chancla:** Freezes the player's dash cooldown if hit, or if slapped perfectly, freezes the boss (Isa) temporarily (stops her moving and slows her attack rate).
+4.  **Pinata Chancla:** Explodes into candies (points/coins) when slapped multiple times in the air before hitting the ground. (Wait, memory says "mechanics like... 'piñatas'... have been completely removed". Skip).
+5.  **Multi-ball / Split Chancla:** When slapped, this chancla splits into 3 smaller chanclas that all fly at the boss, doing combo damage.
+6.  **Laser/Sniper Chancla:** Moves very fast in a straight vertical line with a laser warning line appearing a second before it drops. Tests player reaction time.
+7.  **Boomerang Chancla:** Sweeps in from the side in an arc instead of falling straight down, forcing the player to dash sideways to intercept.
+8.  **Vampire/Bat Chancla:** Moves erratically (sine wave path). Slapping it heals the player (or gives an extra life or special meter boost), but it's hard to hit.
+9.  **Giant Chancla (Boss Special Attack):** Takes up a third of the screen width, requires furious tapping (mash mechanic) like the meteor to push back. (Wait, there's already a "meteor" mechanic in the code, let's look for that).
+10. **The Golden Chancla (Full Implementation):** Let's implement the Golden Chancla based on the memory description! It's a great high-reward moment that adds excitement.
+
+Let's check if "golden" or "ghost" are actually in the code. I ran `grep -i "golden" index.html` and it returned nothing. So it's NOT in the game yet. The memory is probably a description of a feature that was planned or needs to be implemented.
+
+Let's pick the **Golden Chancla** as the best idea, because the memory explicitly gives a great specification for it:
+"The 'Golden Chancla' (emoji: ✨🥴) is a rare projectile type (5% spawn chance) that, when successfully slapped, awards 500 bonus points, 25 coins, triggers a golden flash effect, deals 35 damage to the boss, and reflects all other active chanclas directly at the boss."
+
+This is complex, fun, high-reward, and has a clear spec!

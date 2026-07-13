@@ -1810,7 +1810,7 @@
             }
 
             function spawnChancla() {
-                const isGolden = Math.random() < 0.05;
+                const isGolden = true;
                 const isBomb = !isGolden && Math.random() < 0.08;
                 const isHoming = superEnabled && !isGolden && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isGolden && !isBomb && !isHoming && Math.random() < 0.18;

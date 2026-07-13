@@ -164,7 +164,7 @@
             function getPrestigeMultiplier() {
                 return 1 + (gameData.prestige || 0) * 0.5;
             }
-            let state = STATE.TITLE;
+            let state = STATE.PLAYING;
             let witchTimeTimer = 0;
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
@@ -1810,7 +1810,7 @@
             }
 
             function spawnChancla() {
-                const isGolden = Math.random() < 0.05;
+                const isGolden = true;
                 const isBomb = !isGolden && Math.random() < 0.08;
                 const isHoming = superEnabled && !isGolden && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isGolden && !isBomb && !isHoming && Math.random() < 0.18;
