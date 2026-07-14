@@ -1207,6 +1207,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'golden') emoji = '✨🦶';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1216,6 +1217,9 @@
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
+                    } else if (type === 'golden') {
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 25;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1809,16 +1813,18 @@
             }
 
             function spawnChancla() {
-                const isBomb = Math.random() < 0.08;
-                const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isGolden = Math.random() < 0.05;
+                const isBomb = !isGolden && Math.random() < 0.08;
+                const isHoming = superEnabled && !isGolden && !isBomb && Math.random() < 0.10;
+                const isSuper = superEnabled && !isGolden && !isBomb && !isHoming && Math.random() < 0.18;
+                const isFire = isa.enraged && !isGolden && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
+                else if (isGolden) { w = 40; h = 20; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1828,12 +1834,14 @@
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+                else if (isGolden) vy = baseSpeed * 1.2;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isBomb) type = 'bomb';
+                if (isGolden) type = 'golden';
+                else if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
@@ -1914,6 +1922,25 @@
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
+
+                        if (c.type === 'golden') {
+                            score += Math.floor(500 * getPrestigeMultiplier());
+                            gameData.coins += Math.floor(25 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(25 * getPrestigeMultiplier());
+                            triggerFlash(0.4, '#ffd700');
+                            addFloatText('GOLDEN SLAP! ✨🦶', c.x, c.y - 40, '#ffd700', 20);
+
+                            // Reflect all other active chanclas directly at the boss
+                            chanclas.forEach(otherC => {
+                                if (!otherC.slapped && otherC !== c && otherC.type !== 'meteor') {
+                                    otherC.slapped = true;
+                                    otherC.isPerfect = true;
+                                    otherC.vy = -600;
+                                    otherC.vx = (isa.x - otherC.x) * 1.5;
+                                    otherC.rotSpeed = 25;
+                                }
+                            });
+                        }
 
                         if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
                             specialReadyTriggered = true;
@@ -2145,6 +2172,7 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'golden') damage = 35;
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
