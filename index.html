@@ -166,6 +166,8 @@
             }
             let state = STATE.TITLE;
             let witchTimeTimer = 0;
+            let dailyRewardMessage = '';
+            let dailyRewardTimer = 0;
 
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -194,7 +196,29 @@
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
+                if (!gameData.lastLogin) gameData.lastLogin = null;
+                if (!gameData.loginStreak) gameData.loginStreak = 0;
             } catch (e) { console.error(e); }
+
+            function checkDailyReward() {
+                const today = new Date().toDateString();
+                if (gameData.lastLogin !== today) {
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    if (gameData.lastLogin === yesterday.toDateString()) {
+                        gameData.loginStreak = (gameData.loginStreak || 0) + 1;
+                    } else {
+                        gameData.loginStreak = 1;
+                    }
+                    gameData.lastLogin = today;
+                    const reward = Math.min(50 * gameData.loginStreak, 500);
+                    gameData.coins += reward;
+                    gameData.stats.totalCoinsEarned += reward;
+                    saveGameData();
+                    dailyRewardMessage = 'Daily Reward: ' + reward + ' 💰 (Streak: ' + gameData.loginStreak + ')';
+                    dailyRewardTimer = 5;
+                }
+            }
 
             function saveGameData() {
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
@@ -1674,6 +1698,17 @@
                 drawBackground();
                 drawIsa();
                 drawPlayer();
+                if (dailyRewardTimer > 0) {
+                    ctx.save();
+                    ctx.fillStyle = '#ffdf00';
+                    ctx.font = 'bold 20px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 4;
+                    ctx.strokeText(dailyRewardMessage, canvas.width / 2, 230);
+                    ctx.fillText(dailyRewardMessage, canvas.width / 2, 230);
+                    ctx.restore();
+                }
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
                 const panelHeight = (gameData.stats.wins || 1) >= 10 ? 420 : 360;
@@ -2775,6 +2810,8 @@
                 const now = ts / 1000;
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
+                checkDailyReward();
+                if (dailyRewardTimer > 0) dailyRewardTimer -= dt;
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
                 if (state === STATE.TITLE) drawTitleScreen();
                 else if (state === STATE.SHOP) drawShop();
