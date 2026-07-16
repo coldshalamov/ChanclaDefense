@@ -2151,6 +2151,12 @@
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
+                            let dmgColor = '#ff4444';
+                            let dmgSize = 16;
+                            if (c.isPerfect) { dmgColor = '#ffd700'; dmgSize = 20; }
+
+                            addFloatText('-' + damage, isa.x + (Math.random() - 0.5) * 40, isa.y - 20 + (Math.random() - 0.5) * 20, dmgColor, dmgSize);
+
                             if (c.type === 'bomb') {
                                 triggerShake(20, 0.5);
                                 triggerFlash(0.2, '#fff');
@@ -2344,6 +2350,8 @@
                         isa.anger = Math.max(0, isa.anger - dmg);
                         isa.hitTimer = 0.7;
                         specialProjectiles.splice(i, 1);
+
+                        addFloatText('-' + dmg, isa.x + (Math.random() - 0.5) * 40, isa.y - 30, '#ff00ff', 24);
 
                         // Play hit sound
                         playSound(1000, 0.15);
