@@ -149,7 +149,7 @@
         <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
     </div>
     <script>
-        (() => {
+window.gameApp = (() => {
             const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
             const overlayLeft = document.getElementById('overlay-left');
@@ -3258,7 +3258,7 @@
                 setDirectionsVisible(true);
             }
             initTitle();
-        })();
+        return { startGameFromTitle, state: () => state, STATE, spawnChancla, chanclas: () => chanclas }; })();
     </script>
 </body>
 
