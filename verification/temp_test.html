@@ -164,12 +164,12 @@
             function getPrestigeMultiplier() {
                 return 1 + (gameData.prestige || 0) * 0.5;
             }
-            let state = STATE.TITLE;
+            window.gameState = STATE.TITLE; let state = window.gameState;
             let witchTimeTimer = 0;
 
             let dailyRewardMessage = '';
             let dailyRewardTimer = 0;
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none', missions: { daily: [], lastDate: '' } };
+            window.gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none', missions: { daily: [], lastDate: '' } };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -2923,6 +2923,8 @@
             }
 
             function loop(ts) {
+                if (window.forceState) { state = window.forceState; window.forceState = null; }
+
                 const now = ts / 1000;
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
