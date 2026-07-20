@@ -1328,6 +1328,27 @@
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width - 12, 22);
 
+                // Combo Counter
+                if (comboCount > 1) {
+                    ctx.textAlign = 'left';
+                    const comboScale = Math.min(2.0, 1 + comboCount * 0.1);
+                    ctx.font = `bold ${16 * comboScale}px sans-serif`;
+                    // Color based on combo size
+                    let comboColor = '#fff';
+                    if (comboCount >= 25) comboColor = '#ff00ff'; // Legend
+                    else if (comboCount >= 15) comboColor = '#ff0000'; // Impossible
+                    else if (comboCount >= 10) comboColor = '#ff8800'; // Dios mio
+                    else if (comboCount >= 6) comboColor = '#ffff00'; // Fuego
+                    else if (comboCount >= 3) comboColor = '#00ffff'; // Spicy
+
+                    ctx.fillStyle = comboColor;
+                    ctx.fillText(comboCount + 'x COMBO!', 12, 60);
+
+                    ctx.font = '14px sans-serif';
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(getComboPhrase(comboCount), 12, 60 + 16 * comboScale);
+                }
+
                 // Draw special attack bar
                 const barWidth = 180;
                 const barHeight = 20;
