@@ -149,7 +149,7 @@
         <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
     </div>
     <script>
-        (() => {
+window.gameApp = (() => {
             const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
             const overlayLeft = document.getElementById('overlay-left');
@@ -166,6 +166,9 @@
             }
             let state = STATE.TITLE;
             let witchTimeTimer = 0;
+
+            let dailyRewardMessage = '';
+            let dailyRewardTimer = 0;
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
@@ -192,6 +195,8 @@
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
 
                 if (!gameData.achievements) gameData.achievements = {};
+                if (gameData.lastLogin === undefined) gameData.lastLogin = null;
+                if (gameData.loginStreak === undefined) gameData.loginStreak = 0;
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
             } catch (e) { console.error(e); }
@@ -1683,6 +1688,16 @@
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
                 ctx.font = '24px sans-serif';
+
+                if (dailyRewardTimer > 0) {
+                    ctx.save();
+                    ctx.fillStyle = `rgba(255, 215, 0, ${Math.min(1, dailyRewardTimer)})`;
+                    ctx.font = 'bold 20px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(dailyRewardMessage, canvas.width / 2, 220);
+                    ctx.restore();
+                }
+
                 ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
@@ -2781,10 +2796,37 @@
 
             let last = 0;
 
+            function checkDailyReward(dt) {
+                if (dailyRewardTimer > 0) {
+                    dailyRewardTimer -= dt;
+                }
+                const today = new Date().toDateString();
+                if (gameData.lastLogin !== today) {
+                    if (gameData.lastLogin) {
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        if (gameData.lastLogin === yesterday.toDateString()) {
+                            gameData.loginStreak++;
+                        } else {
+                            gameData.loginStreak = 1;
+                        }
+                    } else {
+                        gameData.loginStreak = 1;
+                    }
+                    gameData.lastLogin = today;
+                    const reward = Math.min(500, gameData.loginStreak * 50);
+                    gameData.coins += reward;
+                    saveGameData();
+                    dailyRewardMessage = `Daily Reward! Day ${gameData.loginStreak}: +${reward} Coins`;
+                    dailyRewardTimer = 3.0;
+                }
+            }
+
             function loop(ts) {
                 const now = ts / 1000;
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
+                checkDailyReward(dt);
                 if (state === STATE.PLAYING || state === STATE.WIN) update(dt);
                 if (state === STATE.TITLE) drawTitleScreen();
                 else if (state === STATE.SHOP) drawShop();
@@ -3216,7 +3258,7 @@
                 setDirectionsVisible(true);
             }
             initTitle();
-        })();
+        return { startGameFromTitle, state: () => state, STATE, spawnChancla, chanclas: () => chanclas }; })();
     </script>
 </body>
 
