@@ -1207,6 +1207,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'blackhole') emoji = '🌌';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1216,6 +1217,9 @@
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
+                    } else if (type === 'blackhole') {
+                        ctx.shadowColor = 'purple';
+                        ctx.shadowBlur = 20;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1813,12 +1817,14 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isBlackhole = superEnabled && !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.05;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
+                else if (isBlackhole) { w = 40; h = 40; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1828,6 +1834,7 @@
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+                else if (isBlackhole) vy = baseSpeed * 0.4; // very slow
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1837,8 +1844,9 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isBlackhole) type = 'blackhole';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, absorbed: 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1863,6 +1871,38 @@
 
                                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    if (c.type === 'blackhole' && !c.slapped) {
+                        const distToBlackhole = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
+                        if (distToBlackhole < slapRange) {
+                            c.slapped = true;
+                            c.vy = -500;
+                            addFloatText('GALAXY BURST! 🌌', c.x, c.y);
+                            triggerShake(15, 0.5);
+                            triggerFlash(0.3, 'purple');
+                            playSound(1000, 0.5);
+
+                            const burstCount = (c.absorbed || 0) + 3;
+                            for (let k = 0; k < burstCount; k++) {
+                                const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI / 2;
+                                const speed = 400 + Math.random() * 200;
+                                chanclas.push({
+                                    x: c.x,
+                                    y: c.y,
+                                    vx: Math.cos(angle) * speed,
+                                    vy: Math.sin(angle) * speed,
+                                    w: 32,
+                                    h: 18,
+                                    type: 'fire',
+                                    rotation: 0,
+                                    rotSpeed: (Math.random() - 0.5) * 15,
+                                    slapped: true
+                                });
+                            }
+                            slappedAny = true;
+                            continue;
+                        }
+                    }
 
                     if (c.type === 'meteor' && !c.slapped) {
                         const distToMeteor = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y + c.h/2 - player.y, 2));
@@ -2069,6 +2109,28 @@
             function updateChanclas(dt, enemyDt) {
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    // Blackhole Logic
+                    if (c.type === 'blackhole' && !c.slapped) {
+                        for (let j = chanclas.length - 1; j >= 0; j--) {
+                            if (i === j) continue;
+                            const other = chanclas[j];
+                            if (other.type !== 'meteor' && other.type !== 'blackhole' && !other.slapped) {
+                                const dist = Math.sqrt(Math.pow(c.x - other.x, 2) + Math.pow(c.y - other.y, 2));
+                                if (dist < 180) {
+                                    const pullX = (c.x - other.x) / dist;
+                                    const pullY = (c.y - other.y) / dist;
+                                    other.vx += pullX * 400 * dt;
+                                    other.vy += pullY * 400 * dt;
+                                    if (dist < 20) {
+                                        c.absorbed = (c.absorbed || 0) + 1;
+                                        chanclas.splice(j, 1);
+                                        if (j < i) i--;
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // Homing Logic
                     if (c.type === 'homing' && !c.slapped) {
