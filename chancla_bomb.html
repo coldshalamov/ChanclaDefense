@@ -1207,6 +1207,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'boomerang') emoji = '🪃';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1215,6 +1216,9 @@
                         ctx.shadowBlur = 20;
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
+                        ctx.shadowBlur = 15;
+                    } else if (type === 'boomerang') {
+                        ctx.shadowColor = '#00ff00';
                         ctx.shadowBlur = 15;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
@@ -1811,8 +1815,9 @@
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isBoomerang = superEnabled && !isBomb && !isHoming && Math.random() < 0.12;
+                const isSuper = superEnabled && !isBomb && !isHoming && !isBoomerang && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isBoomerang && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1837,8 +1842,9 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isBoomerang) type = 'boomerang';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, returning: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2145,6 +2151,7 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'boomerang') damage = 25; // Big damage for hitting it back
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
@@ -2253,7 +2260,20 @@
                         if (player.lives <= 0) endGame();
                         continue;
                     } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
-                        if (c.type === 'bomb') {
+                        if (c.type === 'boomerang' && !c.returning) {
+                            c.returning = true;
+                            c.vy = -Math.abs(c.vy) * 1.5; // Turn around and go faster
+                            c.y = canvas.height + c.h - 1; // Don't trigger this again immediately
+
+                            // Normalize horizontal return speed so it's not absurdly fast
+                            const dx = player.x - c.x;
+                            const distance = Math.abs(dx);
+                            const dirX = distance > 0 ? dx / distance : 0;
+                            c.vx = dirX * 250; // Constant homing speed
+
+                            playSound(950, 0.3); // "Whoosh" sound
+                            continue;
+                        } else if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
                             triggerFlash(0.1, '#fff');
                             playSound(1000, 0.4);
