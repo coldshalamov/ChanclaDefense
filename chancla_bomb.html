@@ -1328,6 +1328,32 @@
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Lives: ' + '❤️'.repeat(player.lives), canvas.width - 12, 22);
 
+                // Combo display
+                if (comboCount >= 2) {
+                    ctx.save();
+                    const cx = 50;
+                    const cy = 60;
+                    const comboScale = 1 + Math.sin(timeElapsed * 10) * 0.05 + Math.min(0.3, comboCount * 0.02);
+                    ctx.translate(cx, cy);
+                    ctx.scale(comboScale, comboScale);
+                    if (comboCount >= 10) {
+                        ctx.rotate((Math.random() - 0.5) * 0.1);
+                    }
+
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = '#000';
+                    ctx.shadowBlur = 4;
+
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.fillStyle = '#ffb86c';
+                    ctx.fillText('COMBO', 0, -5);
+
+                    ctx.font = 'bold 24px sans-serif';
+                    ctx.fillStyle = fiestaMode ? `hsl(${Math.floor(fiestaHue)}, 100%, 60%)` : '#ff79c6';
+                    ctx.fillText('x' + comboCount, 0, 18);
+                    ctx.restore();
+                }
+
                 // Draw special attack bar
                 const barWidth = 180;
                 const barHeight = 20;
