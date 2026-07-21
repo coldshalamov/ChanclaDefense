@@ -2151,6 +2151,18 @@
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
+                            let dmgColor = '#ff4d4d'; // Normal red
+                            let dmgSize = 16;
+                            if (c.isPerfect || c.rallyCount > 0) {
+                                dmgColor = '#ffd700'; // Gold/yellow for perfect/rally
+                                dmgSize = 22;
+                            }
+                            if (c.type === 'bomb' || c.type === 'meteor') {
+                                dmgColor = '#ff8c00'; // Orange for explosions
+                                dmgSize = 24;
+                            }
+                            addFloatText('-' + Math.floor(damage), isa.x + (Math.random() - 0.5) * 40, isa.y - 20, dmgColor, dmgSize);
+
                             if (c.type === 'bomb') {
                                 triggerShake(20, 0.5);
                                 triggerFlash(0.2, '#fff');
@@ -2343,6 +2355,8 @@
                         let dmg = 20 + (gameData.upgrades.power || 0) * 5;
                         isa.anger = Math.max(0, isa.anger - dmg);
                         isa.hitTimer = 0.7;
+
+                        addFloatText('-' + Math.floor(dmg), isa.x + (Math.random() - 0.5) * 40, isa.y - 20, '#ff00ff', 26);
                         specialProjectiles.splice(i, 1);
 
                         // Play hit sound
