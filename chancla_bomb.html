@@ -159,7 +159,7 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige', MISSIONS: 'missions' };
 
             function getPrestigeMultiplier() {
                 return 1 + (gameData.prestige || 0) * 0.5;
@@ -194,7 +194,41 @@
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
+
+                if (!gameData.missions) {
+                    gameData.missions = [
+                        { id: 'daily_slaps', type: 'slaps', desc: 'Slap 50 chanclas', target: 50, progress: 0, reward: 25, completed: false },
+                        { id: 'daily_perfects', type: 'perfects', desc: 'Get 20 perfect slaps', target: 20, progress: 0, reward: 30, completed: false },
+                        { id: 'daily_specials', type: 'specials', desc: 'Use Special Attack 3 times', target: 3, progress: 0, reward: 20, completed: false }
+                    ];
+                    gameData.lastMissionDate = new Date().toDateString();
+                } else {
+                    const today = new Date().toDateString();
+                    if (gameData.lastMissionDate !== today) {
+                        gameData.missions = [
+                            { id: 'daily_slaps', type: 'slaps', desc: 'Slap 50 chanclas', target: 50, progress: 0, reward: 25, completed: false },
+                            { id: 'daily_perfects', type: 'perfects', desc: 'Get 20 perfect slaps', target: 20, progress: 0, reward: 30, completed: false },
+                            { id: 'daily_specials', type: 'specials', desc: 'Use Special Attack 3 times', target: 3, progress: 0, reward: 20, completed: false }
+                        ];
+                        gameData.lastMissionDate = today;
+                    }
+                }
             } catch (e) { console.error(e); }
+
+            function updateMission(type, amount) {
+                if (!gameData.missions) return;
+                let updated = false;
+                gameData.missions.forEach(m => {
+                    if (m.type === type && !m.completed) {
+                        m.progress += amount;
+                        if (m.progress >= m.target) {
+                            m.progress = m.target;
+                        }
+                        updated = true;
+                    }
+                });
+                if (updated) saveGameData();
+            }
 
             function saveGameData() {
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
@@ -1670,6 +1704,83 @@
                 ctx.restore();
             }
 
+
+            function drawMissions() {
+                drawBackground();
+                drawIsa();
+                drawPlayer();
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 24px sans-serif';
+                ctx.fillText('DAILY MISSIONS', canvas.width / 2, 60);
+
+                ctx.fillStyle = '#ffd700';
+                ctx.font = '24px sans-serif';
+                ctx.fillText('💰 ' + gameData.coins, canvas.width / 2, 95);
+
+                let y = 130;
+                if (gameData.missions) {
+                    gameData.missions.forEach(m => {
+                        let bgColor = '#555';
+                        if (m.completed) bgColor = '#4caf50';
+                        else if (m.progress >= m.target) bgColor = '#ff9f1c';
+
+                        ctx.fillStyle = bgColor;
+                        roundRect(ctx, 30, y, canvas.width - 60, 65, 10);
+                        ctx.fill();
+
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 2;
+                        roundRect(ctx, 30, y, canvas.width - 60, 65, 10);
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#fff';
+                        ctx.textAlign = 'left';
+                        ctx.font = 'bold 16px sans-serif';
+                        ctx.fillText(m.desc, 45, y + 25);
+
+                        const progressRatio = Math.min(1, m.progress / m.target);
+                        ctx.fillStyle = '#333';
+                        roundRect(ctx, 45, y + 35, canvas.width - 150, 10, 5);
+                        ctx.fill();
+                        ctx.fillStyle = '#2196f3';
+                        if (progressRatio > 0) {
+                            roundRect(ctx, 45, y + 35, (canvas.width - 150) * progressRatio, 10, 5);
+                            ctx.fill();
+                        }
+
+                        ctx.fillStyle = '#fff';
+                        ctx.font = '12px sans-serif';
+                        ctx.fillText(`${Math.floor(Math.min(m.progress, m.target))} / ${m.target}`, 45 + (canvas.width - 150)/2 - 15, y + 45);
+
+                        ctx.textAlign = 'right';
+                        ctx.font = 'bold 14px sans-serif';
+                        if (m.completed) {
+                            ctx.fillText('CLAIMED', canvas.width - 45, y + 35);
+                        } else if (m.progress >= m.target) {
+                            ctx.fillText('CLAIM 💰 ' + m.reward, canvas.width - 45, y + 35);
+                        } else {
+                            ctx.fillText('💰 ' + m.reward, canvas.width - 45, y + 35);
+                        }
+
+                        y += 75;
+                    });
+                }
+
+                ctx.fillStyle = '#f44336';
+                roundRect(ctx, 100, canvas.height - 70, canvas.width - 200, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 38);
+
+                ctx.restore();
+            }
+
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
@@ -1712,44 +1823,52 @@
 
                 // Play Button
                 ctx.fillStyle = '#ff9f1c';
-                roundRect(ctx, 110, 430, canvas.width - 220, 46, 12);
+                roundRect(ctx, 45, 430, 145, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#222';
-                ctx.font = '18px sans-serif';
-                ctx.fillText('Jugar / Play', canvas.width / 2, 460);
+                ctx.font = '16px sans-serif';
+                ctx.fillText('Jugar / Play', 45 + 145/2, 458);
 
                 // Shop Button
                 ctx.fillStyle = '#2196f3';
-                roundRect(ctx, 110, 490, canvas.width - 220, 46, 12);
+                roundRect(ctx, 210, 430, 145, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
-                ctx.font = '18px sans-serif';
-                ctx.fillText('Shop / Tienda', canvas.width / 2, 520);
+                ctx.font = '16px sans-serif';
+                ctx.fillText('Shop / Tienda', 210 + 145/2, 458);
 
                 // Achievements Button
                 ctx.fillStyle = '#9c27b0';
-                roundRect(ctx, 110, 550, canvas.width - 220, 46, 12);
+                roundRect(ctx, 45, 490, 145, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
-                ctx.font = '18px sans-serif';
-                ctx.fillText('Logros / Achiev.', canvas.width / 2, 580);
+                ctx.font = '14px sans-serif';
+                ctx.fillText('Logros / Achiev.', 45 + 145/2, 518);
+
+                // Missions Button
+                ctx.fillStyle = '#f44336';
+                roundRect(ctx, 210, 490, 145, 46, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = '16px sans-serif';
+                ctx.fillText('Missions', 210 + 145/2, 518);
 
                 // Cosmetics Button
                 ctx.fillStyle = '#e91e63';
-                roundRect(ctx, 110, 610, canvas.width - 220, 46, 12);
+                roundRect(ctx, 45, 550, 145, 46, 12);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
-                ctx.font = '18px sans-serif';
-                ctx.fillText('Cosmetics / Cosm.', canvas.width / 2, 640);
+                ctx.font = '14px sans-serif';
+                ctx.fillText('Cosmetics', 45 + 145/2, 578);
 
                 // Prestige Button
                 if ((gameData.stats.wins || 1) >= 10) {
                     ctx.fillStyle = '#ffb347';
-                    roundRect(ctx, 110, 670, canvas.width - 220, 46, 12);
+                    roundRect(ctx, 210, 550, 145, 46, 12);
                     ctx.fill();
                     ctx.fillStyle = '#222';
-                    ctx.font = '18px sans-serif';
-                    ctx.fillText('Prestige / Prestigio', canvas.width / 2, 700);
+                    ctx.font = '16px sans-serif';
+                    ctx.fillText('Prestige', 210 + 145/2, 578);
                 }
 
                 ctx.restore();
@@ -1897,7 +2016,11 @@
                         const isPerfect = dist < perfectRange;
 
                         gameData.stats.totalSlaps++;
-                        if (isPerfect) gameData.stats.perfectSlaps++;
+                        updateMission('slaps', 1);
+                        if (isPerfect) {
+                            gameData.stats.perfectSlaps++;
+                            updateMission('perfects', 1);
+                        }
 
                         // Upgrade visual effect
                         if (isPerfect) slapEffect.type = 'perfect';
@@ -1992,6 +2115,7 @@
 
             function fireSpecialAttack() {
                 if (specialAttackBar >= maxSpecialAttack) {
+                    updateMission('specials', 1);
                     // Fire bouquet emoji at Isa
                     specialProjectiles.push({
                         x: player.x,
@@ -2780,6 +2904,7 @@
                 if (state === STATE.TITLE) drawTitleScreen();
                 else if (state === STATE.SHOP) drawShop();
                 else if (state === STATE.ACHIEVEMENTS) drawAchievements();
+                else if (state === STATE.MISSIONS) drawMissions();
                 else if (state === STATE.COSMETICS) drawCosmetics();
                 else if (state === STATE.PRESTIGE) drawPrestige();
                 else if (state === STATE.WIN) {
@@ -2815,29 +2940,53 @@
                 const pos = getMousePos(canvas, e);
 
                 if (state === STATE.TITLE) {
-                    // Check Play Button (110, 380, w, 46)
-                    if (pos.y >= 430 && pos.y <= 476 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                    // Check Play Button
+                    if (pos.y >= 430 && pos.y <= 476 && pos.x >= 45 && pos.x <= 190) {
                         startGameFromTitle();
                     }
-                    // Check Shop Button (110, 440, w, 46)
-                    else if (pos.y >= 490 && pos.y <= 536 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                    // Check Shop Button
+                    else if (pos.y >= 430 && pos.y <= 476 && pos.x >= 210 && pos.x <= 355) {
                         setDirectionsVisible(false);
                         state = STATE.SHOP;
                     }
-                    // Check Achievements Button (110, 500, w, 46)
-                    else if (pos.y >= 550 && pos.y <= 596 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                    // Check Achievements Button
+                    else if (pos.y >= 490 && pos.y <= 536 && pos.x >= 45 && pos.x <= 190) {
                         setDirectionsVisible(false);
                         state = STATE.ACHIEVEMENTS;
                     }
-                    // Check Cosmetics Button (110, 560, w, 46)
-                    else if (pos.y >= 610 && pos.y <= 656 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                    // Check Missions Button
+                    else if (pos.y >= 490 && pos.y <= 536 && pos.x >= 210 && pos.x <= 355) {
+                        setDirectionsVisible(false);
+                        state = STATE.MISSIONS;
+                    }
+                    // Check Cosmetics Button
+                    else if (pos.y >= 550 && pos.y <= 596 && pos.x >= 45 && pos.x <= 190) {
                         setDirectionsVisible(false);
                         state = STATE.COSMETICS;
                     }
                     // Check Prestige Button
-                    else if ((gameData.stats.wins || 1) >= 10 && pos.y >= 670 && pos.y <= 716 && pos.x >= 110 && pos.x <= canvas.width - 110) {
+                    else if ((gameData.stats.wins || 1) >= 10 && pos.y >= 550 && pos.y <= 596 && pos.x >= 210 && pos.x <= 355) {
                         setDirectionsVisible(false);
                         state = STATE.PRESTIGE;
+                    }
+                } else if (state === STATE.MISSIONS) {
+                    let y = 130;
+                    if (gameData.missions) {
+                        for (let m of gameData.missions) {
+                            if (pos.y >= y && pos.y <= y + 65 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+                                if (m.progress >= m.target && !m.completed) {
+                                    gameData.coins += m.reward;
+                                    m.completed = true;
+                                    saveGameData();
+                                    playSound(1200, 0.1);
+                                }
+                            }
+                            y += 75;
+                        }
+                    }
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 24 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
+                        state = STATE.TITLE;
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
