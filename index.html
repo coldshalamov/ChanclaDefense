@@ -2143,6 +2143,7 @@
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
+                            if (c.bounceCount > 0) damage += 15 * c.bounceCount; // Ricochet bonus!
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
                             if (c.isPerfect) damage += 7;
@@ -2183,14 +2184,34 @@
                             continue;
                         }
 
-                        if (c.x < -50 || c.x > canvas.width + 50 || c.y < -50) {
+                        // RICOCHET MECHANIC for slapped chanclas
+                        if (c.x <= 10 || c.x >= canvas.width - 10) {
+                            if (c.x <= 10) c.x = 10;
+                            if (c.x >= canvas.width - 10) c.x = canvas.width - 10;
+
+                            c.vx *= -1.3; // Bounce and accelerate horizontally
+                            // Keep some vertical momentum towards Isa but don't go infinitely fast
+                            if (c.vy > -800) c.vy *= 1.1;
+
+                            c.bounceCount = (c.bounceCount || 0) + 1;
+                            c.rotSpeed *= 1.2;
+
+                            // Only play sound if audioCtx is likely ready or just use playSound
+                            playSound(800 + Math.min(c.bounceCount * 150, 1000), 0.2);
+                            addFloatText(`RICOCHET x${c.bounceCount}! ⚡`, c.x, c.y);
+                            spawnImpact(c.x, c.y, true);
+                            triggerFlash(0.05, '#00ffff');
+                        }
+
+                        if (c.y < -50) {
                             chanclas.splice(i, 1);
                             continue;
                         }
+                    } else {
+                        // Unslapped chanclas softly bounce off walls
+                        if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
+                        if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
                     }
-
-                    if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
-                    if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
                     if (c.y < -50 && c.isShrapnel) {
                         chanclas.splice(i, 1);
