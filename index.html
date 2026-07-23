@@ -1207,6 +1207,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'golden') emoji = '✨🥺';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1809,10 +1810,11 @@
             }
 
             function spawnChancla() {
-                const isBomb = Math.random() < 0.08;
+                const isGolden = Math.random() < 0.05;
+                const isBomb = !isGolden && Math.random() < 0.08;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1833,7 +1835,8 @@
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isBomb) type = 'bomb';
+                if (isGolden) type = 'golden';
+                else if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
@@ -1915,6 +1918,24 @@
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
 
+                        if (c.type === 'golden') {
+                            score += Math.floor(500 * getPrestigeMultiplier());
+                            gameData.coins += Math.floor(25 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(25 * getPrestigeMultiplier());
+                            addFloatText('GOLDEN SLAP! ✨', c.x, c.y - 30, '#ffd700', 18);
+                            triggerFlash(0.3, '#ffd700');
+                            playSound(1200, 0.4);
+                            // Reflect all other active chanclas
+                            for (let j = 0; j < chanclas.length; j++) {
+                                const otherC = chanclas[j];
+                                if (otherC !== c && !otherC.slapped && otherC.type !== 'meteor') {
+                                    otherC.slapped = true;
+                                    otherC.vx = (isa.x - otherC.x) * 1.5;
+                                    otherC.vy = -600;
+                                }
+                            }
+                        }
+
                         if (!specialReadyTriggered && specialAttackBar >= maxSpecialAttack) {
                             specialReadyTriggered = true;
                             // HUD egg icon approx location
@@ -1946,7 +1967,10 @@
                         }
 
                         // Add float text
-                        if (isPerfect) {
+                        if (c.type === 'golden') {
+                            // float text already added above, skip default
+                        }
+                        else if (isPerfect) {
                             gameData.coins += Math.floor(2 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(2 * getPrestigeMultiplier());
                             addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
@@ -2145,6 +2169,7 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'golden') damage = 35;
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
