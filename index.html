@@ -1207,6 +1207,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'trick') emoji = '🃏';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1813,6 +1814,7 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isTrick = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.10;
 
                 let w = 32;
                 let h = 18;
@@ -1837,8 +1839,10 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isTrick) type = 'trick';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                const trickTimer = isTrick ? 0.4 + Math.random() * 0.4 : 0;
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 'falling', trickTimer });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1935,6 +1939,11 @@
 
                         const comboPhrase = getComboPhrase(comboCount);
                         const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
+
+                        if (c.type === 'trick') {
+                            score += Math.floor(15 * getPrestigeMultiplier());
+                            addFloatText('TRICKED! 🃏', c.x, c.y - 45, '#ff44ff');
+                        }
 
                         if (c.rallyCount > 0) {
                             score += Math.floor(20 * c.rallyCount * getPrestigeMultiplier());
@@ -2070,6 +2079,30 @@
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
+                    // Trick Logic
+                    if (c.type === 'trick' && !c.slapped) {
+                        if (c.trickState === 'falling') {
+                            c.trickTimer -= enemyDt;
+                            if (c.trickTimer <= 0) {
+                                c.trickState = 'paused';
+                                c.trickTimer = 0.6; // pause for 0.6s
+                                c.vy = 0;
+                                c.vx = 0;
+                            }
+                        } else if (c.trickState === 'paused') {
+                            c.trickTimer -= enemyDt;
+                            c.x += (Math.random() - 0.5) * 6; // Vibrate effect
+                            c.y += (Math.random() - 0.5) * 6;
+                            if (c.trickTimer <= 0) {
+                                c.trickState = 'darting';
+                                const angle = Math.atan2(player.y - c.y, player.x - c.x);
+                                const dartSpeed = 700;
+                                c.vx = Math.cos(angle) * dartSpeed;
+                                c.vy = Math.sin(angle) * dartSpeed;
+                            }
+                        }
+                    }
+
                     // Homing Logic
                     if (c.type === 'homing' && !c.slapped) {
                         const targetX = player.x;
@@ -2141,7 +2174,7 @@
                             }
 
                             // Hit Isa
-                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
+                            let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : (c.type === 'trick' ? 10 : 8));
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;

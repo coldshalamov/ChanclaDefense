@@ -149,7 +149,7 @@
         <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
     </div>
     <script>
-        (() => {
+        window.gameApp = (() => {
             const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
             const overlayLeft = document.getElementById('overlay-left');
@@ -378,7 +378,7 @@
                 playerDialogueTimer = 2.5;
 
                 if (playerDialogueText === "YOU'RE CRAZY!") {
-                    setTimeout(() => {
+                    setTimeoutwindow.gameApp = (() => {
                         dialogueText = "I'll SHOW YOU CRAZY!";
                         dialogueTimer = 3.0;
                     }, 600);
@@ -3240,7 +3240,7 @@
                 setDirectionsVisible(true);
             }
             initTitle();
-        })();
+        return { getGameData: () => gameData, getState: () => state, setState: (s) => { state = s; }, spawnTrick: () => { const x = 200; const y = 200; chanclas.push({x, y, vx: 0, vy: 100, w: 32, h: 18, type: 'trick', rotation: 0, rotSpeed: 0, trickState: 'falling', trickTimer: 0.8}); } }; })();
     </script>
 </body>
 
