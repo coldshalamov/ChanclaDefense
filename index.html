@@ -1207,6 +1207,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'trick') emoji = '🃏';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1215,6 +1216,9 @@
                         ctx.shadowBlur = 20;
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
+                        ctx.shadowBlur = 15;
+                    } else if (type === 'trick') {
+                        ctx.shadowColor = '#00ffcc';
                         ctx.shadowBlur = 15;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
@@ -1810,15 +1814,17 @@
 
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
-                const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isTrick = !isBomb && Math.random() < 0.10;
+                const isHoming = superEnabled && !isBomb && !isTrick && Math.random() < 0.10;
+                const isSuper = superEnabled && !isBomb && !isTrick && !isHoming && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isTrick && !isHoming && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
+                else if (isTrick) { w = 34; h = 34; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1828,17 +1834,19 @@
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+                else if (isTrick) vy = baseSpeed * 1.2;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
                 if (isBomb) type = 'bomb';
+                else if (isTrick) type = 'trick';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: null, trickTimer: 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1911,6 +1919,11 @@
                         slappedAny = true;
                         comboCount++;
                         score += Math.floor(comboCount * getPrestigeMultiplier());
+
+                        if (c.type === 'trick') {
+                            score += Math.floor(15 * getPrestigeMultiplier());
+                            addFloatText('TRICKED! 🃏', c.x, c.y - 20, '#00ffcc');
+                        }
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
@@ -2084,8 +2097,34 @@
                     }
 
                     const currentDt = c.slapped ? dt : enemyDt;
-                    c.x += c.vx * currentDt;
-                    c.y += c.vy * currentDt;
+
+                    // Trick Logic
+                    if (c.type === 'trick' && !c.slapped) {
+                        if (!c.trickState && c.y > canvas.height * 0.3) {
+                            c.trickState = 'pausing';
+                            c.trickTimer = 0.6;
+                            c.vx = 0;
+                            c.vy = 0;
+                        }
+                        if (c.trickState === 'pausing') {
+                            c.trickTimer -= currentDt;
+                            c.x += (Math.random() - 0.5) * 6; // Vibrate
+                            if (c.trickTimer <= 0) {
+                                c.trickState = 'darting';
+                                const dx = player.x - c.x;
+                                const dy = player.y - c.y;
+                                const dist = Math.max(Math.sqrt(dx*dx + dy*dy), 1);
+                                const speed = baseSpeed * 2.5;
+                                c.vx = (dx / dist) * speed;
+                                c.vy = (dy / dist) * speed;
+                            }
+                        }
+                    }
+
+                    if (c.trickState !== 'pausing' || c.slapped) {
+                        c.x += c.vx * currentDt;
+                        c.y += c.vy * currentDt;
+                    }
                     c.rotation += c.rotSpeed * currentDt;
 
                     // Remove slapped chanclas that fly off screen
@@ -2145,6 +2184,7 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'trick') damage = 10;
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
