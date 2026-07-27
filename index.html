@@ -1207,6 +1207,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'ghost') emoji = '👻';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1808,17 +1809,19 @@
                 triggerShake(15, 1.5);
             }
 
-            function spawnChancla() {
-                const isBomb = Math.random() < 0.08;
-                const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                        function spawnChancla() {
+                const isGhost = Math.random() < 0.12;
+                const isBomb = !isGhost && Math.random() < 0.08;
+                const isHoming = superEnabled && !isGhost && !isBomb && Math.random() < 0.10;
+                const isSuper = superEnabled && !isGhost && !isBomb && !isHoming && Math.random() < 0.18;
+                const isFire = isa.enraged && !isGhost && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
+                else if (isGhost) { w = 32; h = 32; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1828,17 +1831,19 @@
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+                else if (isGhost) vy = baseSpeed * 0.9;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isBomb) type = 'bomb';
+                if (isGhost) type = 'ghost';
+                else if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, invisible: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -1863,6 +1868,10 @@
 
                                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    if (c.type === 'ghost' && !c.slapped && c.y > canvas.height * 0.4) {
+                        c.invisible = true;
+                    }
 
                     if (c.type === 'meteor' && !c.slapped) {
                         const distToMeteor = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y + c.h/2 - player.y, 2));
@@ -1911,6 +1920,12 @@
                         slappedAny = true;
                         comboCount++;
                         score += Math.floor(comboCount * getPrestigeMultiplier());
+
+                        if (c.type === 'ghost') {
+                            score += Math.floor(20 * getPrestigeMultiplier());
+                            c.invisible = false;
+                            addFloatText('GHOST BUSTED! 👻', c.x, c.y - 45);
+                        }
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
@@ -2069,6 +2084,10 @@
             function updateChanclas(dt, enemyDt) {
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    if (c.type === 'ghost' && !c.slapped && c.y > canvas.height * 0.4) {
+                        c.invisible = true;
+                    }
 
                     // Homing Logic
                     if (c.type === 'homing' && !c.slapped) {
@@ -2666,7 +2685,10 @@
 
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                for (const c of chanclas) {
+                    if (c.invisible) continue;
+                    drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                }
             }
 
 
