@@ -1817,7 +1817,7 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
-                const isGolden = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.05;
+                const isGolden = true;
 
                 let w = 32;
                 let h = 18;
@@ -1961,7 +1961,6 @@
                             isa.anger = Math.max(0, isa.anger - 35); // Direct damage to boss
                             isa.hitTimer = 0.5;
                             spawnImpact(isa.x, isa.y);
-                            if (isa.anger <= 0) triggerWin();
                         }
 
                         // Add float text
