@@ -1207,6 +1207,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'golden') emoji = '✨🥺';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1216,6 +1217,9 @@
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
+                    } else if (type === 'golden') {
+                        ctx.shadowColor = 'gold';
+                        ctx.shadowBlur = 20;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1811,8 +1815,9 @@
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isGolden = !isBomb && !isHoming && Math.random() < 0.05;
+                const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1837,6 +1842,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isGolden) type = 'golden';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -1902,6 +1908,29 @@
                         // Upgrade visual effect
                         if (isPerfect) slapEffect.type = 'perfect';
                         else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
+
+                        if (c.type === 'golden') {
+                            score += Math.floor(500 * getPrestigeMultiplier());
+                            gameData.coins += Math.floor(25 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(25 * getPrestigeMultiplier());
+                            triggerFlash(0.3, 'gold');
+                            addFloatText('GOLDEN SLAP! ✨', c.x, c.y - 20);
+                            isa.anger = Math.max(0, isa.anger - 35);
+                            isa.hitTimer = 0.5;
+                            playSound(1200, 0.2);
+                            spawnImpact(c.x, c.y, true);
+                            c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
+                            c.vy = isPerfect ? -550 : -300;
+                            c.slapped = true;
+                            c.isPerfect = isPerfect;
+                            c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
+                            slappedAny = true;
+
+                            if (isa.anger <= 0) {
+                                triggerWin();
+                            }
+                            continue;
+                        }
 
                         c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
                         c.vy = isPerfect ? -550 : -300;
@@ -2227,9 +2256,9 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden') ? 2 : 1;
                         comboCount = 0;
-                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
+                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' || c.type === 'golden' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
@@ -2268,6 +2297,15 @@
                                     slapped: false, // Mark as false so they don't hit Isa
                                     isShrapnel: true
                                 });
+                            }
+                        } else if (c.type === 'golden') {
+                            player.lives -= 2;
+                            player.hitTimer = 0.5;
+                            triggerShake(15, 0.4);
+                            triggerFlash(0.2, '#ff0000');
+                            sayPlayer('hit');
+                            if (player.lives <= 0) {
+                                endGame();
                             }
                         } else {
                             score += Math.floor(1 * getPrestigeMultiplier());
