@@ -395,6 +395,7 @@
             function triggerShake(intensity, duration) {
                 shakeIntensity = intensity;
                 shakeTimer = duration;
+                if (navigator.vibrate) navigator.vibrate(duration * 1000);
             }
 
             function triggerFlash(duration, color = '#fff') {
