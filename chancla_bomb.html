@@ -1238,6 +1238,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'golden') emoji = '✨🥺';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1247,6 +1248,9 @@
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
+                    } else if (type === 'golden') {
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 20;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1908,6 +1912,7 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isGolden = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.05;
 
                 let w = 32;
                 let h = 18;
@@ -1932,6 +1937,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isGolden) type = 'golden';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -2245,13 +2251,21 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'golden') damage = 35;
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
-                            if (c.type === 'bomb') {
+                            if (c.type === 'golden') {
+                                score += Math.floor(500 * getPrestigeMultiplier());
+                                gameData.coins += Math.floor(25 * getPrestigeMultiplier());
+                                gameData.stats.totalCoinsEarned += Math.floor(25 * getPrestigeMultiplier());
+                                triggerFlash(0.3, '#ffd700');
+                                addFloatText('GOLDEN SLAP! ✨', c.x, c.y - 30, '#ffd700');
+                                playSound(1200, 0.4);
+                            } else if (c.type === 'bomb') {
                                 triggerShake(20, 0.5);
                                 triggerFlash(0.2, '#fff');
                                 addFloatText('BOOM! 💣', isa.x, isa.y + 30);
@@ -2328,7 +2342,7 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
@@ -2370,6 +2384,11 @@
                                     isShrapnel: true
                                 });
                             }
+                        } else if (c.type === 'golden') {
+                            player.lives -= 2;
+                            addFloatText('MISSED GOLDEN! 💔', player.x, canvas.height - 40, '#ff0000');
+                            triggerShake(15, 0.4);
+                            if (player.lives <= 0) endGame();
                         } else {
                             score += Math.floor(1 * getPrestigeMultiplier());
                             const prevBest = bestScore;
