@@ -149,8 +149,7 @@
         <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
     </div>
     <script>
-        (() => {
-            const canvas = document.getElementById('game');
+window.gameApp = (() => {const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
             const overlayLeft = document.getElementById('overlay-left');
             const overlayRight = document.getElementById('overlay-right');
@@ -164,7 +163,7 @@
             function getPrestigeMultiplier() {
                 return 1 + (gameData.prestige || 0) * 0.5;
             }
-            let state = STATE.TITLE;
+            let state = STATE.PLAYING;
             let witchTimeTimer = 0;
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -1908,7 +1907,7 @@
             }
 
             function spawnChancla() {
-                const isGolden = Math.random() < 0.05;
+                const isGolden = true;
                 const isBomb = !isGolden && Math.random() < 0.08;
                 const isHoming = superEnabled && !isGolden && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isGolden && !isBomb && !isHoming && Math.random() < 0.18;
@@ -3352,7 +3351,7 @@
                 setDirectionsVisible(true);
             }
             initTitle();
-        })();
+        return { getGameData: () => gameData, getState: () => state, getChanclas: () => chanclas }; })();
     </script>
 </body>
 
