@@ -1238,6 +1238,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'golden') emoji = '✨👞';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1247,6 +1248,9 @@
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
+                    } else if (type === 'golden') {
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 20;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1906,14 +1910,16 @@
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isGolden = !isBomb && !isHoming && Math.random() < 0.05;
+                const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isGolden && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
+                else if (isGolden) { w = 36; h = 20; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1932,6 +1938,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isGolden) type = 'golden';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -2248,6 +2255,29 @@
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
+                            if (c.type === 'golden') {
+                                if (Math.random() < 0.5) {
+                                    addFloatText('GOLDEN PARRY! ✨', isa.x, isa.y + 30, '#ffd700');
+                                    playSound(1200, 0.5);
+                                    c.slapped = false;
+                                    c.type = 'fire';
+                                    c.vy = 400;
+                                    c.vx = (player.x - isa.x) * 1.5;
+                                    c.y = isa.y + 40;
+                                    c.x = isa.x;
+                                    continue;
+                                } else {
+                                    isa.anger -= 35;
+                                    addFloatText('GOLDEN HIT! ✨ -35', isa.x, isa.y + 30, '#ffd700', 20);
+                                    triggerShake(20, 0.5);
+                                    triggerFlash(0.3, '#ffd700');
+                                    playSound(1200, 0.5);
+                                    score += 500;
+                                    gameData.coins += 25;
+                                    if (isa.anger <= 0) triggerWin();
+                                }
+                            }
+
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
@@ -2328,7 +2358,7 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
@@ -2377,6 +2407,19 @@
                             if (score > prevBest && score % 10 === 0) sayRandom('highScore');
                             if (Math.random() < 0.2) sayRandom('nearMiss');
                             if (Math.random() < 0.25) sayPlayer('nearMiss');
+                            if (c.type === 'golden') {
+                                player.lives -= 2;
+                                player.hitTimer = 0.5;
+                                addFloatText('MISSED GOLDEN! 💔', canvas.width / 2, canvas.height / 2, '#ff0000', 24);
+                                triggerFlash(0.3, '#ff0000');
+                                triggerShake(15, 0.4);
+                                sayRandom('hitNormal');
+                                if (player.lives <= 0) {
+                                    chanclas.splice(i, 1);
+                                    endGame();
+                                    return;
+                                }
+                            }
                         }
                         chanclas.splice(i, 1);
                     }
