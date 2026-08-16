@@ -1238,6 +1238,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'golden') emoji = '✨👞';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1247,6 +1248,9 @@
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
+                    } else if (type === 'golden') {
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 20;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1908,6 +1912,7 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isGolden = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.05;
 
                 let w = 32;
                 let h = 18;
@@ -1932,6 +1937,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isGolden) type = 'golden';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -2035,7 +2041,19 @@
                         const comboPhrase = getComboPhrase(comboCount);
                         const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
 
-                        if (c.rallyCount > 0) {
+                        if (c.type === 'golden') {
+                            score += Math.floor(500 * getPrestigeMultiplier());
+                            gameData.coins += Math.floor(25 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(25 * getPrestigeMultiplier());
+                            addFloatText('GOLDEN SLAP! ✨', c.x, c.y - 30, '#ffd700', 20);
+                            triggerFlash(0.3, '#ffd700');
+                            playSound(1200, 0.2);
+                            triggerShake(10, 0.3);
+
+                            isa.anger = Math.max(0, isa.anger - 35);
+                            isa.hitTimer = 0.5;
+                            if (isa.anger <= 0) triggerWin();
+                        } else if (c.rallyCount > 0) {
                             score += Math.floor(20 * c.rallyCount * getPrestigeMultiplier());
                             gameData.coins += Math.floor(5 * c.rallyCount * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(5 * c.rallyCount * getPrestigeMultiplier());
@@ -2045,7 +2063,7 @@
                         }
 
                         // Add float text
-                        if (isPerfect) {
+                        if (c.type !== 'golden' && isPerfect) {
                             gameData.coins += Math.floor(2 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(2 * getPrestigeMultiplier());
                             addFloatText('PERFECT! +2💰' + comboText, c.x, c.y - 10);
@@ -2055,7 +2073,7 @@
                             triggerFlash(0.15, '#fff');
                             hitStop = 0.15;
                             spawnRoseExplosion(c.x, c.y);
-                        } else {
+                        } else if (c.type !== 'golden') {
                             gameData.coins += Math.floor(1 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(1 * getPrestigeMultiplier());
                             addFloatText('SLAP! +1💰' + comboText, c.x, c.y);
@@ -2245,6 +2263,7 @@
                             if (c.rallyCount > 0) damage += 10 * c.rallyCount;
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'golden') damage = 0;
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
@@ -2328,7 +2347,7 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
@@ -2352,6 +2371,14 @@
                         sayPlayer('hit');
                         chanclas.splice(i, 1);
                         if (player.lives <= 0) endGame();
+                        continue;
+                    } else if (c.y > canvas.height + c.h && c.type === 'golden') {
+                        player.lives -= 2;
+                        player.hitTimer = 0.5;
+                        triggerShake(20, 0.5);
+                        addFloatText('MISSED GOLDEN! 💔', c.x, canvas.height - 20, '#ff0000', 16);
+                        if (player.lives <= 0) endGame();
+                        chanclas.splice(i, 1);
                         continue;
                     } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
                         if (c.type === 'bomb') {
