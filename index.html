@@ -1238,10 +1238,14 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'trick') emoji = '🃏';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
-                    if (type === 'meteor') {
+                    if (type === 'trick') {
+                        ctx.shadowColor = '#00ff00';
+                        ctx.shadowBlur = 15;
+                    } else if (type === 'meteor') {
                         ctx.shadowColor = 'red';
                         ctx.shadowBlur = 20;
                     } else if (type === 'homing') {
@@ -1906,8 +1910,9 @@
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isTrick = superEnabled && !isBomb && !isHoming && Math.random() < 0.10;
+                const isSuper = superEnabled && !isBomb && !isHoming && !isTrick && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isTrick && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1928,12 +1933,24 @@
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
+                let trickState = 0;
+                let trickTimer = 0;
+                let vx_saved = 0;
+                let vy_saved = 0;
+
                 if (isBomb) type = 'bomb';
                 else if (isFire) type = 'fire';
+                else if (isTrick) {
+                    type = 'trick';
+                    trickState = 0;
+                    trickTimer = 0;
+                    vx_saved = vx;
+                    vy_saved = vy;
+                }
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState, trickTimer, vx_saved, vy_saved });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2010,6 +2027,11 @@
                         slappedAny = true;
                         comboCount++;
                         score += Math.floor(comboCount * getPrestigeMultiplier());
+
+                        if (c.type === 'trick') {
+                            score += Math.floor(15 * getPrestigeMultiplier());
+                            addFloatText('TRICKED! 🃏', c.x, c.y - 30);
+                        }
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
@@ -2161,6 +2183,33 @@
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
+                    // Trick Logic
+                    if (c.type === 'trick' && !c.slapped) {
+                        if (c.trickState === 0) {
+                            if (c.y > isa.y + 150) {
+                                c.trickState = 1;
+                                c.trickTimer = 0.5 + Math.random() * 0.5;
+                                c.vx_saved = c.vx;
+                                c.vy_saved = c.vy;
+                                c.vx = 0;
+                                c.vy = 0;
+                            }
+                        } else if (c.trickState === 1) {
+                            c.trickTimer -= enemyDt;
+                            c.x += (Math.random() - 0.5) * 10;
+                            c.y += (Math.random() - 0.5) * 10;
+                            if (c.trickTimer <= 0) {
+                                c.trickState = 2;
+                                const speed = Math.sqrt(c.vx_saved*c.vx_saved + c.vy_saved*c.vy_saved) * 1.8;
+                                const dx = player.x - c.x;
+                                const dy = player.y - c.y;
+                                const dist = Math.sqrt(dx*dx + dy*dy);
+                                c.vx = (dx/dist) * speed;
+                                c.vy = (dy/dist) * speed;
+                            }
+                        }
+                    }
+
                     // Homing Logic
                     if (c.type === 'homing' && !c.slapped) {
                         const targetX = player.x;
@@ -2217,6 +2266,7 @@
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'trick') damage = 10;
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
