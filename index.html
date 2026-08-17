@@ -1238,6 +1238,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'boomerang') emoji = '🪃';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1907,13 +1908,15 @@
                 const isBomb = Math.random() < 0.08;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isBoomerang = !isBomb && !isHoming && !isSuper && Math.random() < 0.15;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isBoomerang && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
+                else if (isBoomerang) { w = 34; h = 20; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1923,6 +1926,7 @@
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+                else if (isBoomerang) vy = baseSpeed * 1.1;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1932,6 +1936,7 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isBoomerang) type = 'boomerang';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -2350,7 +2355,15 @@
                             if (Math.random() < 0.2) sayRandom('nearMiss');
                             if (Math.random() < 0.25) sayPlayer('nearMiss');
                         }
-                        chanclas.splice(i, 1);
+
+                        if (c.type === 'boomerang' && !c.returning) {
+                            c.returning = true;
+                            c.vy = -c.vy;
+                            c.y = canvas.height + c.h;
+                            addFloatText('SWOOP! 🪃', c.x, canvas.height - 20);
+                        } else {
+                            chanclas.splice(i, 1);
+                        }
                     }
                 }
             }
