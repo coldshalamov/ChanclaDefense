@@ -1238,6 +1238,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'boomerang') emoji = '🪃';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1908,12 +1909,14 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isBoomerang = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.15;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
+                else if (isBoomerang) { w = 36; h = 36; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1923,6 +1926,7 @@
                 else if (isFire) vy += 80;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+                else if (isBoomerang) vy = baseSpeed * 1.1;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1932,8 +1936,9 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isBoomerang) type = 'boomerang';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, returning: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2264,7 +2269,7 @@
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
-                    if (c.y < -50 && c.isShrapnel) {
+                    if (c.y < -50 && (c.isShrapnel || c.returning)) {
                         chanclas.splice(i, 1);
                         continue;
                     }
@@ -2326,7 +2331,12 @@
                         if (player.lives <= 0) endGame();
                         continue;
                     } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
-                        if (c.type === 'bomb') {
+                        if (c.type === 'boomerang' && !c.returning) {
+                            c.returning = true;
+                            c.vy = -c.vy;
+                            addFloatText('SWOOP! 🪃', c.x, canvas.height - 20);
+                            playSound(800, 0.2);
+                        } else if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
                             triggerFlash(0.1, '#fff');
                             playSound(1000, 0.4);
