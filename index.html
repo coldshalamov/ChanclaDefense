@@ -1468,6 +1468,56 @@
                 ctx.textAlign = 'center';
                 ctx.fillText("Isa's Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
 
+                // Dynamic Combo Counter
+                if (comboCount >= 2) {
+                    ctx.save();
+                    const comboPulse = Math.sin(timeElapsed * 15);
+                    // Scale increases slightly with higher combos, plus a pulse effect
+                    const comboScale = 1 + comboPulse * 0.05 + Math.min(0.3, comboCount * 0.015);
+
+                    ctx.translate(50, canvas.height / 2);
+                    ctx.scale(comboScale, comboScale);
+
+                    // Slight tilt for style
+                    ctx.rotate(-0.1 + Math.sin(timeElapsed * 8) * 0.05);
+
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    // Glow effect
+                    ctx.shadowColor = '#ff007f';
+                    ctx.shadowBlur = 15;
+
+                    // Combo Number
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '900 42px "Trebuchet MS", sans-serif';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 4;
+                    ctx.strokeText(comboCount.toString(), 0, -15);
+                    ctx.fillText(comboCount.toString(), 0, -15);
+
+                    // "COMBO" text
+                    ctx.font = '900 18px "Trebuchet MS", sans-serif';
+                    ctx.fillStyle = '#ff79c6';
+                    ctx.shadowBlur = 5;
+                    ctx.strokeText('COMBO', 0, 15);
+                    ctx.fillText('COMBO', 0, 15);
+
+                    // Phrase
+                    const phrase = getComboPhrase(comboCount);
+                    if (phrase) {
+                        ctx.font = 'bold 14px "Trebuchet MS", sans-serif';
+                        ctx.fillStyle = '#ffd700';
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 10;
+                        ctx.strokeText(phrase, 0, 35);
+                        ctx.fillText(phrase, 0, 35);
+                    }
+
+                    ctx.restore();
+                }
+
+
                 ctx.restore();
             }
 
