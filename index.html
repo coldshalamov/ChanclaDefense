@@ -1238,6 +1238,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'boomerang') emoji = '🪃';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1906,8 +1907,9 @@
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isBoomerang = !isBomb && !isHoming && Math.random() < 0.15;
+                const isSuper = superEnabled && !isBomb && !isHoming && !isBoomerang && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isBoomerang && !isSuper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1932,8 +1934,9 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isBoomerang) type = 'boomerang';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, returning: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2264,7 +2267,7 @@
                     if (c.x < 10) { c.x = 10; c.vx *= -0.5; }
                     if (c.x > canvas.width - 10) { c.x = canvas.width - 10; c.vx *= -0.5; }
 
-                    if (c.y < -50 && c.isShrapnel) {
+                    if (c.y < -50 && (c.isShrapnel || c.returning)) {
                         chanclas.splice(i, 1);
                         continue;
                     }
@@ -2324,6 +2327,11 @@
                         sayPlayer('hit');
                         chanclas.splice(i, 1);
                         if (player.lives <= 0) endGame();
+                        continue;
+                    } else if (!c.slapped && c.type === 'boomerang' && !c.returning && c.y > canvas.height - 20) {
+                        c.vy = -c.vy;
+                        c.returning = true;
+                        addFloatText('SWOOP! 🪃', c.x, c.y);
                         continue;
                     } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
                         if (c.type === 'bomb') {
