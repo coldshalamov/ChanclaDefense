@@ -1238,6 +1238,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'golden') emoji = '✨👞';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1247,6 +1248,9 @@
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
+                    } else if (type === 'golden') {
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 20;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1908,9 +1912,11 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isGolden = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.05;
 
                 let w = 32;
                 let h = 18;
+                if (isGolden) { w = 40; h = 24; }
                 if (isSuper) { w = 46; h = 26; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
@@ -2010,6 +2016,17 @@
                         slappedAny = true;
                         comboCount++;
                         score += Math.floor(comboCount * getPrestigeMultiplier());
+
+                        if (c.type === 'golden') {
+                            score += 500;
+                            gameData.coins += 25;
+                            gameData.stats.totalCoinsEarned += 25;
+                            triggerFlash(0.3, '#ffd700');
+                            addFloatText('GOLDEN SLAP! ✨', c.x, c.y - 30, '#ffd700', 16);
+                            isa.anger = Math.max(0, isa.anger - 35);
+                            isa.hitTimer = 0.5;
+                            if (isa.anger <= 0) triggerWin();
+                        }
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
@@ -2213,10 +2230,21 @@
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
                         if (distToIsa < 40 + c.w / 2) {
+                            if (c.type === 'golden' && Math.random() < 0.5) {
+                                c.type = 'fire';
+                                c.slapped = false;
+                                c.vy = 300 + Math.random() * 200;
+                                c.vx = (player.x - c.x) * 1.5;
+                                addFloatText('PARRIED! 🔥', isa.x, isa.y + 30);
+                                playSound(900, 0.2);
+                                continue;
+                            }
+
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'golden') damage = 0; // Prevent double-dipping boss damage
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
@@ -2300,7 +2328,7 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
@@ -2341,6 +2369,15 @@
                                     slapped: false, // Mark as false so they don't hit Isa
                                     isShrapnel: true
                                 });
+                            }
+                        } else if (c.type === 'golden') {
+                            player.lives -= 2;
+                            triggerShake(20, 0.5);
+                            triggerFlash(0.3, '#ff0000');
+                            addFloatText('MISSED GOLDEN! 💔', c.x, canvas.height - 30, '#ff0000', 16);
+                            if (player.lives <= 0) {
+                                endGame();
+                                return;
                             }
                         } else {
                             score += Math.floor(1 * getPrestigeMultiplier());
