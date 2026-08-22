@@ -1238,6 +1238,7 @@
                 else if (type === 'fire') emoji = '🔥';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
+                else if (type === 'boomerang') emoji = '🪃';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1908,6 +1909,7 @@
                 const isHoming = superEnabled && !isBomb && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && Math.random() < 0.25;
+                const isBoomerang = !isBomb && !isHoming && !isSuper && !isFire && Math.random() < 0.15;
 
                 let w = 32;
                 let h = 18;
@@ -1932,8 +1934,9 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isBoomerang) type = 'boomerang';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, returning: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2314,6 +2317,14 @@
                             endGame();
                             return;
                         }
+                    } else if (!c.slapped && c.type === 'boomerang' && !c.returning && c.y > canvas.height + c.h) {
+                        c.returning = true;
+                        c.vy = -Math.abs(c.vy) * 1.5;
+                        addFloatText('SWOOP! 🪃', c.x, canvas.height - 20);
+                        continue;
+                    } else if (c.returning && c.y < -50) {
+                        chanclas.splice(i, 1);
+                        continue;
                     } else if (!c.slapped && c.type === 'meteor' && c.y > canvas.height - 100) {
                         if (dashTimer > 0) continue; // I-frames during dash shockwave
                         triggerShake(30, 0.8);
