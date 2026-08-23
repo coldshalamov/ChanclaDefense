@@ -1239,6 +1239,7 @@
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
                 else if (type === 'golden') emoji = '✨👞';
+                else if (type === 'boomerang') emoji = '🪃';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1910,9 +1911,10 @@
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
                 const isGolden = !isBomb && Math.random() < 0.05;
-                const isHoming = superEnabled && !isBomb && !isGolden && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.25;
+                const isBoomerang = !isBomb && !isGolden && Math.random() < 0.15;
+                const isHoming = superEnabled && !isBomb && !isGolden && !isBoomerang && Math.random() < 0.10;
+                const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && !isBoomerang && Math.random() < 0.18;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1920,6 +1922,7 @@
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
                 else if (isGolden) { w = 36; h = 20; }
+                else if (isBoomerang) { w = 34; h = 16; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1930,6 +1933,7 @@
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
                 else if (isGolden) vy += 20; // slightly faster
+                else if (isBoomerang) vy += 10;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1937,11 +1941,12 @@
                 let type = 'normal';
                 if (isBomb) type = 'bomb';
                 else if (isGolden) type = 'golden';
+                else if (isBoomerang) type = 'boomerang';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, returning: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2356,6 +2361,12 @@
                         if (player.lives <= 0) endGame();
                         continue;
                     } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
+                        if (c.type === 'boomerang' && !c.returning) {
+                            c.vy = -c.vy;
+                            c.returning = true;
+                            addFloatText('SWOOP! 🪃', c.x, canvas.height - 20, '#00ff00');
+                            continue;
+                        }
                         if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
                             triggerFlash(0.1, '#fff');
