@@ -1472,6 +1472,51 @@
                 ctx.textAlign = 'center';
                 ctx.fillText("Isa's Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
 
+                // Combo Counter
+                if (comboCount >= 2) {
+                    ctx.save();
+                    const comboPulse = Math.sin(timeElapsed * 15);
+                    const scale = 1 + comboPulse * 0.1;
+
+                    ctx.translate(70, 220);
+                    ctx.rotate(-0.1 + comboPulse * 0.05); // Slight dynamic tilt
+                    ctx.scale(scale, scale);
+
+                    ctx.textAlign = 'center';
+
+                    // Main combo number
+                    ctx.font = 'bold 36px sans-serif';
+                    ctx.fillStyle = '#ff79c6';
+                    ctx.strokeStyle = '#222';
+                    ctx.lineWidth = 4;
+                    ctx.strokeText(comboCount, 0, 0);
+                    ctx.fillText(comboCount, 0, 0);
+
+                    // "COMBO" label
+                    ctx.font = 'bold 14px sans-serif';
+                    ctx.fillStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeText('COMBO', 0, 20);
+                    ctx.fillText('COMBO', 0, 20);
+
+                    // Hype Text based on getComboPhrase logic
+                    let hypeText = '';
+                    if (comboCount >= 25) hypeText = 'LEGEND! 👑';
+                    else if (comboCount >= 15) hypeText = 'IMPOSSIBLE! 🤯';
+                    else if (comboCount >= 10) hypeText = 'DIOS MIO! 😱';
+                    else if (comboCount >= 6) hypeText = 'FUEGO! 🔥';
+                    else if (comboCount >= 3) hypeText = 'SPICY! 🌶️';
+
+                    if (hypeText) {
+                        ctx.font = 'bold 12px sans-serif';
+                        ctx.fillStyle = '#ffd700';
+                        ctx.strokeText(hypeText, 0, 40);
+                        ctx.fillText(hypeText, 0, 40);
+                    }
+
+                    ctx.restore();
+                }
+
                 ctx.restore();
             }
 
