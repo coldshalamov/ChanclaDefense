@@ -17,42 +17,27 @@ def run():
 
         page.wait_for_selector("#game")
 
-        # Click Shop Button (110, 450, w, 46) -> center is around x=225, y=473
+        # Click Shop Button (col2=205, row1=430) -> center x=205+155/2=282.5, y=430+46/2=453
         page.evaluate("""
             const canvas = document.getElementById('game');
             const rect = canvas.getBoundingClientRect();
             const clickEvent = new MouseEvent('click', {
-                clientX: rect.left + 225 * (rect.width / canvas.width),
-                clientY: rect.top + 473 * (rect.height / canvas.height)
+                clientX: rect.left + 282 * (rect.width / canvas.width),
+                clientY: rect.top + 453 * (rect.height / canvas.height)
             });
             canvas.dispatchEvent(clickEvent);
         """)
 
         time.sleep(0.5)
-
-        # Screenshot of empty shop
         page.screenshot(path="verification/shop_initial.png")
 
-        # Click first upgrade (Extra Life) - pos: y=160 to 240, x=40 to 410 -> center x=225, y=200
+        # Click greed upgrade (6th item, y=140+5*80 = 540) -> center y=540+70/2 = 575
         page.evaluate("""
             const canvas = document.getElementById('game');
             const rect = canvas.getBoundingClientRect();
             const clickEvent = new MouseEvent('click', {
                 clientX: rect.left + 225 * (rect.width / canvas.width),
-                clientY: rect.top + 200 * (rect.height / canvas.height)
-            });
-            canvas.dispatchEvent(clickEvent);
-        """)
-
-        time.sleep(0.5)
-
-        # Click third upgrade (Cooldown) - pos: y=360 to 440 -> center x=225, y=400
-        page.evaluate("""
-            const canvas = document.getElementById('game');
-            const rect = canvas.getBoundingClientRect();
-            const clickEvent = new MouseEvent('click', {
-                clientX: rect.left + 225 * (rect.width / canvas.width),
-                clientY: rect.top + 400 * (rect.height / canvas.height)
+                clientY: rect.top + 575 * (rect.height / canvas.height)
             });
             canvas.dispatchEvent(clickEvent);
         """)
