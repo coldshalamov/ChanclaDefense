@@ -149,7 +149,7 @@
         <div class="mobile-hint">Mover: ←/→ | Manotazo: Espacio o Tap Arriba 👋</div>
     </div>
     <script>
-        (() => {
+        window.gameApp = (() => {
             const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
             const overlayLeft = document.getElementById('overlay-left');
@@ -409,7 +409,7 @@
                 playerDialogueTimer = 2.5;
 
                 if (playerDialogueText === "YOU'RE CRAZY!") {
-                    setTimeout(() => {
+                    setTimeoutwindow.gameApp = (() => {
                         dialogueText = "I'll SHOW YOU CRAZY!";
                         dialogueTimer = 3.0;
                     }, 600);
@@ -442,7 +442,7 @@
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
-                player.x = canvas.width / 2;
+                player.x = 20;
                 player.y = canvas.height - 70;
                 player.speed = 230 + 15 * (gameData.upgrades.speed || 0);
                 player.lives = 3 + (gameData.upgrades.lives || 0);
@@ -1914,7 +1914,7 @@
                 const isHoming = superEnabled && !isBomb && !isGolden && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.25;
-                const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && !isFire && Math.random() < 0.15;
+                const isBoomerang = true;
 
                 let w = 32;
                 let h = 18;
