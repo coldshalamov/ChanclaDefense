@@ -1239,6 +1239,9 @@
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
                 else if (type === 'golden') emoji = '✨👞';
+                else if (type === 'boomerang') emoji = '🪃';
+                else if (type === 'boomerang') emoji = '🪃';
+                else if (type === 'boomerang') emoji = '🪃';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1913,7 +1916,8 @@
                 const isGolden = !isBomb && Math.random() < 0.05;
                 const isHoming = superEnabled && !isBomb && !isGolden && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.25;
+                const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1921,6 +1925,9 @@
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
                 else if (isGolden) { w = 36; h = 20; }
+                else if (isBoomerang) { w = 38; h = 22; }
+                else if (isBoomerang) { w = 38; h = 22; }
+                else if (isBoomerang) { w = 38; h = 22; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1931,6 +1938,9 @@
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
                 else if (isGolden) vy += 20; // slightly faster
+                else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
+                else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
+                else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1941,6 +1951,9 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
+                else if (isBoomerang) type = 'boomerang';
+                else if (isBoomerang) type = 'boomerang';
+                else if (isBoomerang) type = 'boomerang';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -2198,6 +2211,11 @@
                     c.y += c.vy * currentDt;
                     c.rotation += c.rotSpeed * currentDt;
 
+                    if (c.y < -50 && !c.slapped) {
+                        chanclas.splice(i, 1);
+                        continue;
+                    }
+
                     // Remove slapped chanclas that fly off screen
                     if (c.slapped) {
                         // Check for chain reaction with other chanclas
@@ -2333,7 +2351,7 @@
                         }
                         const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden') ? 2 : 1;
                         comboCount = 0;
-                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' ? 15 : 8);
+                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' || c.type === 'boomerang' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
@@ -2357,6 +2375,12 @@
                         if (player.lives <= 0) endGame();
                         continue;
                     } else if (c.y > canvas.height + c.h && c.type !== 'meteor') {
+                        if (c.type === 'boomerang' && !c.returning) {
+                            c.vy = -c.vy;
+                            c.returning = true;
+                            addFloatText('SWOOP! 🪃', c.x, canvas.height - 20);
+                            continue;
+                        }
                         if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
                             triggerFlash(0.1, '#fff');
