@@ -7,10 +7,10 @@ def verify_miss_feedback():
     with open("chancla_bomb.html", "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Inject code to expose rosePetals via a getter to handle reassignment in resetGame
+    # Inject code to expose particles via a getter to handle reassignment in resetGame
     injected_content = content.replace(
         "})();",
-        "window.getRosePetals = () => rosePetals; window.trySlap = trySlap; window.chanclas = chanclas; window.resetGame = resetGame; })();"
+        "window.getParticles = () => particles; window.trySlap = trySlap; window.chanclas = chanclas; window.resetGame = resetGame; })();"
     )
 
     temp_file = "verification/temp_miss_test.html"
@@ -44,8 +44,8 @@ def verify_miss_feedback():
             # Wait a tiny bit for the frame to render
             time.sleep(0.05)
 
-            # Check rosePetals for the "dash" emoji
-            petals = page.evaluate("window.getRosePetals()")
+            # Check particles for the "dash" emoji
+            petals = page.evaluate("window.getParticles()")
 
             found = False
             for p in petals:
@@ -59,9 +59,9 @@ def verify_miss_feedback():
             print(f"Screenshot saved to {screenshot_path}")
 
             if found:
-                print("SUCCESS: Found '💨' emoji in rosePetals after missed slap.")
+                print("SUCCESS: Found '💨' emoji in particles after missed slap.")
             else:
-                print("FAILURE: Did not find '💨' emoji in rosePetals after missed slap.")
+                print("FAILURE: Did not find '💨' emoji in particles after missed slap.")
                 emojis = [p.get('emoji') for p in petals if p.get('emoji')]
                 print(f"Found emojis: {emojis}")
 

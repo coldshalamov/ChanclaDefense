@@ -255,7 +255,7 @@
 
             let chanclas = [];
             let floatTexts = [];
-            let rosePetals = [];
+            let particles = [];
             let fireParticles = [];
             let specialProjectiles = [];
             let score = 0;
@@ -463,7 +463,7 @@
                 isa.enraged = false;
                 chanclas = [];
                 floatTexts = [];
-                rosePetals = [];
+                particles = [];
                 fireParticles = [];
                 specialProjectiles = [];
                 impacts = [];
@@ -569,8 +569,8 @@
                 ctx.restore();
             }
 
-            function drawRosePetals() {
-                rosePetals.forEach(p => {
+            function drawParticles() {
+                particles.forEach(p => {
                     ctx.save();
                     ctx.translate(p.x, p.y);
                     ctx.rotate(p.rotation);
@@ -579,36 +579,11 @@
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillText(p.emoji, 0, 0);
-                    } else {
-                        ctx.fillStyle = '#ff4d6d'; // Rose petal pink/red
-                        ctx.beginPath();
-                        // Simple petal shape
-                        ctx.moveTo(0, 0);
-                        ctx.bezierCurveTo(5, -5, 10, 0, 10, 5);
-                        ctx.bezierCurveTo(10, 10, 0, 15, 0, 10);
-                        ctx.bezierCurveTo(-5, 15, -10, 10, -10, 5);
-                        ctx.bezierCurveTo(-10, 0, -5, -5, 0, 0);
-                        ctx.fill();
                     }
                     ctx.restore();
                 });
             }
 
-            function spawnRoseExplosion(x, y) {
-                for (let i = 0; i < 12; i++) {
-                    const angle = (Math.PI * 2 * i) / 12;
-                    const speed = 150 + Math.random() * 100;
-                    rosePetals.push({
-                        x: x,
-                        y: y,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        rotation: Math.random() * Math.PI * 2,
-                        rotSpeed: (Math.random() - 0.5) * 10,
-                        offset: Math.random() * 10
-                    });
-                }
-            }
 
             function spawnImpact(x, y, isBig = false) {
                 impacts.push({ x, y, timer: 0.25, maxTime: 0.25, rotation: Math.random() * Math.PI, isBig });
@@ -670,7 +645,7 @@
                     ctx.save();
                     ctx.globalAlpha = Math.max(0, t.life / 0.15) * 0.5;
                     ctx.filter = 'drop-shadow(0 0 5px #00ffff) drop-shadow(0 0 10px #00ffff) sepia(1) hue-rotate(140deg) saturate(3)';
-                    drawPlayerAvatar(ctx, t.x, t.y, Math.min(player.w, player.h), false, 'normal');
+                    drawPlayerAvatar(ctx, t.x, t.y, Math.min(player.w, player.h), 'normal');
                     ctx.restore();
                 });
             }
@@ -786,7 +761,7 @@
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (comboCount >= 5) expression = 'cocky';
 
-                drawPlayerAvatar(ctx, x, y, Math.min(w, h), specialAttackBar >= maxSpecialAttack, expression);
+                drawPlayerAvatar(ctx, x, y, Math.min(w, h), expression);
                 if (player.shield) {
                     ctx.strokeStyle = '#9bfffa';
                     ctx.lineWidth = 3;
@@ -958,7 +933,7 @@
                 ctx.restore();
             }
 
-            function drawPlayerAvatar(ctx, x, y, size, hasRose, expression = 'normal') {
+            function drawPlayerAvatar(ctx, x, y, size, expression = 'normal') {
                 ctx.save();
                 ctx.translate(x, y);
 
@@ -1181,33 +1156,6 @@
                     ctx.stroke();
                 }
 
-                // Rose in mouth (Tango style)
-                if (hasRose) {
-                    const roseX = headW * 0.15;
-                    const roseY = headH * 0.22;
-                    // Stem
-                    ctx.strokeStyle = '#2d6a4f';
-                    ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    ctx.moveTo(roseX, roseY);
-                    ctx.quadraticCurveTo(roseX + 15, roseY + 2, roseX + 25, roseY - 5);
-                    ctx.stroke();
-                    // Leaf
-                    ctx.fillStyle = '#2d6a4f';
-                    ctx.beginPath();
-                    ctx.ellipse(roseX + 12, roseY + 2, 4, 2, Math.PI / 4, 0, Math.PI * 2);
-                    ctx.fill();
-                    // Flower
-                    ctx.fillStyle = '#d00000';
-                    ctx.beginPath();
-                    ctx.arc(roseX + 25, roseY - 5, 5, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#9d0208';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.arc(roseX + 25, roseY - 5, 2, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
 
                 // Jaw highlight
                 ctx.strokeStyle = 'rgba(255,255,255,0.35)';
@@ -1864,7 +1812,7 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 // Draw Dead Player
-                drawPlayerAvatar(ctx, canvas.width / 2, canvas.height / 2 - 80, 80, false, 'dead');
+                drawPlayerAvatar(ctx, canvas.width / 2, canvas.height / 2 - 80, 80, 'dead');
 
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
@@ -2043,7 +1991,7 @@
                             const eggY = 50;
                             spawnImpact(eggX, eggY, true);
                             for (let k = 0; k < 8; k++) {
-                                rosePetals.push({
+                                particles.push({
                                     x: eggX, y: eggY,
                                     vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200,
                                     rotation: Math.random() * 6, rotSpeed: Math.random() * 10,
@@ -2077,7 +2025,6 @@
                             triggerShake(6, 0.2);
                             triggerFlash(0.15, '#fff');
                             hitStop = 0.15;
-                            spawnRoseExplosion(c.x, c.y);
                         } else {
                             gameData.coins += Math.floor(1 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(1 * getPrestigeMultiplier());
@@ -2099,7 +2046,7 @@
                     slapCooldown = 0.15;
                     comboCount = 0;
                     playWhoosh();
-                    rosePetals.push({
+                    particles.push({
                         x: player.x + (Math.random() - 0.5) * 20,
                         y: player.y - 40,
                         vx: (Math.random() - 0.5) * 50,
@@ -2461,7 +2408,7 @@
                     proj.trailTimer = (proj.trailTimer || 0) + dt;
                     if (proj.trailTimer > 0.05) {
                         proj.trailTimer = 0;
-                        rosePetals.push({
+                        particles.push({
                             x: proj.x + (Math.random() - 0.5) * 20,
                             y: proj.y + (Math.random() - 0.5) * 20,
                             vy: 50, // slowly fall
@@ -2491,7 +2438,7 @@
                         for (let k = 0; k < 15; k++) {
                             const angle = (Math.PI * 2 * k) / 15;
                             const speed = 150 + Math.random() * 150;
-                            rosePetals.push({
+                            particles.push({
                                 x: isa.x,
                                 y: isa.y,
                                 vx: Math.cos(angle) * speed,
@@ -2627,7 +2574,7 @@
                     if (Math.random() < 0.2) {
                         const emojis = ['🎉', '✨', '🎊'];
                         const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-                        rosePetals.push({
+                        particles.push({
                             x: Math.random() * canvas.width,
                             y: -20,
                             vx: (Math.random() - 0.5) * 100,
@@ -2690,9 +2637,9 @@
                 updateChainEffects(dt);
                 updateFloatTexts(dt);
 
-                // Update rose petals
-                for (let i = rosePetals.length - 1; i >= 0; i--) {
-                    const p = rosePetals[i];
+                // Update particles
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
 
                     if (p.vx !== undefined) {
                         p.x += p.vx * dt;
@@ -2706,23 +2653,10 @@
 
                     p.rotation += p.rotSpeed * dt;
                     if (p.y > canvas.height + 20) {
-                        rosePetals.splice(i, 1);
+                        particles.splice(i, 1);
                     }
                 }
 
-                // Spawn rose petals if special is ready
-                if (specialAttackBar >= maxSpecialAttack) {
-                    if (Math.random() < 0.15) { // Spawn chance per frame
-                        rosePetals.push({
-                            x: player.x + (Math.random() - 0.5) * 40,
-                            y: player.y - 40,
-                            vy: 60 + Math.random() * 40,
-                            rotation: Math.random() * Math.PI * 2,
-                            rotSpeed: (Math.random() - 0.5) * 4,
-                            offset: Math.random() * 10
-                        });
-                    }
-                }
 
                 // Update fire particles
                 for (let i = fireParticles.length - 1; i >= 0; i--) {
@@ -2784,7 +2718,7 @@
                 drawFireParticles();
                 drawChanclasAll();
                 drawSpecialProjectiles();
-                drawRosePetals();
+                drawParticles();
                 drawDashTrails();
                 drawChainEffects();
                 drawImpacts();
