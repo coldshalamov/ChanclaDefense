@@ -1239,8 +1239,7 @@
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
                 else if (type === 'golden') emoji = '✨👞';
-                else if (type === 'boomerang') emoji = '🪃';
-                else if (type === 'boomerang') emoji = '🪃';
+                else if (type === 'trick') emoji = '🃏';
                 else if (type === 'boomerang') emoji = '🪃';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
@@ -1248,6 +1247,9 @@
                     if (type === 'meteor') {
                         ctx.shadowColor = 'red';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'trick') {
+                        ctx.shadowColor = '#ff00ff';
+                        ctx.shadowBlur = 15;
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
                         ctx.shadowBlur = 15;
@@ -1917,7 +1919,8 @@
                 const isHoming = superEnabled && !isBomb && !isGolden && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.25;
+                const isTrick = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.10;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1925,8 +1928,7 @@
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
                 else if (isGolden) { w = 36; h = 20; }
-                else if (isBoomerang) { w = 38; h = 22; }
-                else if (isBoomerang) { w = 38; h = 22; }
+                else if (isTrick) { w = 34; h = 20; }
                 else if (isBoomerang) { w = 38; h = 22; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
@@ -1938,8 +1940,7 @@
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
                 else if (isGolden) vy += 20; // slightly faster
-                else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
-                else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
+                else if (isTrick) vy = baseSpeed * 0.9;
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
 
                 const vx = (Math.random() - 0.5) * 60;
@@ -1951,11 +1952,10 @@
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
-                else if (isBoomerang) type = 'boomerang';
-                else if (isBoomerang) type = 'boomerang';
+                else if (isTrick) type = 'trick';
                 else if (isBoomerang) type = 'boomerang';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
+                chanclas.push({ x, y, vx, vy, vx_saved: vx, vy_saved: vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2068,6 +2068,17 @@
                             if (isa.anger <= 0) triggerWin();
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.2);
+                        } else if (c.type === 'trick') {
+                            gameData.coins += Math.floor(10 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(10 * getPrestigeMultiplier());
+                            score += Math.floor(200 * getPrestigeMultiplier());
+                            isa.anger = Math.max(0, isa.anger - 15);
+                            if (isa.anger <= 0) triggerWin();
+                            hitStop = 0.3;
+                            triggerFlash(0.2, '#ff00ff');
+                            addFloatText('TRICKED! 🃏', c.x, c.y, '#ff00ff');
+                            spawnImpact(c.x, c.y, true);
+                            playSound(950, 0.2);
                         } else if (isPerfect) {
                             gameData.coins += Math.floor(2 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(2 * getPrestigeMultiplier());
@@ -2206,6 +2217,31 @@
                         }
                     }
 
+                    // Trick Logic
+                    if (c.type === 'trick' && !c.slapped) {
+                        c.trickTimer += enemyDt;
+                        if (c.trickState === 0) {
+                            if (c.trickTimer > 0.4) {
+                                c.trickState = 1;
+                                c.trickTimer = 0;
+                                c.vx = 0;
+                                c.vy = 0;
+                            }
+                        } else if (c.trickState === 1) {
+                            c.x += (Math.random() - 0.5) * 5;
+                            c.y += (Math.random() - 0.5) * 5;
+                            if (c.trickTimer > 0.6) {
+                                c.trickState = 2;
+                                const dx = player.x - c.x;
+                                const dy = player.y - c.y;
+                                const dist = Math.sqrt(dx*dx + dy*dy);
+                                const speed = Math.sqrt(c.vx_saved*c.vx_saved + c.vy_saved*c.vy_saved) * 1.5;
+                                c.vx = (dx / dist) * speed;
+                                c.vy = (dy / dist) * speed;
+                            }
+                        }
+                    }
+
                     const currentDt = c.slapped ? dt : enemyDt;
                     c.x += c.vx * currentDt;
                     c.y += c.vy * currentDt;
@@ -2254,7 +2290,7 @@
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
-                            if (c.type === 'golden') damage = 0; // Prevent double-dipping as damage is applied in trySlap
+                            if (c.type === 'golden' || c.type === 'trick') damage = 0; // Prevent double-dipping as damage is applied in trySlap
 
                             if (c.type === 'golden' && Math.random() < 0.5) { // Boss can parry the golden chancla
                                 c.slapped = false;
