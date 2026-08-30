@@ -240,7 +240,8 @@
                 { id: 'cowboy', name: 'Cowboy Hat', icon: '🤠', cost: 250 },
                 { id: 'crown', name: 'Crown', icon: '👑', cost: 500 },
                 { id: 'party', name: 'Party Hat', icon: '🥳', cost: 150 },
-                { id: 'tophat', name: 'Top Hat', icon: '🎩', cost: 300 }
+                { id: 'tophat', name: 'Top Hat', icon: '🎩', cost: 300 },
+                { id: 'halo', name: 'Golden Halo', icon: '😇', cost: 2000 }
             ];
 
             const ACHIEVEMENTS_LIST = [
@@ -1661,40 +1662,40 @@
                     else if (unlocked) bgColor = '#2196f3';
 
                     ctx.fillStyle = bgColor;
-                    roundRect(ctx, 40, y, canvas.width - 80, 70, 10);
+                    roundRect(ctx, 40, y, canvas.width - 80, 60, 10);
                     ctx.fill();
 
                     ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 2;
-                    roundRect(ctx, 40, y, canvas.width - 80, 70, 10);
+                    roundRect(ctx, 40, y, canvas.width - 80, 60, 10);
                     ctx.stroke();
 
                     // Icon
-                    ctx.font = '30px Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji, sans-serif';
+                    ctx.font = '26px Noto Color Emoji, Apple Color Emoji, Segoe UI Emoji, sans-serif';
                     ctx.textAlign = 'left';
                     ctx.fillStyle = '#fff';
-                    ctx.fillText(c.icon || '👤', 55, y + 45);
+                    ctx.fillText(c.icon || '👤', 50, y + 38);
 
                     // Name
-                    ctx.font = 'bold 18px sans-serif';
-                    ctx.fillText(c.name, 100, y + 42);
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillText(c.name, 90, y + 36);
 
                     // Cost / Status
                     ctx.textAlign = 'right';
-                    ctx.font = 'bold 16px sans-serif';
+                    ctx.font = 'bold 14px sans-serif';
 
                     if (equipped) {
                         ctx.fillStyle = '#fff';
-                        ctx.fillText('EQUIPPED', canvas.width - 55, y + 42);
+                        ctx.fillText('EQUIPPED', canvas.width - 50, y + 36);
                     } else if (unlocked) {
                         ctx.fillStyle = '#fff';
-                        ctx.fillText('EQUIP', canvas.width - 55, y + 42);
+                        ctx.fillText('EQUIP', canvas.width - 50, y + 36);
                     } else {
                         ctx.fillStyle = affordable ? '#ffd700' : '#ff9999';
-                        ctx.fillText('💰 ' + c.cost, canvas.width - 55, y + 42);
+                        ctx.fillText('💰 ' + c.cost, canvas.width - 50, y + 36);
                     }
 
-                    y += 85;
+                    y += 65;
                 });
 
                 // Back Button
@@ -3033,7 +3034,7 @@
                 } else if (state === STATE.COSMETICS) {
                     let y = 140;
                     for (let c of COSMETICS_LIST) {
-                        if (pos.y >= y && pos.y <= y + 70 && pos.x >= 40 && pos.x <= canvas.width - 40) {
+                        if (pos.y >= y && pos.y <= y + 60 && pos.x >= 40 && pos.x <= canvas.width - 40) {
                             const unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
                             if (unlocked) {
                                 gameData.currentHat = c.id;
@@ -3049,7 +3050,7 @@
                                 playSound(200, 0.1); // Error
                             }
                         }
-                        y += 85;
+                        y += 65;
                     }
 
                     // Check Back Button
@@ -3175,7 +3176,7 @@
                 if (state === STATE.COSMETICS) {
                     let y = 140;
                     for (let c of COSMETICS_LIST) {
-                        if (pos.y >= y && pos.y <= y + 70 && pos.x >= 40 && pos.x <= canvas.width - 40) {
+                        if (pos.y >= y && pos.y <= y + 60 && pos.x >= 40 && pos.x <= canvas.width - 40) {
                             const unlocked = gameData.cosmetics.includes(c.id) || c.cost === 0;
                             if (unlocked) {
                                 gameData.currentHat = c.id;
@@ -3191,7 +3192,7 @@
                                 playSound(200, 0.1); // Error
                             }
                         }
-                        y += 85;
+                        y += 65;
                     }
                     // Check Back Button
                     if (pos.y >= canvas.height - 80 && pos.y <= canvas.height - 30 && pos.x >= 100 && pos.x <= canvas.width - 100) {
