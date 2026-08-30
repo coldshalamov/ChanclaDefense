@@ -1,37 +1,40 @@
-
 from playwright.sync_api import sync_playwright
-import time
 import os
+import glob
 
-def verify_expressions():
+def run_cuj(page):
+    page.goto(f"file://{os.path.abspath('index.html')}")
+    page.wait_for_timeout(1000)
+
+    # Click the canvas to start the game
+    page.mouse.click(500, 500)
+    page.wait_for_timeout(1000)
+
+    # We want to see some game play
+    page.keyboard.press('Enter')
+    page.wait_for_timeout(1000)
+
+    # Just survive a bit
+    for _ in range(5):
+        page.keyboard.press('Space')
+        page.wait_for_timeout(1000)
+
+    page.screenshot(path="/app/verification/screenshots/verification.png")
+    page.wait_for_timeout(1000)
+
+if __name__ == "__main__":
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        context = browser.new_context(
+            record_video_dir="/app/verification/videos"
+        )
+        page = context.new_page()
+        try:
+            run_cuj(page)
+        finally:
+            context.close()
+            browser.close()
 
-        # Load the game from the file directly using absolute path
-        cwd = os.getcwd()
-        page.goto('file://' + cwd + '/chancla_bomb.html')
-
-        # Start game by clicking (simulate touch/click)
-        canvas = page.locator('#game')
-        canvas.click()
-
-        # Wait a bit for game to start
-        time.sleep(1)
-
-        # Take a screenshot of normal state
-        page.screenshot(path='verification/normal.png')
-        print('Normal state screenshot taken.')
-
-        # Trigger Slap
-        page.keyboard.press('Space')
-
-        # Wait a tiny bit for the next frame render (approx 50ms)
-        time.sleep(0.05)
-        page.screenshot(path='verification/slap.png')
-        print('Slap state screenshot taken.')
-
-        browser.close()
-
-if __name__ == '__main__':
-    verify_expressions()
+    # get video path
+    video_path = glob.glob("/app/verification/videos/*.webm")[0]
+    print(f"Video saved to {video_path}")
