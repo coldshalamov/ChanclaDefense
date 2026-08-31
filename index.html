@@ -1240,8 +1240,7 @@
                 else if (type === 'homing') emoji = '🪬';
                 else if (type === 'golden') emoji = '✨👞';
                 else if (type === 'boomerang') emoji = '🪃';
-                else if (type === 'boomerang') emoji = '🪃';
-                else if (type === 'boomerang') emoji = '🪃';
+                else if (type === 'blackhole') emoji = '🌌';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1254,6 +1253,9 @@
                     } else if (type === 'golden') {
                         ctx.shadowColor = '#ffd700';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'blackhole') {
+                        ctx.shadowColor = '#cba6f7';
+                        ctx.shadowBlur = 25;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1916,8 +1918,9 @@
                 const isGolden = !isBomb && Math.random() < 0.05;
                 const isHoming = superEnabled && !isBomb && !isGolden && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
-                const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.25;
+                const isBlackHole = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.05;
+                const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && !isBlackHole && Math.random() < 0.15;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isBlackHole && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1926,8 +1929,7 @@
                 else if (isHoming) { w = 36; h = 36; }
                 else if (isGolden) { w = 36; h = 20; }
                 else if (isBoomerang) { w = 38; h = 22; }
-                else if (isBoomerang) { w = 38; h = 22; }
-                else if (isBoomerang) { w = 38; h = 22; }
+                else if (isBlackHole) { w = 36; h = 36; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1939,8 +1941,7 @@
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
                 else if (isGolden) vy += 20; // slightly faster
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
-                else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
-                else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
+                else if (isBlackHole) vy = baseSpeed * 0.8;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1952,8 +1953,7 @@
                 else if (isSuper) type = 'super';
                 else if (isHoming) type = 'homing';
                 else if (isBoomerang) type = 'boomerang';
-                else if (isBoomerang) type = 'boomerang';
-                else if (isBoomerang) type = 'boomerang';
+                else if (isBlackHole) type = 'blackhole';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed });
                 if (isSuper) sayPlayer('super');
@@ -2058,7 +2058,14 @@
                         const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
 
                         // Add float text
-                        if (c.type === 'golden') {
+                        if (c.type === 'blackhole') {
+                            c.vx = 0;
+                            c.vy = 0;
+                            c.activeBlackHole = false;
+                            addFloatText('GALACTIC SLAP! 🌌', c.x, c.y, '#cba6f7');
+                            spawnImpact(c.x, c.y, true);
+                            playSound(850, 0.2);
+                        } else if (c.type === 'golden') {
                             gameData.coins += Math.floor(25 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(25 * getPrestigeMultiplier());
                             score += Math.floor(500 * getPrestigeMultiplier());
@@ -2190,8 +2197,80 @@
 
 
             function updateChanclas(dt, enemyDt) {
+                let activeBlackHole = null;
+                for (let c of chanclas) {
+                    if (c.type === 'blackhole' && c.activeBlackHole) {
+                        activeBlackHole = c;
+                        break;
+                    }
+                }
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    if (c.type === 'blackhole' && c.slapped) {
+                        if (!c.activeBlackHole) {
+                            const targetX = canvas.width / 2;
+                            const targetY = canvas.height / 2;
+                            const dx = targetX - c.x;
+                            const dy = targetY - c.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < 15) {
+                                c.activeBlackHole = true;
+                                c.blackHoleTimer = 5.0;
+                                c.vx = 0; c.vy = 0;
+                                c.x = targetX; c.y = targetY;
+                                triggerShake(20, 0.5);
+                                triggerFlash(0.2, '#cba6f7');
+                                addFloatText('GRAVITY WELL! 🌀', c.x, c.y, '#cba6f7');
+                            } else {
+                                c.vx = (dx / dist) * 500;
+                                c.vy = (dy / dist) * 500;
+                            }
+                            c.x += c.vx * dt;
+                            c.y += c.vy * dt;
+                            c.rotation += c.rotSpeed * dt;
+                            continue;
+                        } else {
+                            c.blackHoleTimer -= dt;
+                            c.rotSpeed = 25;
+                            c.rotation += c.rotSpeed * dt;
+
+                            const pdx = c.x - player.x;
+                            const pdy = c.y - player.y;
+                            const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+                            if (pdist > 20) {
+                                player.x += (pdx / pdist) * 90 * dt;
+                            }
+
+                            if (c.blackHoleTimer <= 0) {
+                                chanclas.splice(i, 1);
+                                triggerFlash(0.2, '#cba6f7');
+                            }
+                            continue;
+                        }
+                    }
+
+                    if (activeBlackHole && c !== activeBlackHole && !c.slapped && c.type !== 'meteor') {
+                        const bdx = activeBlackHole.x - c.x;
+                        const bdy = activeBlackHole.y - c.y;
+                        const bdist = Math.sqrt(bdx * bdx + bdy * bdy);
+
+                        c.vx += (bdx / bdist) * 800 * dt;
+                        c.vy += (bdy / bdist) * 800 * dt;
+
+                        if (bdist < 30) {
+                            chanclas.splice(i, 1);
+                            score += Math.floor(20 * getPrestigeMultiplier());
+                            gameData.coins += Math.floor(1 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(1 * getPrestigeMultiplier());
+                            isa.anger = Math.max(0, isa.anger - 2);
+                            if (isa.anger <= 0) triggerWin();
+                            spawnImpact(c.x, c.y);
+                            playSound(850, 0.1);
+                            addFloatText('+20 🌀', activeBlackHole.x, activeBlackHole.y + (Math.random()-0.5)*40, '#cba6f7');
+                            continue;
+                        }
+                    }
 
                     // Homing Logic
                     if (c.type === 'homing' && !c.slapped) {
@@ -2254,7 +2333,7 @@
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
-                            if (c.type === 'golden') damage = 0; // Prevent double-dipping as damage is applied in trySlap
+                            if (c.type === 'golden' || c.type === 'blackhole') damage = 0; // Prevent double-dipping as damage is applied in trySlap
 
                             if (c.type === 'golden' && Math.random() < 0.5) { // Boss can parry the golden chancla
                                 c.slapped = false;
