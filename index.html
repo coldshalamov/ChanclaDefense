@@ -774,6 +774,56 @@
 
             function drawPlayer() {
                 const { x, y, w, h } = player;
+
+                // Modern Action Game Telegraphs (Parry Indicator & Warning)
+                if (state === STATE.PLAYING && slapCooldown <= 0) {
+                    let highestThreat = 0;
+                    const sRange = fiestaMode ? 140 : 80;
+                    const pRange = fiestaMode ? 90 : 50;
+
+                    for (const c of chanclas) {
+                        if (c.slapped) continue;
+                        if (c.type === 'meteor') {
+                            const distToMeteor = Math.sqrt(Math.pow(c.x - x, 2) + Math.pow(c.y + c.h/2 - y, 2));
+                            if (distToMeteor < 150) highestThreat = Math.max(highestThreat, 2);
+                            else if (distToMeteor < 250) highestThreat = Math.max(highestThreat, 1);
+                        } else {
+                            const dist = Math.sqrt(Math.pow(c.x - x, 2) + Math.pow(c.y - y, 2));
+                            if (dist < pRange) highestThreat = Math.max(highestThreat, 2);
+                            else if (dist < sRange + 50) highestThreat = Math.max(highestThreat, 1);
+                        }
+                    }
+
+                    if (highestThreat > 0) {
+                        ctx.save();
+                        ctx.translate(x, y);
+                        ctx.font = '24px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const indicatorY = -65;
+
+                        if (highestThreat === 2) {
+                            ctx.shadowColor = '#00ffff';
+                            ctx.shadowBlur = 10;
+                            ctx.fillStyle = '#00ffff';
+                            ctx.fillText('⚡', 0, indicatorY + Math.sin(timeElapsed * 20) * 4);
+
+                            ctx.beginPath();
+                            ctx.arc(0, 0, pRange, 0, Math.PI * 2);
+                            ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)';
+                            ctx.lineWidth = 3;
+                            ctx.setLineDash([5, 5]);
+                            ctx.stroke();
+                        } else {
+                            ctx.shadowColor = '#ffff00';
+                            ctx.shadowBlur = 10;
+                            ctx.fillStyle = '#ffff00';
+                            ctx.fillText('❕', 0, indicatorY);
+                        }
+                        ctx.restore();
+                    }
+                }
+
                 ctx.save();
                 ctx.fillStyle = '#fff';
                 ctx.font = '14px sans-serif';
@@ -3313,6 +3363,22 @@
                     e.preventDefault();
                 }
 
+                // Dedicated Dash key (Modern control standard)
+                if (['Shift', 'ShiftLeft', 'ShiftRight'].includes(e.key)) {
+                    if (isDown && !e.repeat && dashCooldown <= 0) {
+                        if (keys.left) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = -1;
+                        } else if (keys.right) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = 1;
+                        }
+                    }
+                    e.preventDefault();
+                }
+
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
                     if (isDown && state === STATE.PLAYING) {
@@ -3331,6 +3397,29 @@
             }
             window.addEventListener('keydown', e => handleKey(e, true));
             window.addEventListener('keyup', e => handleKey(e, false));
+
+            // Modern swipe-to-dash mechanic for mobile
+            let touchStartX = 0;
+            let touchStartY = 0;
+            canvas.addEventListener('touchstart', (e) => {
+                if (state !== STATE.PLAYING) return;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            canvas.addEventListener('touchend', (e) => {
+                if (state !== STATE.PLAYING || dashCooldown > 0) return;
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const dx = touchEndX - touchStartX;
+                const dy = touchEndY - touchStartY;
+
+                if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+                    dashTimer = 0.15;
+                    dashCooldown = 0.8;
+                    dashDir = dx > 0 ? 1 : -1;
+                }
+            }, { passive: true });
 
             function updateTouchOverlay() {
                 overlayLeft.style.background = touch.left ? 'rgba(255,255,255,0.06)' : 'transparent';
