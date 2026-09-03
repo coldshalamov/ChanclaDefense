@@ -1241,6 +1241,7 @@
                 else if (type === 'golden') emoji = '✨👞';
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'trick') emoji = '🃏';
+                else if (type === 'ghost') emoji = '👻';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1256,6 +1257,9 @@
                     } else if (type === 'trick') {
                         ctx.shadowColor = '#ff00ff';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'ghost') {
+                        ctx.shadowColor = '#ffffff';
+                        ctx.shadowBlur = 15;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1920,7 +1924,8 @@
                 const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isTrick = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.10;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.25;
+                const isGhost = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isGhost && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1930,6 +1935,7 @@
                 else if (isGolden) { w = 36; h = 20; }
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isTrick) { w = 36; h = 22; }
+                else if (isGhost) { w = 36; h = 24; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1942,6 +1948,7 @@
                 else if (isGolden) vy += 20; // slightly faster
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isTrick) vy = baseSpeed * 0.9;
+                else if (isGhost) vy = baseSpeed * 0.95;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1954,6 +1961,7 @@
                 else if (isHoming) type = 'homing';
                 else if (isBoomerang) type = 'boomerang';
                 else if (isTrick) type = 'trick';
+                else if (isGhost) type = 'ghost';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0 });
                 if (isSuper) sayPlayer('super');
@@ -2056,6 +2064,22 @@
 
                         const comboPhrase = getComboPhrase(comboCount);
                         const comboText = comboPhrase ? ` x${comboCount} ${comboPhrase}` : ` x${comboCount}`;
+
+                        if (c.type === 'ghost') {
+                            gameData.coins += Math.floor((isPerfect ? 2 : 1) * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor((isPerfect ? 2 : 1) * getPrestigeMultiplier());
+                            score += Math.floor(20 * getPrestigeMultiplier());
+                            c.invisible = false;
+                            addFloatText('GHOST BUSTED! 👻', c.x, c.y, '#ffffff');
+                            spawnImpact(c.x, c.y, isPerfect);
+                            if (isPerfect) {
+                                playSound(850, 0.15);
+                                triggerShake(6, 0.2);
+                                triggerFlash(0.15, '#fff');
+                                hitStop = 0.15;
+                                spawnRoseExplosion(c.x, c.y);
+                            }
+                        }
 
                         // Add float text
                         if (c.type === 'golden') {
@@ -2238,6 +2262,10 @@
                                 c.vy = (dy / mag) * 700;
                             }
                         }
+                    }
+
+                    if (c.type === 'ghost' && !c.slapped) {
+                        if (c.y > canvas.height * 0.40) c.invisible = true;
                     }
 
                     const currentDt = c.slapped ? dt : enemyDt;
@@ -2835,7 +2863,10 @@
 
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                for (const c of chanclas) {
+                    if (c.invisible && !c.slapped) continue;
+                    drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                }
             }
 
 
