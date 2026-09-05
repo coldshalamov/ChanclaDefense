@@ -1502,6 +1502,32 @@
                 ctx.textAlign = 'center';
                 ctx.fillText("Isa's Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
 
+                if (comboCount >= 2) {
+                    ctx.save();
+                    const cx = 70;
+                    const cy = 220;
+                    ctx.translate(cx, cy);
+                    const tilt = Math.sin(timeElapsed * 15) * 0.1;
+                    ctx.rotate(tilt);
+                    const scalePulse = 1 + Math.sin(timeElapsed * 20) * 0.1;
+                    ctx.scale(scalePulse, scalePulse);
+
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.font = 'bold 24px sans-serif';
+                    ctx.shadowColor = '#00ffff';
+                    ctx.shadowBlur = 10;
+                    ctx.fillText('x' + comboCount, 0, 0);
+
+                    const comboPhrase = getComboPhrase(comboCount);
+                    if (comboPhrase) {
+                        ctx.font = 'bold 16px sans-serif';
+                        ctx.fillStyle = '#ffff00';
+                        ctx.fillText(comboPhrase, 0, 25);
+                    }
+                    ctx.restore();
+                }
+
                 ctx.restore();
             }
 
