@@ -1266,6 +1266,7 @@
                 else if (type === 'golden') emoji = '✨👞';
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'trick') emoji = '🃏';
+                else if (type === 'ghost') emoji = '👻';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1281,6 +1282,9 @@
                     } else if (type === 'trick') {
                         ctx.shadowColor = '#ff00ff';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'ghost') {
+                        ctx.shadowColor = '#aaaaff';
+                        ctx.shadowBlur = 15;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1946,6 +1950,7 @@
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isTrick = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.10;
                 const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.25;
+                const isGhost = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isFire && Math.random() < 0.12;
 
                 let w = 32;
                 let h = 18;
@@ -1955,6 +1960,7 @@
                 else if (isGolden) { w = 36; h = 20; }
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isTrick) { w = 36; h = 22; }
+                else if (isGhost) { w = 34; h = 24; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1967,6 +1973,7 @@
                 else if (isGolden) vy += 20; // slightly faster
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isTrick) vy = baseSpeed * 0.9;
+                else if (isGhost) vy = baseSpeed * 0.85;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1979,8 +1986,9 @@
                 else if (isHoming) type = 'homing';
                 else if (isBoomerang) type = 'boomerang';
                 else if (isTrick) type = 'trick';
+                else if (isGhost) type = 'ghost';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0 });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0, invisible: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2101,6 +2109,20 @@
                             addFloatText('TRICKED! 🃏', c.x, c.y, '#ff00ff');
                             isa.anger = Math.max(0, isa.anger - 15);
                             if (isa.anger <= 0) triggerWin();
+                        } else if (c.type === 'ghost') {
+                            gameData.coins += Math.floor((isPerfect ? 2 : 1) * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor((isPerfect ? 2 : 1) * getPrestigeMultiplier());
+                            score += Math.floor(20 * getPrestigeMultiplier());
+                            addFloatText('GHOST BUSTED! 👻', c.x, c.y, '#aaaaff');
+                            c.invisible = false;
+                            spawnImpact(c.x, c.y, isPerfect);
+                            playSound(isPerfect ? 850 : 600, 0.15);
+                            if (isPerfect) {
+                                triggerShake(6, 0.2);
+                                triggerFlash(0.15, '#fff');
+                                hitStop = 0.15;
+                                spawnRoseExplosion(c.x, c.y);
+                            }
                         } else if (isPerfect) {
                             gameData.coins += Math.floor(2 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(2 * getPrestigeMultiplier());
@@ -2236,6 +2258,13 @@
                         const maxHomingSpeed = 150;
                         if (Math.abs(c.vx) > maxHomingSpeed) {
                             c.vx = Math.sign(c.vx) * maxHomingSpeed;
+                        }
+                    }
+
+                    // Ghost Logic
+                    if (c.type === 'ghost' && !c.slapped) {
+                        if (c.y > canvas.height * 0.4) {
+                            c.invisible = true;
                         }
                     }
 
@@ -2860,7 +2889,10 @@
 
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                for (const c of chanclas) {
+                    if (c.invisible && !c.slapped) continue;
+                    drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                }
             }
 
 
