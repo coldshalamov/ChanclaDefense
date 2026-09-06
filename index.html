@@ -185,6 +185,9 @@
                 if (gameData.upgrades.power === undefined) gameData.upgrades.power = 0;
                 if (gameData.coins === undefined) gameData.coins = 0;
                 if (gameData.bestScore === undefined) gameData.bestScore = 0;
+
+                if (gameData.isEndless === undefined) gameData.isEndless = false;
+
                 if (gameData.prestige === undefined) gameData.prestige = 0;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
                 if (!gameData.stats.wins) gameData.stats.wins = 1;
@@ -264,6 +267,8 @@
             let minSpawnInterval = 0.45;
             let spawnTimer = 0;
             let baseSpeed = 140;
+            let endlessMultiplier = 1;
+            let endlessLevel = 1;
             let timeElapsed = 0;
             let superEnabled = false;
             let specialAttackBar = 0;
@@ -435,6 +440,8 @@
             }
 
             function resetGame() {
+                endlessMultiplier = 1;
+                endlessLevel = 1;
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
                 if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.stats.xp) gameData.stats.xp = 0;
@@ -1832,6 +1839,16 @@
                 ctx.textAlign = 'center';
                 ctx.font = '24px sans-serif';
                 ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
+
+                if ((gameData.stats.wins || 1) >= 5) {
+                    ctx.fillStyle = gameData.isEndless ? '#ff00ff' : '#4caf50';
+                    roundRect(ctx, canvas.width / 2 - 80, 200, 160, 40, 10);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillText(gameData.isEndless ? 'Endless: ON' : 'Endless: OFF', canvas.width / 2, 226);
+                }
+
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
@@ -1861,6 +1878,7 @@
                 // 2-Column Layout
                 const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
                 const row1 = 430, row2 = 490, row3 = 550;
+
 
                 ctx.fillStyle = '#ff9f1c'; roundRect(ctx, col1, row1, btnW, btnH, 12); ctx.fill();
                 ctx.fillStyle = '#222'; ctx.font = '16px sans-serif'; ctx.fillText('Play / Jugar', col1 + btnW / 2, row1 + 28);
@@ -1959,14 +1977,14 @@
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
 
-                let vy = baseSpeed + Math.random() * 60;
+                let vy = (baseSpeed + Math.random() * 60) * endlessMultiplier;
                 if (isSuper) vy += 40;
                 else if (isFire) vy += 80;
-                else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
-                else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
+                else if (isBomb) vy = baseSpeed * 0.7 * endlessMultiplier + Math.random() * 30; // slower
+                else if (isHoming) vy = baseSpeed * 0.8 * endlessMultiplier; // slightly slower vertical speed
                 else if (isGolden) vy += 20; // slightly faster
-                else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
-                else if (isTrick) vy = baseSpeed * 0.9;
+                else if (isBoomerang) vy = baseSpeed * 1.2 * endlessMultiplier; // faster down
+                else if (isTrick) vy = baseSpeed * 0.9 * endlessMultiplier;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -2090,7 +2108,7 @@
                             triggerFlash(0.3, '#ffd700');
                             addFloatText('GOLDEN SLAP! ✨', c.x, c.y, '#ffd700');
                             isa.anger = Math.max(0, isa.anger - 35);
-                            if (isa.anger <= 0) triggerWin();
+                            if (isa.anger <= 0) checkWinCondition();
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.2);
                         } else if (c.type === 'trick') {
@@ -2100,7 +2118,7 @@
                             hitStop = 0.15;
                             addFloatText('TRICKED! 🃏', c.x, c.y, '#ff00ff');
                             isa.anger = Math.max(0, isa.anger - 15);
-                            if (isa.anger <= 0) triggerWin();
+                            if (isa.anger <= 0) checkWinCondition();
                         } else if (isPerfect) {
                             gameData.coins += Math.floor(2 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(2 * getPrestigeMultiplier());
@@ -2318,7 +2336,7 @@
                             if (c.type === 'golden' && Math.random() < 0.5) { // Boss can parry the golden chancla
                                 c.slapped = false;
                                 c.type = 'fire'; // Turns into a fireball when parried
-                                c.vy = baseSpeed + 80;
+                                c.vy = (baseSpeed + 80) * endlessMultiplier;
                                 c.vx = (Math.random() - 0.5) * 60;
                                 addFloatText('PARRIED! 🔥', isa.x, isa.y + 30);
                                 triggerShake(10, 0.2);
@@ -2358,7 +2376,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                triggerWin();
+                                checkWinCondition();
                             }
                             continue;
                         }
@@ -2564,7 +2582,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            triggerWin();
+                            checkWinCondition();
                         }
                         continue;
                     }
@@ -2603,6 +2621,23 @@
                     requiredXp = gameData.stats.rank * 500;
                 }
                 return leveledUp;
+            }
+
+
+            function checkWinCondition() {
+                if (gameData.isEndless) {
+                    // Heal boss and increase multiplier
+                    endlessLevel++;
+                    endlessMultiplier += 0.2;
+                    isa.maxAnger = Math.floor(isa.maxAnger * 1.3);
+                    isa.anger = isa.maxAnger;
+                    isa.displayAnger = isa.maxAnger;
+                    isa.enraged = false;
+                    addFloatText('ENDLESS LEVEL ' + endlessLevel + '!', canvas.width / 2, canvas.height / 2, '#ff00ff');
+                    playSound(1200, 0.4);
+                } else {
+                    triggerWin();
+                }
             }
 
             function triggerWin() {
@@ -2710,7 +2745,7 @@
                     baseSpeed += dt * speedInc;
                 }
                 if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval) {
+                if (spawnTimer >= spawnInterval / endlessMultiplier) {
                     spawnChancla();
                     spawnTimer = 0;
                 }
@@ -3013,6 +3048,14 @@
                     const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
                     const row1 = 430, row2 = 490, row3 = 550;
 
+                    if ((gameData.stats.wins || 1) >= 5 && pos.y >= 200 && pos.y <= 240 && pos.x >= canvas.width / 2 - 80 && pos.x <= canvas.width / 2 + 80) {
+                        gameData.isEndless = !gameData.isEndless;
+                        saveGameData();
+                        playSound(1200, 0.1);
+                        return;
+                    }
+
+
                     if (pos.y >= row1 && pos.y <= row1 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle();
                         else if (pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.SHOP; }
@@ -3159,6 +3202,14 @@
                 if (state === STATE.TITLE) {
                     const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
                     const row1 = 430, row2 = 490, row3 = 550;
+
+                    if ((gameData.stats.wins || 1) >= 5 && pos.y >= 200 && pos.y <= 240 && pos.x >= canvas.width / 2 - 80 && pos.x <= canvas.width / 2 + 80) {
+                        gameData.isEndless = !gameData.isEndless;
+                        saveGameData();
+                        playSound(1200, 0.1);
+                        return;
+                    }
+
 
                     if (pos.y >= row1 && pos.y <= row1 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle();
