@@ -290,6 +290,8 @@
             let dashCooldown = 0;
             let dashDir = 0;
             let dashTrails = [];
+            let touchStartX = 0;
+            let touchStartY = 0;
 
             let dialogueTimer = 0;
             let playerDialogueTimer = 0;
@@ -3148,6 +3150,8 @@
                 if (e.target === canvas) e.preventDefault();
 
                 const touchPoint = e.touches[0];
+                touchStartX = touchPoint.clientX;
+                touchStartY = touchPoint.clientY;
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
                 const scaleY = canvas.height / rect.height;
@@ -3310,7 +3314,21 @@
                     }
                 }
             }, { passive: false });
-            canvas.addEventListener('touchend', () => { touch.left = false; touch.right = false; });
+            canvas.addEventListener('touchend', (e) => {
+                touch.left = false;
+                touch.right = false;
+                if (state === STATE.PLAYING && e.changedTouches && e.changedTouches.length > 0) {
+                    const touchEndX = e.changedTouches[0].clientX;
+                    const touchEndY = e.changedTouches[0].clientY;
+                    const dx = touchEndX - touchStartX;
+                    const dy = touchEndY - touchStartY;
+                    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) && dashCooldown <= 0) {
+                        dashTimer = 0.15;
+                        dashCooldown = 0.8;
+                        dashDir = dx > 0 ? 1 : -1;
+                    }
+                }
+            });
 
             function handleKey(e, isDown) {
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
@@ -3335,6 +3353,15 @@
                         lastTapRight = timeElapsed;
                     }
                     keys.right = isDown;
+                    e.preventDefault();
+                }
+
+                if (e.key === 'Shift') {
+                    if (isDown && dashCooldown <= 0 && state === STATE.PLAYING && !e.repeat) {
+                        dashTimer = 0.15;
+                        dashCooldown = 0.8;
+                        dashDir = keys.left ? -1 : (keys.right ? 1 : (player.x > canvas.width / 2 ? -1 : 1));
+                    }
                     e.preventDefault();
                 }
 
@@ -3366,6 +3393,10 @@
 
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
+                    if (e.touches && e.touches.length > 0) {
+                        touchStartX = e.touches[0].clientX;
+                        touchStartY = e.touches[0].clientY;
+                    }
                     if (state !== STATE.PLAYING) return;
                     if (!touch[dir] && dashCooldown <= 0) {
                         if (dir === 'left') {
@@ -3387,7 +3418,20 @@
                     touch[dir] = true;
                     e.preventDefault();
                 }, { passive: false });
-                zone.addEventListener('touchend', () => { touch[dir] = false; });
+                zone.addEventListener('touchend', (e) => {
+                    touch[dir] = false;
+                    if (state === STATE.PLAYING && e.changedTouches && e.changedTouches.length > 0) {
+                        const touchEndX = e.changedTouches[0].clientX;
+                        const touchEndY = e.changedTouches[0].clientY;
+                        const dx = touchEndX - touchStartX;
+                        const dy = touchEndY - touchStartY;
+                        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) && dashCooldown <= 0) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = dx > 0 ? 1 : -1;
+                        }
+                    }
+                });
                 zone.addEventListener('touchcancel', () => { touch[dir] = false; });
             }
             handleMobileZones(touchLeft, 'left');
