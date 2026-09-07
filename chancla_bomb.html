@@ -190,6 +190,7 @@
                 if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.stats.xp) gameData.stats.xp = 0;
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
+                if (gameData.isEndless === undefined) gameData.isEndless = false;
 
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
@@ -269,6 +270,7 @@
             let specialAttackBar = 0;
             const maxSpecialAttack = 100;
             let slapCooldown = 0;
+            let endlessMultiplier = 1;
             const slapEffect = { timer: 0, duration: 0.15 };
             let winAnimationStart = 0;
             let shakeTimer = 0;
@@ -439,6 +441,7 @@
                 if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.stats.xp) gameData.stats.xp = 0;
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
+                if (gameData.isEndless === undefined) gameData.isEndless = false;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
@@ -461,6 +464,7 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.enraged = false;
+                endlessMultiplier = 1;
                 chanclas = [];
                 floatTexts = [];
                 rosePetals = [];
@@ -1837,7 +1841,17 @@
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
 
-                const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1);
+                                const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1);
+
+                if ((gameData.stats.wins || 1) >= 5) {
+                    ctx.fillStyle = gameData.isEndless ? '#4caf50' : '#f44336';
+                    roundRect(ctx, canvas.width / 2 - 80, 200, 160, 40, 10);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'center';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillText('Endless: ' + (gameData.isEndless ? 'ON' : 'OFF'), canvas.width / 2, 225);
+                }
                 ctx.font = 'bold 16px sans-serif';
                 ctx.fillStyle = '#ff9f1c';
                 ctx.fillText(rankStr, canvas.width / 2, 390);
@@ -1967,6 +1981,7 @@
                 else if (isGolden) vy += 20; // slightly faster
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isTrick) vy = baseSpeed * 0.9;
+                vy *= endlessMultiplier;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -2090,7 +2105,7 @@
                             triggerFlash(0.3, '#ffd700');
                             addFloatText('GOLDEN SLAP! ✨', c.x, c.y, '#ffd700');
                             isa.anger = Math.max(0, isa.anger - 35);
-                            if (isa.anger <= 0) triggerWin();
+                            if (isa.anger <= 0) checkWinCondition();
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.2);
                         } else if (c.type === 'trick') {
@@ -2100,7 +2115,7 @@
                             hitStop = 0.15;
                             addFloatText('TRICKED! 🃏', c.x, c.y, '#ff00ff');
                             isa.anger = Math.max(0, isa.anger - 15);
-                            if (isa.anger <= 0) triggerWin();
+                            if (isa.anger <= 0) checkWinCondition();
                         } else if (isPerfect) {
                             gameData.coins += Math.floor(2 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(2 * getPrestigeMultiplier());
@@ -2358,7 +2373,7 @@
 
                             // Check win
                             if (isa.anger <= 0) {
-                                triggerWin();
+                                checkWinCondition();
                             }
                             continue;
                         }
@@ -2564,7 +2579,7 @@
 
                         // Check for win
                         if (isa.anger <= 0) {
-                            triggerWin();
+                            checkWinCondition();
                         }
                         continue;
                     }
@@ -2592,6 +2607,7 @@
             function addXp(amount) {
                 if (!gameData.stats.xp) gameData.stats.xp = 0;
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
+                if (gameData.isEndless === undefined) gameData.isEndless = false;
                 gameData.stats.xp += amount;
                 let leveledUp = false;
                 let requiredXp = gameData.stats.rank * 500;
@@ -2603,6 +2619,22 @@
                     requiredXp = gameData.stats.rank * 500;
                 }
                 return leveledUp;
+            }
+
+            function checkWinCondition() {
+                if (gameData.isEndless) {
+                    isa.maxAnger = Math.floor(isa.maxAnger * 1.3);
+                    isa.anger = isa.maxAnger;
+                    isa.displayAnger = isa.maxAnger;
+                    isa.enraged = false;
+                    endlessMultiplier += 0.2;
+                    addFloatText('BOSS LEVELED UP! 💀', isa.x, isa.y + 30, '#ff0000');
+                    triggerShake(15, 0.5);
+                    triggerFlash(0.3, '#ff0000');
+                    playSound(1000, 0.5);
+                } else {
+                    triggerWin();
+                }
             }
 
             function triggerWin() {
@@ -2710,7 +2742,7 @@
                     baseSpeed += dt * speedInc;
                 }
                 if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval) {
+                if (spawnTimer >= spawnInterval / endlessMultiplier) {
                     spawnChancla();
                     spawnTimer = 0;
                 }
@@ -3009,7 +3041,13 @@
             canvas.addEventListener('click', (e) => {
                 const pos = getMousePos(canvas, e);
 
-                if (state === STATE.TITLE) {
+                                if (state === STATE.TITLE) {
+                    if ((gameData.stats.wins || 1) >= 5 && pos.y >= 200 && pos.y <= 240 && pos.x >= canvas.width / 2 - 80 && pos.x <= canvas.width / 2 + 80) {
+                        gameData.isEndless = !gameData.isEndless;
+                        saveGameData();
+                        playSound(1200, 0.2);
+                        return;
+                    }
                     const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
                     const row1 = 430, row2 = 490, row3 = 550;
 
@@ -3156,7 +3194,13 @@
                     y: (touchPoint.clientY - rect.top) * scaleY
                 };
 
-                if (state === STATE.TITLE) {
+                                if (state === STATE.TITLE) {
+                    if ((gameData.stats.wins || 1) >= 5 && pos.y >= 200 && pos.y <= 240 && pos.x >= canvas.width / 2 - 80 && pos.x <= canvas.width / 2 + 80) {
+                        gameData.isEndless = !gameData.isEndless;
+                        saveGameData();
+                        playSound(1200, 0.2);
+                        return;
+                    }
                     const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
                     const row1 = 430, row2 = 490, row3 = 550;
 
