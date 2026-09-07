@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <canvas id="game" width="400" height="800"></canvas>
+    <script>
+        // Provide enough mock environment to test script
+        window.AudioContext = window.AudioContext || window.webkitAudioContext || function() { return { createOscillator: function() { return { connect: function() {}, start: function() {}, stop: function() {} }; }, destination: {} }; };
+    </script>
+    <script src="index.html"></script>
+    <script>
+        // Simple test to see if it parses
+        console.log("Loaded");
+    </script>
+</body>
+</html>
