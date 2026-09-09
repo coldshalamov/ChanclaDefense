@@ -426,6 +426,10 @@
             function triggerShake(intensity, duration) {
                 shakeIntensity = intensity;
                 shakeTimer = duration;
+                if (navigator.vibrate) {
+                    const ms = Math.min(Math.max(duration * 1000, 50), 500);
+                    navigator.vibrate(ms);
+                }
             }
 
             function triggerFlash(duration, color = '#fff') {
