@@ -166,7 +166,7 @@
             }
             let state = STATE.TITLE;
             let witchTimeTimer = 0;
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0, greed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0, greed: 0 }, bestScore: 0, endlessBestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -266,6 +266,7 @@
             let baseSpeed = 140;
             let timeElapsed = 0;
             let superEnabled = false;
+            let isEndless = false;
             let specialAttackBar = 0;
             const maxSpecialAttack = 100;
             let slapCooldown = 0;
@@ -455,7 +456,7 @@
                 dashDir = 0;
                 dashTrails = [];
                 const wins = gameData.stats.wins || 1;
-                isa.maxAnger = 100 + (wins - 1) * 20;
+                isa.maxAnger = isEndless ? Infinity : 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
                 isa.displayAnger = isa.maxAnger;
                 isa.x = canvas.width / 2;
@@ -1824,7 +1825,7 @@
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                const panelHeight = (gameData.stats.wins || 1) >= 10 ? 420 : 360;
+                const panelHeight = (gameData.stats.wins || 1) >= 10 ? 480 : 420;
                 const panelHeightAdjusted = panelHeight + 60;
                 roundRect(ctx, 30, 260, canvas.width - 60, panelHeightAdjusted, 16);
                 ctx.fill();
@@ -1860,7 +1861,7 @@
 
                 // 2-Column Layout
                 const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
-                const row1 = 430, row2 = 490, row3 = 550;
+                const row1 = 430, row2 = 490, row3 = 550, row4 = 610;
 
                 ctx.fillStyle = '#ff9f1c'; roundRect(ctx, col1, row1, btnW, btnH, 12); ctx.fill();
                 ctx.fillStyle = '#222'; ctx.font = '16px sans-serif'; ctx.fillText('Play / Jugar', col1 + btnW / 2, row1 + 28);
@@ -1882,6 +1883,9 @@
                     ctx.fillStyle = '#222'; ctx.font = '16px sans-serif'; ctx.fillText('Prestige', col2 + btnW / 2, row3 + 28);
                 }
 
+                ctx.fillStyle = '#f44336'; roundRect(ctx, col1, row4, btnW, btnH, 12); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.fillText('Endless / Infinito', col1 + btnW / 2, row4 + 28);
+
                 ctx.restore();
             }
 
@@ -1899,7 +1903,11 @@
                 ctx.fillText('Isa ganó', canvas.width / 2, canvas.height / 2 + 10);
 
                 ctx.font = '20px sans-serif';
-                ctx.fillText('Score: ' + score + ' | Best: ' + gameData.bestScore, canvas.width / 2, canvas.height / 2 + 45);
+                if (isEndless) {
+                    ctx.fillText('Endless Score: ' + score + ' | Best: ' + (gameData.endlessBestScore || 0), canvas.width / 2, canvas.height / 2 + 45);
+                } else {
+                    ctx.fillText('Score: ' + score + ' | Best: ' + gameData.bestScore, canvas.width / 2, canvas.height / 2 + 45);
+                }
 
                 ctx.fillStyle = '#ffd700';
                 ctx.font = '18px sans-serif';
@@ -2089,8 +2097,10 @@
                             score += Math.floor(500 * getPrestigeMultiplier());
                             triggerFlash(0.3, '#ffd700');
                             addFloatText('GOLDEN SLAP! ✨', c.x, c.y, '#ffd700');
-                            isa.anger = Math.max(0, isa.anger - 35);
-                            if (isa.anger <= 0) triggerWin();
+                            if (!isEndless) {
+                                isa.anger = Math.max(0, isa.anger - 35);
+                                if (isa.anger <= 0) triggerWin();
+                            }
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.2);
                         } else if (c.type === 'trick') {
@@ -2099,8 +2109,10 @@
                             score += Math.floor(200 * getPrestigeMultiplier());
                             hitStop = 0.15;
                             addFloatText('TRICKED! 🃏', c.x, c.y, '#ff00ff');
-                            isa.anger = Math.max(0, isa.anger - 15);
-                            if (isa.anger <= 0) triggerWin();
+                            if (!isEndless) {
+                                isa.anger = Math.max(0, isa.anger - 15);
+                                if (isa.anger <= 0) triggerWin();
+                            }
                         } else if (isPerfect) {
                             gameData.coins += Math.floor(2 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(2 * getPrestigeMultiplier());
@@ -2357,7 +2369,7 @@
                             chanclas.splice(i, 1);
 
                             // Check win
-                            if (isa.anger <= 0) {
+                            if (!isEndless && isa.anger <= 0) {
                                 triggerWin();
                             }
                             continue;
@@ -2563,7 +2575,7 @@
                         }
 
                         // Check for win
-                        if (isa.anger <= 0) {
+                        if (!isEndless && isa.anger <= 0) {
                             triggerWin();
                         }
                         continue;
@@ -2652,20 +2664,30 @@
                     return;
                 }
 
-                if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
-                    isa.enraged = true;
-                    // Rage phase entry effects
-                    triggerShake(10, 0.5);
-                    triggerFlash(0.3, '#ff4d4d');
-                    playSound(1000, 0.3);
-                    addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
-                }
+                if (isEndless) {
+                    if (timeElapsed > 15 && !isa.enraged) {
+                        isa.enraged = true;
+                        triggerShake(10, 0.5);
+                        triggerFlash(0.3, '#ff4d4d');
+                        playSound(1000, 0.3);
+                        addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
+                    }
+                } else {
+                    if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
+                        isa.enraged = true;
+                        // Rage phase entry effects
+                        triggerShake(10, 0.5);
+                        triggerFlash(0.3, '#ff4d4d');
+                        playSound(1000, 0.3);
+                        addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
+                    }
 
-                if (isa.displayAnger > isa.anger) {
-                    isa.displayAnger -= (isa.maxAnger * 0.5) * enemyDt;
-                    if (isa.displayAnger < isa.anger) isa.displayAnger = isa.anger;
-                } else if (isa.displayAnger < isa.anger) {
-                    isa.displayAnger = isa.anger;
+                    if (isa.displayAnger > isa.anger) {
+                        isa.displayAnger -= (isa.maxAnger * 0.5) * enemyDt;
+                        if (isa.displayAnger < isa.anger) isa.displayAnger = isa.anger;
+                    } else if (isa.displayAnger < isa.anger) {
+                        isa.displayAnger = isa.anger;
+                    }
                 }
 
                 timeElapsed += dt;
@@ -2988,7 +3010,8 @@
             }
             requestAnimationFrame(loop);
 
-            function startGameFromTitle() {
+            function startGameFromTitle(endless = false) {
+                isEndless = endless;
                 resetGame();
             }
 
@@ -3011,10 +3034,10 @@
 
                 if (state === STATE.TITLE) {
                     const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
-                    const row1 = 430, row2 = 490, row3 = 550;
+                    const row1 = 430, row2 = 490, row3 = 550, row4 = 610;
 
                     if (pos.y >= row1 && pos.y <= row1 + btnH) {
-                        if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle();
+                        if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle(false);
                         else if (pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.SHOP; }
                     } else if (pos.y >= row2 && pos.y <= row2 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.ACHIEVEMENTS; }
@@ -3022,6 +3045,8 @@
                     } else if (pos.y >= row3 && pos.y <= row3 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.COSMETICS; }
                         else if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                    } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
+                        if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle(true);
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
