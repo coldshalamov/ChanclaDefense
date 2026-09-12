@@ -1266,6 +1266,7 @@
                 else if (type === 'golden') emoji = '✨👞';
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'trick') emoji = '🃏';
+                else if (type === 'sniper') emoji = '🎯';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1945,7 +1946,8 @@
                 const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isTrick = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.10;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.25;
+                const isSniper = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.10;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1955,6 +1957,7 @@
                 else if (isGolden) { w = 36; h = 20; }
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isTrick) { w = 36; h = 22; }
+                else if (isSniper) { w = 36; h = 22; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1979,8 +1982,9 @@
                 else if (isHoming) type = 'homing';
                 else if (isBoomerang) type = 'boomerang';
                 else if (isTrick) type = 'trick';
+                else if (isSniper) type = 'sniper';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0 });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0, sniperTimer: isSniper ? 2.0 : 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2226,6 +2230,25 @@
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
+                    // Sniper Logic
+                    if (c.type === 'sniper' && !c.slapped) {
+                        if (c.sniperTimer > 0) {
+                            c.sniperTimer -= (c.slapped ? dt : enemyDt);
+                            const targetX = player.x;
+                            const diffX = targetX - c.x;
+                            c.vx = diffX * 2.5;
+                            c.y = 120;
+                            c.vy = 0;
+
+                            if (c.sniperTimer <= 0) {
+                                c.vx = 0;
+                                c.vy = 1200;
+                                playSound(1000, 0.4);
+                                triggerFlash(0.1, '#ff0000');
+                            }
+                        }
+                    }
+
                     // Homing Logic
                     if (c.type === 'homing' && !c.slapped) {
                         const targetX = player.x;
@@ -2313,6 +2336,7 @@
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'sniper') damage = 25;
                             if (c.type === 'golden' || c.type === 'trick') damage = 0; // Prevent double-dipping as damage is applied in trySlap
 
                             if (c.type === 'golden' && Math.random() < 0.5) { // Boss can parry the golden chancla
@@ -2408,7 +2432,7 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' || c.type === 'boomerang' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
@@ -2860,7 +2884,20 @@
 
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                for (const c of chanclas) {
+                    if (c.type === 'sniper' && !c.slapped && c.sniperTimer > 0) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(c.x, c.y);
+                        ctx.lineTo(c.x, canvas.height);
+                        const alpha = Math.abs(Math.sin(timeElapsed * (5 + (2 - c.sniperTimer) * 10)));
+                        ctx.strokeStyle = `rgba(255, 0, 0, ${alpha * 0.8})`;
+                        ctx.lineWidth = 2 + (2 - c.sniperTimer);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                    drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                }
             }
 
 
