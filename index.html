@@ -1500,7 +1500,47 @@
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center';
+
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
                 ctx.fillText("Isa's Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
+
+                if (comboCount >= 2) {
+                    ctx.save();
+                    const pulse = 1 + 0.1 * Math.sin(timeElapsed * 15);
+                    const tilt = Math.sin(timeElapsed * 5) * 0.1;
+                    ctx.translate(70, 220);
+                    ctx.scale(pulse, pulse);
+                    ctx.rotate(tilt);
+
+                    let color = '#fff';
+                    let shadow = '#ff00ff';
+                    if (comboCount >= 25) { color = '#ffd700'; shadow = '#ffaa00'; }
+                    else if (comboCount >= 15) { color = '#ff00ff'; shadow = '#ff0000'; }
+                    else if (comboCount >= 10) { color = '#ff5555'; shadow = '#aa0000'; }
+                    else if (comboCount >= 6) { color = '#ffaa00'; shadow = '#aa5500'; }
+
+                    ctx.shadowColor = shadow;
+                    ctx.shadowBlur = 10;
+                    ctx.font = 'bold 36px "Trebuchet MS", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    ctx.fillStyle = '#000';
+                    ctx.fillText('x' + comboCount, 2, 2);
+
+                    ctx.fillStyle = color;
+                    ctx.fillText('x' + comboCount, 0, 0);
+
+                    const phrase = getComboPhrase(comboCount);
+                    if (phrase) {
+                        ctx.font = 'bold 16px "Trebuchet MS", sans-serif';
+                        ctx.fillText(phrase, 0, 30);
+                    }
+                    ctx.restore();
+                }
+
 
                 ctx.restore();
             }
