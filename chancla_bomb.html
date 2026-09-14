@@ -1266,8 +1266,22 @@
                 else if (type === 'golden') emoji = '✨👞';
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'trick') emoji = '🃏';
+                else if (type === 'sniper') emoji = '🎯';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
+
+                    // Sniper telegraph
+                    if (type === 'sniper' && !c.slapped && c.sniperTimer > 0) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(c.x, c.y + c.h / 2);
+                        ctx.lineTo(c.x, canvas.height);
+                        const alpha = 0.3 + 0.4 * Math.abs(Math.sin(c.sniperTimer * 15));
+                        ctx.strokeStyle = `rgba(255, 0, 0, ${alpha})`;
+                        ctx.lineWidth = 2 + (1.5 - c.sniperTimer);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
 
                     if (type === 'meteor') {
                         ctx.shadowColor = 'red';
@@ -1945,7 +1959,8 @@
                 const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isTrick = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.10;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.25;
+                const isSniper = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1955,6 +1970,7 @@
                 else if (isGolden) { w = 36; h = 20; }
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isTrick) { w = 36; h = 22; }
+                else if (isSniper) { w = 34; h = 24; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -1967,6 +1983,7 @@
                 else if (isGolden) vy += 20; // slightly faster
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isTrick) vy = baseSpeed * 0.9;
+                else if (isSniper) vy = 0;
 
                 const vx = (Math.random() - 0.5) * 60;
                 const rotSpeed = (Math.random() - 0.5) * 5;
@@ -1979,8 +1996,10 @@
                 else if (isHoming) type = 'homing';
                 else if (isBoomerang) type = 'boomerang';
                 else if (isTrick) type = 'trick';
+                else if (isSniper) type = 'sniper';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0 });
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0,
+                    sniperTimer: isSniper ? 1.5 : 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2226,6 +2245,18 @@
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
+                    // Sniper Logic
+                    if (c.type === 'sniper' && !c.slapped) {
+                        if (c.sniperTimer > 0) {
+                            c.sniperTimer -= enemyDt;
+                            const targetX = player.x;
+                            c.x += (targetX - c.x) * 5 * enemyDt;
+                            c.y = isa.y + 60; // Fixed Y position
+                        } else if (c.vy === 0) {
+                            c.vy = 800; // Extreme plummet speed
+                        }
+                    }
+
                     // Homing Logic
                     if (c.type === 'homing' && !c.slapped) {
                         const targetX = player.x;
@@ -2408,9 +2439,9 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper') ? 2 : 1;
                         comboCount = 0;
-                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' || c.type === 'boomerang' ? 15 : 8);
+                        const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' || c.type === 'boomerang' || c.type === 'sniper' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
                         player.hitTimer = 0.5;
