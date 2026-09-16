@@ -159,7 +159,7 @@
             const body = document.body;
             const wrapper = document.querySelector('.wrapper');
 
-            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige', MISSIONS: 'missions' };
+            const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige', MISSIONS: 'missions', STATS: 'stats' };
 
             function getPrestigeMultiplier() {
                 return (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
@@ -1839,6 +1839,61 @@
                 ctx.restore();
             }
 
+            function drawStats() {
+                drawBackground();
+                drawIsa(); // Background decoration
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 32px sans-serif';
+                ctx.fillText('STATS', canvas.width / 2, 80);
+
+                ctx.fillStyle = '#ff9f1c';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText('Rank: ' + (gameData.stats.rank || 1), canvas.width / 2, 120);
+
+                let y = 170;
+                const statsList = [
+                    { label: 'Games Played', value: gameData.stats.gamesPlayed || 0 },
+                    { label: 'Bosses Defeated', value: Math.max(0, (gameData.stats.wins || 1) - 1) },
+                    { label: 'Total Slaps', value: gameData.stats.totalSlaps || 0 },
+                    { label: 'Perfect Slaps', value: gameData.stats.perfectSlaps || 0 },
+                    { label: 'Max Combo', value: gameData.stats.maxCombo || 0 },
+                    { label: 'Best Score', value: gameData.bestScore || 0 },
+                    { label: 'Endless Best', value: gameData.endlessBestScore || 0 },
+                    { label: 'Total Coins', value: gameData.stats.totalCoinsEarned || 0 },
+                    { label: 'Prestige Level', value: gameData.prestige || 0 }
+                ];
+
+                statsList.forEach(s => {
+                    ctx.fillStyle = '#ddd';
+                    ctx.textAlign = 'left';
+                    ctx.font = '18px sans-serif';
+                    ctx.fillText(s.label, 50, y);
+
+                    ctx.fillStyle = '#4caf50';
+                    ctx.textAlign = 'right';
+                    ctx.font = 'bold 18px sans-serif';
+                    ctx.fillText(s.value.toString(), canvas.width - 50, y);
+                    y += 40;
+                });
+
+                // Back Button
+                ctx.fillStyle = '#00bcd4';
+                roundRect(ctx, 100, canvas.height - 70, canvas.width - 200, 50, 12);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 38);
+
+                ctx.restore();
+            }
+
             function drawTitleScreen() {
                 drawBackground();
                 drawIsa();
@@ -1900,6 +1955,9 @@
 
                 ctx.fillStyle = '#ff4d4d'; roundRect(ctx, col2, row3, btnW, btnH, 12); ctx.fill();
                 ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.fillText('Endless Mode', col2 + btnW / 2, row3 + 28);
+
+                ctx.fillStyle = '#00bcd4'; roundRect(ctx, col1, row4, btnW, btnH, 12); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.fillText('Stats', col1 + btnW / 2, row4 + 28);
 
                 if ((gameData.stats.wins || 1) >= 10) {
                     ctx.fillStyle = '#ffb347'; roundRect(ctx, col2, row4, btnW, btnH, 12); ctx.fill();
@@ -2089,6 +2147,8 @@
                         c.rotSpeed = (Math.random() < 0.5 ? -1 : 1) * (isPerfect ? 35 : 15 + Math.random() * 10);
                         slappedAny = true;
                         comboCount++;
+                        if (!gameData.stats.maxCombo) gameData.stats.maxCombo = 0;
+                        if (comboCount > gameData.stats.maxCombo) gameData.stats.maxCombo = comboCount;
                         score += Math.floor(comboCount * getPrestigeMultiplier());
 
                         // Increase special attack bar
@@ -2340,6 +2400,8 @@
                                     other.vy = -300 + (Math.random() - 0.5) * 100;
 
                                     comboCount++;
+                                    if (!gameData.stats.maxCombo) gameData.stats.maxCombo = 0;
+                                    if (comboCount > gameData.stats.maxCombo) gameData.stats.maxCombo = comboCount;
                                     const comboPhrase = getComboPhrase(comboCount);
                                     addFloatText(`CHAIN! x${comboCount} ${comboPhrase}`, other.x, other.y);
                                     spawnImpact(other.x, other.y);
@@ -3037,6 +3099,7 @@
                 else if (state === STATE.MISSIONS) drawMissions();
                 else if (state === STATE.COSMETICS) drawCosmetics();
                 else if (state === STATE.PRESTIGE) drawPrestige();
+                else if (state === STATE.STATS) drawStats();
                 else if (state === STATE.WIN) {
                     draw();
                     drawWinScreen();
@@ -3084,7 +3147,8 @@
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.COSMETICS; }
                         else if (pos.x >= col2 && pos.x <= col2 + btnW) { startGameFromTitle(true); }
                     } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
-                        if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                        if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.STATS; }
+                        else if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
@@ -3179,6 +3243,11 @@
                         setDirectionsVisible(true);
                         state = STATE.TITLE;
                     }
+                } else if (state === STATE.STATS) {
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 20 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
+                        state = STATE.TITLE;
+                    }
                 } else if (state === STATE.PRESTIGE) {
                     // Check Prestige Confirmation (60, 400, w-120, 60)
                     if (pos.y >= 400 && pos.y <= 460 && pos.x >= 60 && pos.x <= canvas.width - 60) {
@@ -3233,7 +3302,15 @@
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.COSMETICS; }
                         else if (pos.x >= col2 && pos.x <= col2 + btnW) { startGameFromTitle(true); }
                     } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
-                        if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                        if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.STATS; }
+                        else if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                    }
+                    return;
+                }
+                if (state === STATE.STATS) {
+                    if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 20 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                        setDirectionsVisible(true);
+                        state = STATE.TITLE;
                     }
                     return;
                 }
