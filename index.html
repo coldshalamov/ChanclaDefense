@@ -165,6 +165,7 @@
                 return (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
             }
             let state = STATE.TITLE;
+            let isEndless = false;
             let witchTimeTimer = 0;
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0, greed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
@@ -455,9 +456,15 @@
                 dashDir = 0;
                 dashTrails = [];
                 const wins = gameData.stats.wins || 1;
-                isa.maxAnger = 100 + (wins - 1) * 20;
+                if (isEndless) {
+                    isa.maxAnger = Infinity;
+                    isa.anger = Infinity;
+                    isa.displayAnger = Infinity;
+                } else {
+                    isa.maxAnger = 100 + (wins - 1) * 20;
                 isa.anger = isa.maxAnger;
                 isa.displayAnger = isa.maxAnger;
+                }
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.enraged = false;
@@ -1476,7 +1483,7 @@
 
                 // Delayed visual health (white decay)
                 if (isa.displayAnger > 0) {
-                    const displayProgress = isa.displayAnger / isa.maxAnger;
+                    const displayProgress = isEndless ? 1 : (isa.displayAnger / isa.maxAnger);
                     const displayFillWidth = angerBarWidth * displayProgress;
 
                     ctx.fillStyle = '#fff';
@@ -1491,10 +1498,10 @@
 
                 // Fill bar
                 if (isa.anger > 0) {
-                    const angerProgress = isa.anger / isa.maxAnger;
+                    const angerProgress = isEndless ? 1 : (isa.anger / isa.maxAnger);
                     const angerFillWidth = angerBarWidth * angerProgress;
 
-                    ctx.fillStyle = angerProgress > 0.5 ? '#e24a4a' : '#e2a04a';
+                    ctx.fillStyle = isEndless ? '#8a2be2' : (angerProgress > 0.5 ? '#e24a4a' : '#e2a04a');
                     ctx.save();
                     ctx.beginPath();
                     roundRect(ctx, angerBarX, angerBarY, angerFillWidth, angerBarHeight, 8);
@@ -1514,7 +1521,7 @@
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText("Isa's Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
+                ctx.fillText(isEndless ? "Endless Mode" : "Isa\'s Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
 
                 ctx.restore();
             }
@@ -1874,7 +1881,7 @@
 
                 // 2-Column Layout
                 const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
-                const row1 = 430, row2 = 490, row3 = 550;
+                const row1 = 430, row2 = 490, row3 = 550, row4 = 610;
 
                 ctx.fillStyle = '#ff9f1c'; roundRect(ctx, col1, row1, btnW, btnH, 12); ctx.fill();
                 ctx.fillStyle = '#222'; ctx.font = '16px sans-serif'; ctx.fillText('Play / Jugar', col1 + btnW / 2, row1 + 28);
@@ -1891,9 +1898,12 @@
                 ctx.fillStyle = '#e91e63'; roundRect(ctx, col1, row3, btnW, btnH, 12); ctx.fill();
                 ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.fillText('Cosmetics', col1 + btnW / 2, row3 + 28);
 
+                ctx.fillStyle = '#ff4d4d'; roundRect(ctx, col2, row3, btnW, btnH, 12); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.fillText('Endless Mode', col2 + btnW / 2, row3 + 28);
+
                 if ((gameData.stats.wins || 1) >= 10) {
-                    ctx.fillStyle = '#ffb347'; roundRect(ctx, col2, row3, btnW, btnH, 12); ctx.fill();
-                    ctx.fillStyle = '#222'; ctx.font = '16px sans-serif'; ctx.fillText('Prestige', col2 + btnW / 2, row3 + 28);
+                    ctx.fillStyle = '#ffb347'; roundRect(ctx, col2, row4, btnW, btnH, 12); ctx.fill();
+                    ctx.fillStyle = '#222'; ctx.font = '16px sans-serif'; ctx.fillText('Prestige', col2 + btnW / 2, row4 + 28);
                 }
 
                 ctx.restore();
@@ -1913,7 +1923,11 @@
                 ctx.fillText('Isa ganó', canvas.width / 2, canvas.height / 2 + 10);
 
                 ctx.font = '20px sans-serif';
-                ctx.fillText('Score: ' + score + ' | Best: ' + gameData.bestScore, canvas.width / 2, canvas.height / 2 + 45);
+                if (isEndless) {
+                    ctx.fillText('Score: ' + score + ' | Best: ' + (gameData.endlessBestScore || 0), canvas.width / 2, canvas.height / 2 + 45);
+                } else {
+                    ctx.fillText('Score: ' + score + ' | Best: ' + gameData.bestScore, canvas.width / 2, canvas.height / 2 + 45);
+                }
 
                 ctx.fillStyle = '#ffd700';
                 ctx.font = '18px sans-serif';
@@ -2655,7 +2669,12 @@
                 gameData.coins += earned;
                 addXp(score);
                 gameData.stats.totalCoinsEarned += earned;
-                gameData.bestScore = Math.max(gameData.bestScore, score);
+                if (isEndless) {
+                    if (!gameData.endlessBestScore) gameData.endlessBestScore = 0;
+                    gameData.endlessBestScore = Math.max(gameData.endlessBestScore, score);
+                } else {
+                    gameData.bestScore = Math.max(gameData.bestScore, score);
+                }
                 saveGameData();
                 sayRandom('gameOver');
             }
@@ -2683,7 +2702,16 @@
                     return;
                 }
 
-                if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
+                if (isEndless) {
+                    if (timeElapsed > 30 && !isa.enraged) {
+                        isa.enraged = true;
+                        triggerShake(10, 0.5);
+                        triggerFlash(0.3, '#ff4d4d');
+                        playSound(1000, 0.3);
+                        addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
+                    }
+                } else {
+                    if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
                     isa.enraged = true;
                     // Rage phase entry effects
                     triggerShake(10, 0.5);
@@ -2692,11 +2720,12 @@
                     addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
                 }
 
-                if (isa.displayAnger > isa.anger) {
+                    if (isa.displayAnger > isa.anger) {
                     isa.displayAnger -= (isa.maxAnger * 0.5) * enemyDt;
                     if (isa.displayAnger < isa.anger) isa.displayAnger = isa.anger;
                 } else if (isa.displayAnger < isa.anger) {
                     isa.displayAnger = isa.anger;
+                }
                 }
 
                 timeElapsed += dt;
@@ -3019,7 +3048,8 @@
             }
             requestAnimationFrame(loop);
 
-            function startGameFromTitle() {
+            function startGameFromTitle(endless = false) {
+                isEndless = endless;
                 resetGame();
             }
 
@@ -3042,17 +3072,19 @@
 
                 if (state === STATE.TITLE) {
                     const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
-                    const row1 = 430, row2 = 490, row3 = 550;
+                    const row1 = 430, row2 = 490, row3 = 550, row4 = 610;
 
                     if (pos.y >= row1 && pos.y <= row1 + btnH) {
-                        if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle();
+                        if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle(false);
                         else if (pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.SHOP; }
                     } else if (pos.y >= row2 && pos.y <= row2 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.ACHIEVEMENTS; }
                         else if (pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.MISSIONS; }
                     } else if (pos.y >= row3 && pos.y <= row3 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.COSMETICS; }
-                        else if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                        else if (pos.x >= col2 && pos.x <= col2 + btnW) { startGameFromTitle(true); }
+                    } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
+                        if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
@@ -3189,17 +3221,19 @@
 
                 if (state === STATE.TITLE) {
                     const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
-                    const row1 = 430, row2 = 490, row3 = 550;
+                    const row1 = 430, row2 = 490, row3 = 550, row4 = 610;
 
                     if (pos.y >= row1 && pos.y <= row1 + btnH) {
-                        if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle();
+                        if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle(false);
                         else if (pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.SHOP; }
                     } else if (pos.y >= row2 && pos.y <= row2 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.ACHIEVEMENTS; }
                         else if (pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.MISSIONS; }
                     } else if (pos.y >= row3 && pos.y <= row3 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.COSMETICS; }
-                        else if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                        else if (pos.x >= col2 && pos.x <= col2 + btnW) { startGameFromTitle(true); }
+                    } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
+                        if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
                     }
                     return;
                 }
