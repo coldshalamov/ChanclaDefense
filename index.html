@@ -1276,6 +1276,7 @@
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'trick') emoji = '🃏';
                 else if (type === 'sniper') emoji = '🎯';
+                else if (type === 'ghost') emoji = '👻';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1304,6 +1305,9 @@
                     } else if (type === 'trick') {
                         ctx.shadowColor = '#ff00ff';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'ghost') {
+                        ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+                        ctx.shadowBlur = 10;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -1971,6 +1975,38 @@
                 triggerShake(15, 1.5);
             }
 
+
+            function triggerChanclaStorm() {
+                triggerShake(20, 1.0);
+                triggerFlash(0.5, '#ff4d4d');
+                playSound(1000, 0.5);
+                addFloatText('CHANCLA STORM! 🌪️', isa.x, isa.y + 40, '#ff4d4d', 24);
+
+                const numChanclas = 15;
+                for (let i = 0; i < numChanclas; i++) {
+                    const angle = Math.PI * 0.1 + (i / (numChanclas - 1)) * (Math.PI * 0.8);
+                    const speed = 350 + Math.random() * 150;
+                    const vx = Math.cos(angle) * speed;
+                    const vy = Math.sin(angle) * speed;
+
+                    chanclas.push({
+                        x: isa.x,
+                        y: isa.y + 20,
+                        vx: vx,
+                        vy: vy,
+                        w: 32,
+                        h: 18,
+                        type: 'fire',
+                        rotation: Math.random() * Math.PI * 2,
+                        rotSpeed: (Math.random() - 0.5) * 20,
+                        trickState: 0,
+                        trickTimer: 0,
+                        sniperTimer: 0,
+                        invisible: false
+                    });
+                }
+            }
+
             function spawnChancla() {
                 const isBomb = Math.random() < 0.08;
                 const isGolden = !isBomb && Math.random() < 0.05;
@@ -1979,7 +2015,8 @@
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isTrick = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.10;
                 const isSniper = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && Math.random() < 0.25;
+                const isGhost = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && Math.random() < 0.10;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && !isGhost && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2016,9 +2053,10 @@
                 else if (isBoomerang) type = 'boomerang';
                 else if (isTrick) type = 'trick';
                 else if (isSniper) type = 'sniper';
+                else if (isGhost) type = 'ghost';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0,
-                    sniperTimer: isSniper ? 1.5 : 0 });
+                    sniperTimer: isSniper ? 1.5 : 0, invisible: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2274,6 +2312,14 @@
                             c.y = isa.y + 60; // Fixed Y position
                         } else if (c.vy === 0) {
                             c.vy = 800; // Extreme plummet speed
+                        }
+                    }
+                    // Ghost Logic
+                    if (c.type === 'ghost' && !c.slapped) {
+                        if (c.y > canvas.height * 0.3 && c.y < canvas.height * 0.7) {
+                            c.invisible = true;
+                        } else {
+                            c.invisible = false;
                         }
                     }
 
@@ -2721,6 +2767,7 @@
                 } else {
                     if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
                     isa.enraged = true;
+                    triggerChanclaStorm();
                     // Rage phase entry effects
                     triggerShake(10, 0.5);
                     triggerFlash(0.3, '#ff4d4d');
@@ -2928,7 +2975,10 @@
 
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                for (const c of chanclas) {
+                    if (c.invisible && !c.slapped) continue;
+                    drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                }
             }
 
 
