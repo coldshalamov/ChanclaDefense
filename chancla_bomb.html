@@ -1275,6 +1275,7 @@
                 else if (type === 'golden') emoji = '✨👞';
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'trick') emoji = '🃏';
+                else if (type === 'ghost') emoji = '👻';
                 else if (type === 'sniper') emoji = '🎯';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
@@ -1978,8 +1979,9 @@
                 const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isTrick = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.10;
-                const isSniper = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && Math.random() < 0.25;
+                const isGhost = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.12;
+                const isSniper = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isGhost && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isGhost && !isSniper && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -1989,6 +1991,7 @@
                 else if (isGolden) { w = 36; h = 20; }
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isTrick) { w = 36; h = 22; }
+                else if (isGhost) { w = 34; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
@@ -2002,6 +2005,7 @@
                 else if (isGolden) vy += 20; // slightly faster
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isTrick) vy = baseSpeed * 0.9;
+                else if (isGhost) vy = baseSpeed * 1.1;
                 else if (isSniper) vy = 0;
 
                 const vx = (Math.random() - 0.5) * 60;
@@ -2015,10 +2019,11 @@
                 else if (isHoming) type = 'homing';
                 else if (isBoomerang) type = 'boomerang';
                 else if (isTrick) type = 'trick';
+                else if (isGhost) type = 'ghost';
                 else if (isSniper) type = 'sniper';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0,
-                    sniperTimer: isSniper ? 1.5 : 0 });
+                    sniperTimer: isSniper ? 1.5 : 0, invisible: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2265,6 +2270,15 @@
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
+                    // Ghost Logic
+                    if (c.type === 'ghost' && !c.slapped) {
+                        if (c.y > isa.y + 120 && c.y < player.y - 120) {
+                            c.invisible = true;
+                        } else {
+                            c.invisible = false;
+                        }
+                    }
+
                     // Sniper Logic
                     if (c.type === 'sniper' && !c.slapped) {
                         if (c.sniperTimer > 0) {
@@ -2460,7 +2474,7 @@
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper' || c.type === 'ghost') ? 2 : 1;
                         comboCount = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' || c.type === 'boomerang' || c.type === 'sniper' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
@@ -2928,7 +2942,16 @@
 
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                for (const c of chanclas) {
+                    if (c.invisible) {
+                        ctx.save();
+                        ctx.globalAlpha = 0.15;
+                        drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                        ctx.restore();
+                    } else {
+                        drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                    }
+                }
             }
 
 
