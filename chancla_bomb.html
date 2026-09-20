@@ -2900,6 +2900,17 @@
             }
 
             function draw() {
+                ctx.save();
+                if (hitStop > 0) {
+                    // Modern dynamic camera zoom during heavy impacts
+                    const zoom = 1.08;
+                    const panX = (canvas.width / 2 - player.x) * 0.1;
+                    const panY = (canvas.height / 2 - player.y) * 0.1;
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.scale(zoom, zoom);
+                    ctx.translate(-canvas.width / 2 + panX, -canvas.height / 2 + panY);
+                }
+
                 drawBackground();
                 drawIsa();
                 if (witchTimeTimer > 0) {
@@ -2917,6 +2928,8 @@
                 drawImpacts();
                 drawPlayer();
                 drawSlapEffect();
+
+                ctx.restore();
 
                 drawLowHealthVignette();
                 drawFlash();
