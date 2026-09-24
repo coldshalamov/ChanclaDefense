@@ -552,9 +552,16 @@
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+                const offsetX = (canvas.width / 2 - player.x);
+
+                ctx.save();
+                ctx.translate(offsetX * 0.1, 0);
                 ctx.fillStyle = isa.enraged ? '#1a0508' : '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+                ctx.restore();
 
+                ctx.save();
+                ctx.translate(offsetX * 0.3, 0);
                 ctx.fillStyle = '#1b8c6e';
                 cactusShapes.forEach(c => {
                     ctx.beginPath();
@@ -563,9 +570,13 @@
                     ctx.lineTo(c.baseX + 40, c.baseY);
                     ctx.fill();
                 });
+                ctx.restore();
 
+                ctx.save();
+                ctx.translate(offsetX * 0.05, 0);
                 ctx.fillStyle = '#ffe066';
                 starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+                ctx.restore();
             }
 
             function drawFlash() {
