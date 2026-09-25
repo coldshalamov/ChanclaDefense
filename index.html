@@ -2087,6 +2087,11 @@
                         if (isPerfect) slapEffect.type = 'perfect';
                         else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
 
+                        if (isPerfect) {
+                            witchTimeTimer = 0.5; // Trigger bullet time
+                            triggerFlash(0.1, '#cc00ff');
+                            playSound(850, 0.1);
+                        }
                         c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
                         c.vy = isPerfect ? -550 : -300;
                         c.slapped = true;
@@ -2900,6 +2905,15 @@
             }
 
             function draw() {
+                ctx.save();
+                if (hitStop > 0) {
+                    const zoom = 1.08;
+                    const cx = player.x;
+                    const cy = player.y;
+                    ctx.translate(cx, cy);
+                    ctx.scale(zoom, zoom);
+                    ctx.translate(-cx, -cy);
+                }
                 drawBackground();
                 drawIsa();
                 if (witchTimeTimer > 0) {
@@ -2917,6 +2931,7 @@
                 drawImpacts();
                 drawPlayer();
                 drawSlapEffect();
+                ctx.restore();
 
                 drawLowHealthVignette();
                 drawFlash();
