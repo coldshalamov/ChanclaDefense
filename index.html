@@ -192,6 +192,8 @@
                 if (!gameData.stats.xp) gameData.stats.xp = 0;
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
+                if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
+                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
 
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
@@ -442,6 +444,8 @@
                 if (!gameData.stats.xp) gameData.stats.xp = 0;
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
+                if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
+                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
                 gameData.stats.gamesPlayed++;
                 saveGameData();
 
@@ -1974,8 +1978,9 @@
             }
 
             function spawnChancla() {
+                const extraGolden = (gameData.prestigeUpgrades?.golden_chance || 0) * 0.02;
                 const isBomb = Math.random() < 0.08;
-                const isGolden = !isBomb && Math.random() < 0.05;
+                const isGolden = !isBomb && Math.random() < (0.05 + extraGolden);
                 const isHoming = superEnabled && !isBomb && !isGolden && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
@@ -2100,6 +2105,14 @@
                         comboCount++;
                         if (comboCount > (gameData.stats.maxCombo || 0)) gameData.stats.maxCombo = comboCount;
                         score += Math.floor(comboCount * getPrestigeMultiplier());
+
+                        if (gameData.prestigeUpgrades?.combo_shield && comboCount % 30 === 0 && comboCount > 0) {
+                            if (!player.shield) {
+                                player.shield = true;
+                                addFloatText('COMBO SHIELD! 🛡️', player.x, player.y - 50, '#9bfffa');
+                                playSound(1200, 0.2);
+                            }
+                        }
 
                         // Increase special attack bar
                         specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + (isPerfect ? 25 : 15));
@@ -2461,7 +2474,8 @@
                                 specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
                                 addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
                                 playSound(850, 0.1);
-                                witchTimeTimer = 2.0;
+                                const extraWitchTime = (gameData.prestigeUpgrades?.witch_time || 0) * 0.5;
+                                witchTimeTimer = 2.0 + extraWitchTime;
                                 triggerFlash(0.2, '#cc00ff');
                                 for(let k = 0; k < 5; k++) {
                                     fireParticles.push({
@@ -2667,6 +2681,8 @@
                 if (!gameData.stats.xp) gameData.stats.xp = 0;
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
+                if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
+                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
                 gameData.stats.xp += amount;
                 let leveledUp = false;
                 let requiredXp = gameData.stats.rank * 500;
@@ -3005,7 +3021,7 @@
 
             function drawPrestige() {
                 drawBackground();
-                drawIsa(); // Background decoration
+                drawIsa();
 
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.85)';
@@ -3014,40 +3030,80 @@
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
                 ctx.font = 'bold 32px sans-serif';
-                ctx.fillText('PRESTIGE', canvas.width / 2, 80);
+                ctx.fillText('PRESTIGE SHOP', canvas.width / 2, 50);
 
-                ctx.font = '16px sans-serif';
+                ctx.font = '14px sans-serif';
                 ctx.fillStyle = '#ddd';
-                wrapText(ctx, "Reset your wins, coins, and upgrades to gain a permanent +50% multiplier to score and coins!", canvas.width / 2, 130, canvas.width - 60, 22);
+                wrapText(ctx, "Reset your wins, coins, and upgrades for +50% multiplier and 1 Prestige Token!", canvas.width / 2, 80, canvas.width - 40, 20);
 
                 ctx.fillStyle = '#ffd700';
-                ctx.font = 'bold 20px sans-serif';
-                ctx.fillText(`Current Prestige: ${gameData.prestige || 0}`, canvas.width / 2, 200);
+                ctx.font = 'bold 18px sans-serif';
+                ctx.fillText(`Tokens: ${gameData.prestigeTokens || 0} | Mult: x${(1 + (gameData.prestige || 0) * 0.5).toFixed(1)}`, canvas.width / 2, 130);
 
-                ctx.fillStyle = '#4caf50';
-                ctx.fillText(`Next Multiplier: x${(1 + ((gameData.prestige || 0) + 1) * 0.5).toFixed(1)}`, canvas.width / 2, 240);
+                let y = 150;
+                const prestigeUpgradesList = [
+                    { id: 'golden_chance', name: 'Golden Touch', icon: '✨', cost: 1, maxLevel: 3, desc: '+2% Golden Chancla chance' },
+                    { id: 'witch_time', name: 'Time Wizard', icon: '⏳', cost: 1, maxLevel: 3, desc: '+0.5s Witch Time' },
+                    { id: 'combo_shield', name: 'Combo Shield', icon: '🛡️', cost: 2, maxLevel: 1, desc: 'Shield at 30 combo' }
+                ];
 
-                // Warning
-                ctx.fillStyle = '#ff5252';
-                ctx.font = 'bold 16px sans-serif';
-                ctx.fillText('WARNING: THIS CANNOT BE UNDONE!', canvas.width / 2, 300);
+                prestigeUpgradesList.forEach(u => {
+                    const level = (gameData.prestigeUpgrades || {})[u.id] || 0;
+                    const isMax = level >= u.maxLevel;
+                    const affordable = (gameData.prestigeTokens || 0) >= u.cost;
+
+                    ctx.fillStyle = isMax ? '#4caf50' : (affordable ? '#9c27b0' : '#555');
+                    roundRect(ctx, 30, y, canvas.width - 60, 60, 10);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    roundRect(ctx, 30, y, canvas.width - 60, 60, 10);
+                    ctx.stroke();
+
+                    ctx.font = '24px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(u.icon, 45, y + 38);
+
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.fillText(`${u.name} (${level}/${u.maxLevel})`, 80, y + 25);
+
+                    ctx.font = '12px sans-serif';
+                    ctx.fillStyle = '#ddd';
+                    ctx.fillText(u.desc, 80, y + 45);
+
+                    ctx.textAlign = 'right';
+                    ctx.font = 'bold 14px sans-serif';
+                    if (isMax) {
+                        ctx.fillStyle = '#fff';
+                        ctx.fillText('MAX', canvas.width - 45, y + 35);
+                    } else {
+                        ctx.fillStyle = affordable ? '#ffd700' : '#ff9999';
+                        ctx.fillText(`🪙 ${u.cost}`, canvas.width - 45, y + 35);
+                    }
+                    y += 70;
+                });
 
                 // Prestige Confirmation Button
                 ctx.fillStyle = '#ffb347';
-                roundRect(ctx, 60, 400, canvas.width - 120, 60, 12);
+                roundRect(ctx, 50, 390, canvas.width - 100, 50, 12);
                 ctx.fill();
                 ctx.fillStyle = '#111';
-                ctx.font = 'bold 24px sans-serif';
-                ctx.fillText('PRESTIGE NOW', canvas.width / 2, 438);
+                ctx.font = 'bold 20px sans-serif';
+                ctx.fillText('PRESTIGE NOW', canvas.width / 2, 422);
+
+                ctx.fillStyle = '#ff5252';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillText('WARNING: CANNOT BE UNDONE!', canvas.width / 2, 460);
 
                 // Back Button
                 ctx.fillStyle = '#ff5252';
-                roundRect(ctx, 100, canvas.height - 70, canvas.width - 200, 50, 12);
+                roundRect(ctx, 100, canvas.height - 60, canvas.width - 200, 40, 12);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
-                ctx.font = 'bold 20px sans-serif';
-                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 38);
+                ctx.font = 'bold 18px sans-serif';
+                ctx.fillText('Back / Volver', canvas.width / 2, canvas.height - 34);
 
                 ctx.restore();
             }
@@ -3266,9 +3322,32 @@
                         state = STATE.TITLE;
                     }
                 } else if (state === STATE.PRESTIGE) {
-                    // Check Prestige Confirmation (60, 400, w-120, 60)
-                    if (pos.y >= 400 && pos.y <= 460 && pos.x >= 60 && pos.x <= canvas.width - 60) {
+                    const prestigeUpgradesList = [
+                        { id: 'golden_chance', cost: 1, maxLevel: 3 },
+                        { id: 'witch_time', cost: 1, maxLevel: 3 },
+                        { id: 'combo_shield', cost: 2, maxLevel: 1 }
+                    ];
+                    let y = 150;
+                    for (let u of prestigeUpgradesList) {
+                        if (pos.y >= y && pos.y <= y + 60 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+                            if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                            const level = gameData.prestigeUpgrades[u.id] || 0;
+                            if (level < u.maxLevel && (gameData.prestigeTokens || 0) >= u.cost) {
+                                gameData.prestigeTokens -= u.cost;
+                                gameData.prestigeUpgrades[u.id] = level + 1;
+                                saveGameData();
+                                playSound(1200, 0.1);
+                            } else {
+                                playSound(200, 0.1);
+                            }
+                        }
+                        y += 70;
+                    }
+
+                    // Check Prestige Confirmation (50, 390, w-100, 50)
+                    if (pos.y >= 390 && pos.y <= 440 && pos.x >= 50 && pos.x <= canvas.width - 50) {
                         gameData.prestige = (gameData.prestige || 0) + 1;
+                        gameData.prestigeTokens = (gameData.prestigeTokens || 0) + 1;
                         gameData.stats.wins = 1;
                         gameData.coins = 0;
                         gameData.upgrades = { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 };
@@ -3277,8 +3356,8 @@
                         state = STATE.TITLE;
                         setDirectionsVisible(true);
                     }
-                    // Check Back Button (100, canvas.height - 70, w-200, 50)
-                    else if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 20 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                    // Check Back Button (100, canvas.height - 60, w-200, 40)
+                    else if (pos.y >= canvas.height - 60 && pos.y <= canvas.height - 20 && pos.x >= 100 && pos.x <= canvas.width - 100) {
                         setDirectionsVisible(true);
                         state = STATE.TITLE;
                     }
@@ -3325,9 +3404,32 @@
                     return;
                 }
                 if (state === STATE.PRESTIGE) {
-                    // Check Prestige Confirmation (60, 400, w-120, 60)
-                    if (pos.y >= 400 && pos.y <= 460 && pos.x >= 60 && pos.x <= canvas.width - 60) {
+                    const prestigeUpgradesList = [
+                        { id: 'golden_chance', cost: 1, maxLevel: 3 },
+                        { id: 'witch_time', cost: 1, maxLevel: 3 },
+                        { id: 'combo_shield', cost: 2, maxLevel: 1 }
+                    ];
+                    let y = 150;
+                    for (let u of prestigeUpgradesList) {
+                        if (pos.y >= y && pos.y <= y + 60 && pos.x >= 30 && pos.x <= canvas.width - 30) {
+                            if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                            const level = gameData.prestigeUpgrades[u.id] || 0;
+                            if (level < u.maxLevel && (gameData.prestigeTokens || 0) >= u.cost) {
+                                gameData.prestigeTokens -= u.cost;
+                                gameData.prestigeUpgrades[u.id] = level + 1;
+                                saveGameData();
+                                playSound(1200, 0.1);
+                            } else {
+                                playSound(200, 0.1);
+                            }
+                        }
+                        y += 70;
+                    }
+
+                    // Check Prestige Confirmation (50, 390, w-100, 50)
+                    if (pos.y >= 390 && pos.y <= 440 && pos.x >= 50 && pos.x <= canvas.width - 50) {
                         gameData.prestige = (gameData.prestige || 0) + 1;
+                        gameData.prestigeTokens = (gameData.prestigeTokens || 0) + 1;
                         gameData.stats.wins = 1;
                         gameData.coins = 0;
                         gameData.upgrades = { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0 };
@@ -3336,8 +3438,8 @@
                         state = STATE.TITLE;
                         setDirectionsVisible(true);
                     }
-                    // Check Back Button (100, canvas.height - 70, w-200, 50)
-                    else if (pos.y >= canvas.height - 70 && pos.y <= canvas.height - 20 && pos.x >= 100 && pos.x <= canvas.width - 100) {
+                    // Check Back Button (100, canvas.height - 60, w-200, 40)
+                    else if (pos.y >= canvas.height - 60 && pos.y <= canvas.height - 20 && pos.x >= 100 && pos.x <= canvas.width - 100) {
                         setDirectionsVisible(true);
                         state = STATE.TITLE;
                     }
