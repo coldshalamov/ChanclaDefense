@@ -2402,16 +2402,6 @@
                             if (c.type === 'bomb') damage = 20;
                             if (c.type === 'golden' || c.type === 'trick') damage = 0; // Prevent double-dipping as damage is applied in trySlap
 
-                            if (c.type === 'golden' && Math.random() < 0.5) { // Boss can parry the golden chancla
-                                c.slapped = false;
-                                c.type = 'fire'; // Turns into a fireball when parried
-                                c.vy = baseSpeed + 80;
-                                c.vx = (Math.random() - 0.5) * 60;
-                                addFloatText('PARRIED! 🔥', isa.x, isa.y + 30);
-                                triggerShake(10, 0.2);
-                                continue;
-                            }
-
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
