@@ -1262,7 +1262,7 @@
                 ctx.restore();
             }
 
-            function drawChancla(ctx, x, y, w, h, type, rotation) {
+            function drawChancla(ctx, x, y, w, h, type, rotation, c) {
                 ctx.save();
                 ctx.translate(x, y);
 
@@ -1276,6 +1276,7 @@
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'trick') emoji = '🃏';
                 else if (type === 'sniper') emoji = '🎯';
+                else if (type === 'ghost') emoji = '👻';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1308,6 +1309,7 @@
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.rotate(rotation);
+                if (c && c.invisible) ctx.globalAlpha = 0;
                 ctx.fillText(emoji, 0, h * 0.2);
                 ctx.restore();
             }
@@ -1979,7 +1981,8 @@
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isTrick = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.10;
                 const isSniper = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && Math.random() < 0.25;
+                const isGhost = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && !isGhost && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2015,6 +2018,7 @@
                 else if (isHoming) type = 'homing';
                 else if (isBoomerang) type = 'boomerang';
                 else if (isTrick) type = 'trick';
+                else if (isGhost) type = 'ghost';
                 else if (isSniper) type = 'sniper';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, trickState: 0, trickTimer: 0,
@@ -2140,6 +2144,15 @@
                             addFloatText('TRICKED! 🃏', c.x, c.y, '#ff00ff');
                             isa.anger = Math.max(0, isa.anger - 15);
                             if (isa.anger <= 0) triggerWin();
+                        } else if (c.type === 'ghost') {
+                            gameData.coins += Math.floor(5 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(5 * getPrestigeMultiplier());
+                            score += Math.floor(150 * getPrestigeMultiplier());
+                            addFloatText('GHOST BUSTED! 👻', c.x, c.y, '#fff');
+                            isa.anger = Math.max(0, isa.anger - 10);
+                            if (isa.anger <= 0) triggerWin();
+                            spawnImpact(c.x, c.y);
+                            playSound(850, 0.15);
                         } else if (isPerfect) {
                             gameData.coins += Math.floor(2 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(2 * getPrestigeMultiplier());
@@ -2287,6 +2300,15 @@
                         const maxHomingSpeed = 150;
                         if (Math.abs(c.vx) > maxHomingSpeed) {
                             c.vx = Math.sign(c.vx) * maxHomingSpeed;
+                        }
+                    }
+
+                    // Ghost Logic
+                    if (c.type === 'ghost') {
+                        if (c.y > canvas.height * 0.25 && c.y < canvas.height * 0.75) {
+                            c.invisible = true;
+                        } else {
+                            c.invisible = false;
                         }
                     }
 
@@ -2928,7 +2950,7 @@
 
 
             function drawChanclasAll() {
-                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation);
+                for (const c of chanclas) drawChancla(ctx, c.x, c.y, c.w, c.h, c.type, c.rotation, c);
             }
 
 
