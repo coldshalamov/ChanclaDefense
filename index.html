@@ -207,6 +207,37 @@
 
             function checkMissionsInit() {
                 const today = new Date().toDateString();
+
+                // --- Daily Login Logic ---
+                if (!gameData.dailyLogin) {
+                    gameData.dailyLogin = { lastLoginDate: null, streak: 0 };
+                }
+
+                if (gameData.dailyLogin.lastLoginDate !== today) {
+                    let lastDate = gameData.dailyLogin.lastLoginDate ? new Date(gameData.dailyLogin.lastLoginDate) : null;
+                    let currentDate = new Date();
+                    let diffDays = lastDate ? (currentDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24) : null;
+
+                    if (diffDays === null || diffDays <= 2) { // Allow <48 hours to keep streak
+                        gameData.dailyLogin.streak++;
+                    } else {
+                        gameData.dailyLogin.streak = 1; // Reset streak if missed a day
+                    }
+
+                    let reward = Math.min(500, 50 * gameData.dailyLogin.streak); // Max 500 coins per day
+                    gameData.coins += reward;
+                    gameData.dailyLogin.lastLoginDate = today;
+                    saveGameData();
+
+                    // Show reward notification
+                    setTimeout(() => {
+                        alert(`Daily Login Reward!
+Streak: ${gameData.dailyLogin.streak} Days
+You earned: ${reward} Coins!`);
+                    }, 500);
+                }
+                // --- End Daily Login Logic ---
+
                 if (!gameData.missions || gameData.missions.date !== today) {
                     const pool = [
                         { id: 'slap', desc: 'Slap 50 chanclas', target: 50, reward: 50, progress: 0, claimed: false },
