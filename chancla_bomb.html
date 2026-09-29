@@ -2035,7 +2035,36 @@
             function addFloatText(text, x, y, color = '#fff', fontSize = 14) {
                 floatTexts.push({ text, x, y, time: 1.8, max: 1.8, color, fontSize });
             }
+            function triggerChanclaStorm() {
+                const numChanclas = 15;
+                const spreadAngle = Math.PI * 0.8;
+                const startAngle = (Math.PI - spreadAngle) / 2;
 
+                for (let i = 0; i < numChanclas; i++) {
+                    const angle = startAngle + (i / (numChanclas - 1)) * spreadAngle;
+                    const speed = 350;
+
+                    const vx = Math.cos(angle) * speed;
+                    const vy = Math.sin(angle) * speed;
+
+                    chanclas.push({
+                        x: isa.x,
+                        y: isa.y + 40,
+                        vx: vx,
+                        vy: vy,
+                        vx_saved: vx,
+                        vy_saved: vy,
+                        w: 32,
+                        h: 18,
+                        type: 'fire',
+                        rotation: angle,
+                        rotSpeed: 20,
+                        slapped: false,
+                        currentSlaps: 0,
+                        slapsNeeded: 1
+                    });
+                }
+            }
 
             function trySlap() {
                 if (slapCooldown > 0) return;
@@ -2747,6 +2776,8 @@
                         triggerFlash(0.3, '#ff4d4d');
                         playSound(1000, 0.3);
                         addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
+
+                    triggerChanclaStorm();
                     }
                 } else {
                     if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
@@ -2756,6 +2787,8 @@
                     triggerFlash(0.3, '#ff4d4d');
                     playSound(1000, 0.3);
                     addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
+
+                triggerChanclaStorm();
                 }
 
                     if (isa.displayAnger > isa.anger) {
