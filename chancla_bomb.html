@@ -205,8 +205,45 @@
                 localStorage.setItem('chancla_bomb_save', JSON.stringify(gameData));
             }
 
+
             function checkMissionsInit() {
                 const today = new Date().toDateString();
+
+                // Check Daily Login Streak
+                if (!gameData.dailyLogin) {
+                    gameData.dailyLogin = { lastLoginDate: null, streak: 0, claimedToday: false };
+                }
+
+                if (gameData.dailyLogin.lastLoginDate !== today) {
+                    if (gameData.dailyLogin.lastLoginDate) {
+                        const lastDate = new Date(gameData.dailyLogin.lastLoginDate);
+                        const currDate = new Date(today);
+                        const diffDays = Math.round(Math.abs(currDate - lastDate) / (1000 * 60 * 60 * 24));
+
+                        if (diffDays === 1) {
+                            gameData.dailyLogin.streak += 1;
+                        } else if (diffDays > 1) {
+                            gameData.dailyLogin.streak = 1;
+                        }
+                    } else {
+                        gameData.dailyLogin.streak = 1;
+                    }
+
+                    gameData.dailyLogin.lastLoginDate = today;
+                    gameData.dailyLogin.claimedToday = true;
+
+                    const bonus = Math.min(50 * gameData.dailyLogin.streak, 500);
+                    gameData.coins += bonus;
+                    saveGameData();
+
+                    // Show alert safely
+                    setTimeout(() => {
+                        if (typeof floatTexts !== 'undefined' && floatTexts !== null) {
+                            floatTexts.push({ text: `+${bonus} COINS (DAILY LOGIN STREAK: ${gameData.dailyLogin.streak})`, x: canvas.width / 2, y: canvas.height / 2, time: 3.0, max: 3.0, color: '#ffd700', fontSize: 24 });
+                        }
+                    }, 100);
+                }
+
                 if (!gameData.missions || gameData.missions.date !== today) {
                     const pool = [
                         { id: 'slap', desc: 'Slap 50 chanclas', target: 50, reward: 50, progress: 0, claimed: false },
