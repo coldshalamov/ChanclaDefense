@@ -1998,6 +1998,28 @@
             }
 
 
+            function triggerChanclaStorm() {
+                for (let i = 0; i < 15; i++) {
+                    const angleDown = (Math.PI / 14) * i;
+                    const speed = 300 + Math.random() * 200;
+                    const vx = Math.cos(angleDown) * speed;
+                    const vy = Math.sin(angleDown) * speed;
+
+                    chanclas.push({
+                        x: isa.x,
+                        y: isa.y + 30,
+                        w: 32,
+                        h: 18,
+                        vx: vx,
+                        vy: vy,
+                        type: 'fire',
+                        rotation: Math.random() * Math.PI * 2,
+                        rotSpeed: (Math.random() - 0.5) * 10,
+                        slapped: false
+                    });
+                }
+            }
+
             function spawnMeteor() {
                 const w = 120;
                 const h = 120;
@@ -2780,6 +2802,7 @@
                 if (isEndless) {
                     if (timeElapsed > 30 && !isa.enraged) {
                         isa.enraged = true;
+                        triggerChanclaStorm();
                         triggerShake(10, 0.5);
                         triggerFlash(0.3, '#ff4d4d');
                         playSound(1000, 0.3);
@@ -2789,6 +2812,7 @@
                 } else {
                     if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
                     isa.enraged = true;
+                    triggerChanclaStorm();
                     // Rage phase entry effects
                     triggerShake(10, 0.5);
                     triggerFlash(0.3, '#ff4d4d');
