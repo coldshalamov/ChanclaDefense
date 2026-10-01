@@ -593,9 +593,26 @@
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+                // Calculate parallax offset based on player X position from center
+                let parallaxOffset = 0;
+                if (typeof player !== 'undefined' && player.x) {
+                    parallaxOffset = player.x - canvas.width / 2;
+                }
+
+                ctx.save();
+                ctx.translate(parallaxOffset * -0.05, 0);
+                ctx.fillStyle = '#ffe066';
+                starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+                ctx.restore();
+
+                ctx.save();
+                ctx.translate(parallaxOffset * -0.15, 0);
                 ctx.fillStyle = isa.enraged ? '#1a0508' : '#0a1527';
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+                ctx.restore();
 
+                ctx.save();
+                ctx.translate(parallaxOffset * -0.3, 0);
                 ctx.fillStyle = '#1b8c6e';
                 cactusShapes.forEach(c => {
                     ctx.beginPath();
@@ -604,9 +621,7 @@
                     ctx.lineTo(c.baseX + 40, c.baseY);
                     ctx.fill();
                 });
-
-                ctx.fillStyle = '#ffe066';
-                starDots.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+                ctx.restore();
             }
 
             function drawFlash() {
