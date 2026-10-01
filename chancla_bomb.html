@@ -272,8 +272,8 @@
                 }
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, stunTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false, miradaCooldown: 20, miradaState: 0, miradaTimer: 0 };
 
             const COSMETICS_LIST = [
                 { id: 'none', name: 'No Hat', icon: '', cost: 0 },
@@ -537,6 +537,10 @@
                 specialReadyTriggered = false;
                 chainEffects = [];
                 wrapper.style.transform = 'none';
+                player.stunTimer = 0;
+                isa.miradaCooldown = 20;
+                isa.miradaState = 0;
+                isa.miradaTimer = 0;
                 sayRandom('start');
                 playerDialogueTimer = 0;
                 state = STATE.PLAYING;
@@ -948,7 +952,16 @@
                 ctx.fill();
 
                 // Eyes
-                if (isHit) {
+                if (isa.miradaState === 2) {
+                    ctx.shadowColor = '#ff0000';
+                    ctx.shadowBlur = 15;
+                    ctx.fillStyle = '#ff0000';
+                    ctx.beginPath();
+                    ctx.arc(-faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.arc(faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                } else if (isHit) {
                     // X Eyes
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 3;
@@ -1298,6 +1311,13 @@
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText('✨', headW * 0.6, -headH * 0.4);
+                }
+
+                if (player.stunTimer > 0) {
+                    ctx.font = '24px "Noto Color Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('💫', 0, -headH * 0.8);
                 }
 
                 ctx.restore();
@@ -2074,7 +2094,27 @@
             }
 
 
+            function triggerMiradaCaught() {
+                player.stunTimer = 1.5;
+                isa.miradaState = 0;
+                isa.miradaCooldown = 20 + Math.random() * 10;
+                addFloatText('CAUGHT! ❌', player.x, player.y - 40, '#ff0000', 24);
+                triggerShake(15, 0.5);
+                triggerFlash(0.3, '#ff0000');
+                playSound(800, 0.5);
+
+                chanclas.push({
+                    x: isa.x, y: isa.y + 40, vx: (player.x - isa.x)*1.5, vy: 600, w: 46, h: 26, type: 'super', rotation: 0, rotSpeed: 10, trickState: 0, trickTimer: 0, sniperTimer: 0, slapped: false
+                });
+                sayRandom('hitSuper');
+            }
+
             function trySlap() {
+                if (player.stunTimer > 0) return;
+                if (isa.miradaState === 2) {
+                    triggerMiradaCaught();
+                    return;
+                }
                 if (slapCooldown > 0) return;
 
                 slapEffect.timer = slapEffect.duration;
@@ -2248,6 +2288,11 @@
             }
 
             function fireSpecialAttack() {
+                if (player.stunTimer > 0) return;
+                if (isa.miradaState === 2) {
+                    triggerMiradaCaught();
+                    return;
+                }
                 if (specialAttackBar >= maxSpecialAttack) {
                     // Fire bouquet emoji at Isa
                     specialProjectiles.push({
@@ -2777,6 +2822,41 @@
                     return;
                 }
 
+                if (timeElapsed > 10 && !isa.enraged && player.lives > 0) {
+                    if (isa.miradaCooldown > 0) {
+                        isa.miradaCooldown -= enemyDt;
+                    } else if (isa.miradaState === 0 && chanclas.length < 3) {
+                        isa.miradaState = 1;
+                        isa.miradaTimer = 1.5;
+                        addFloatText('¡LA MIRADA! 👁️', isa.x, isa.y - 30, '#ff0000', 24);
+                        playSound(1000, 0.5);
+                        triggerShake(5, 1.5);
+                    }
+                }
+
+                if (isa.miradaState === 1) {
+                    isa.miradaTimer -= enemyDt;
+                    spawnTimer = 0; // Pause spawning
+                    if (isa.miradaTimer <= 0) {
+                        isa.miradaState = 2;
+                        isa.miradaTimer = 1.2;
+                        addFloatText("DON'T MOVE! 🛑", canvas.width/2, canvas.height/2, '#ff0000', 30);
+                        triggerFlash(0.2, '#ff0000');
+                        playSound(400, 1.0);
+                    }
+                } else if (isa.miradaState === 2) {
+                    isa.miradaTimer -= enemyDt;
+                    spawnTimer = 0; // Pause spawning
+
+                    if (isa.miradaTimer <= 0 && player.stunTimer <= 0) {
+                        isa.miradaState = 0;
+                        isa.miradaCooldown = 20 + Math.random() * 10;
+                        score += Math.floor(500 * getPrestigeMultiplier());
+                        addFloatText('SOBREVIVISTE +500', player.x, player.y - 40, '#00ff00', 16);
+                        playSound(1200, 0.3);
+                    }
+                }
+
                 if (isEndless) {
                     if (timeElapsed > 30 && !isa.enraged) {
                         isa.enraged = true;
@@ -2861,15 +2941,24 @@
                     }
                 }
 
-                if (dashTimer > 0) {
-                    player.x += dashDir * 800 * dt;
-                    dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
+                if (player.stunTimer > 0) {
+                    player.stunTimer -= dt;
                 } else {
-                    const speed = player.speed;
-                    const moveLeft = keys.left || touch.left;
-                    const moveRight = keys.right || touch.right;
-                    if (moveLeft) player.x -= speed * dt;
-                    if (moveRight) player.x += speed * dt;
+                    if (dashTimer > 0) {
+                        player.x += dashDir * 800 * dt;
+                        dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
+                    } else {
+                        const speed = player.speed;
+                        const moveLeft = keys.left || touch.left;
+                        const moveRight = keys.right || touch.right;
+
+                        if (isa.miradaState === 2 && (moveLeft || moveRight)) {
+                            triggerMiradaCaught();
+                        } else {
+                            if (moveLeft) player.x -= speed * dt;
+                            if (moveRight) player.x += speed * dt;
+                        }
+                    }
                 }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
@@ -2880,7 +2969,7 @@
                     dashTrails[i].life -= dt;
                     if (dashTrails[i].life <= 0) dashTrails.splice(i, 1);
                 }
-                updateChanclas(dt, enemyDt);
+                if (isa.miradaState === 0) updateChanclas(dt, enemyDt);
                 updateSpecialProjectiles(dt);
                 updateImpacts(dt);
                 updateChainEffects(dt);
@@ -2995,6 +3084,25 @@
                 drawSlapEffect();
 
                 ctx.restore();
+
+                if (isa.miradaState > 0) {
+                    ctx.save();
+                    const alpha = isa.miradaState === 1 ? 0.15 : 0.4;
+                    ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+
+                    ctx.beginPath();
+                    ctx.rect(0, 0, canvas.width, canvas.height);
+
+                    ctx.arc(player.x, player.y, 80, 0, Math.PI * 2, true);
+                    ctx.closePath();
+
+                    ctx.arc(isa.x, isa.y, 100, 0, Math.PI * 2, true);
+                    ctx.closePath();
+
+                    ctx.fill();
+                    ctx.restore();
+                }
+
                 drawLowHealthVignette();
                 drawFlash();
                 drawHUD();
@@ -3631,7 +3739,7 @@
 
             function handleKey(e, isDown) {
                 if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
-                    if (isDown && !keys.left && !e.repeat && dashCooldown <= 0) {
+                    if (isDown && !keys.left && !e.repeat && dashCooldown <= 0 && player.stunTimer <= 0) {
                         if (timeElapsed - lastTapLeft < 0.25) {
                             dashTimer = 0.15;
                             dashCooldown = 0.8;
@@ -3643,7 +3751,7 @@
                     e.preventDefault();
                 }
                 if (['ArrowRight', 'd', 'D'].includes(e.key)) {
-                    if (isDown && !keys.right && !e.repeat && dashCooldown <= 0) {
+                    if (isDown && !keys.right && !e.repeat && dashCooldown <= 0 && player.stunTimer <= 0) {
                         if (timeElapsed - lastTapRight < 0.25) {
                             dashTimer = 0.15;
                             dashCooldown = 0.8;
@@ -3684,7 +3792,7 @@
             function handleMobileZones(zone, dir) {
                 zone.addEventListener('touchstart', (e) => {
                     if (state !== STATE.PLAYING) return;
-                    if (!touch[dir] && dashCooldown <= 0) {
+                    if (!touch[dir] && dashCooldown <= 0 && player.stunTimer <= 0) {
                         if (dir === 'left') {
                             if (timeElapsed - lastTapLeft < 0.25) {
                                 dashTimer = 0.15;
