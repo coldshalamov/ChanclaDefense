@@ -162,7 +162,9 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige', MISSIONS: 'missions', STATS: 'stats' };
 
             function getPrestigeMultiplier() {
-                return (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                let mult = (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                if (gameData.hardMode) mult *= 2;
+                return mult;
             }
             let state = STATE.TITLE;
             let isEndless = false;
@@ -191,9 +193,12 @@
                 if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.stats.xp) gameData.stats.xp = 0;
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
+
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
                 if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
                 if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                if (gameData.hardMode === undefined) gameData.hardMode = false;
+                if (gameData.hardMode === undefined) gameData.hardMode = false;
 
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
@@ -511,9 +516,11 @@
                     isa.anger = Infinity;
                     isa.displayAnger = Infinity;
                 } else {
-                    isa.maxAnger = 100 + (wins - 1) * 20;
-                isa.anger = isa.maxAnger;
-                isa.displayAnger = isa.maxAnger;
+                    let baseMax = 100 + (wins - 1) * 20;
+                    if (gameData.hardMode) baseMax *= 1.5; // Boss has 50% more health
+                    isa.maxAnger = baseMax;
+                    isa.anger = isa.maxAnger;
+                    isa.displayAnger = isa.maxAnger;
                 }
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -535,6 +542,11 @@
                 minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
                 spawnTimer = 0;
                 baseSpeed = 140 + (wins - 1) * 5;
+                if (gameData.hardMode) {
+                    spawnInterval = Math.max(0.15, spawnInterval * 0.7);
+                    minSpawnInterval = Math.max(0.08, minSpawnInterval * 0.7);
+                    baseSpeed *= 1.3; // 30% faster projectiles
+                }
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1981,6 +1993,16 @@
 
                 ctx.fillStyle = '#00bcd4'; roundRect(ctx, col1, row4, btnW, btnH, 12); ctx.fill();
                 ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.fillText('Stats', col1 + btnW / 2, row4 + 28);
+
+                if ((gameData.prestige || 0) >= 1) {
+                    // Hard Mode Toggle
+                    const hmRow = row4 + 60;
+                    ctx.fillStyle = gameData.hardMode ? '#e60000' : '#444';
+                    roundRect(ctx, col1, hmRow, canvas.width - 80, btnH, 12);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.font = 'bold 16px sans-serif';
+                    ctx.fillText('Hard Mode: ' + (gameData.hardMode ? 'ON' : 'OFF'), canvas.width / 2, hmRow + 28);
+                }
 
                 ctx.restore();
             }
@@ -3504,6 +3526,12 @@
                                         } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.STATS; }
                         if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                    } else if ((gameData.prestige || 0) >= 1 && pos.y >= row4 + 60 && pos.y <= row4 + 60 + btnH) {
+                        if (pos.x >= col1 && pos.x <= canvas.width - 40) {
+                            gameData.hardMode = !gameData.hardMode;
+                            saveGameData();
+                            playSound(gameData.hardMode ? 1000 : 800, 0.2);
+                        }
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
@@ -3693,6 +3721,12 @@
                                         } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.STATS; }
                         if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                    } else if ((gameData.prestige || 0) >= 1 && pos.y >= row4 + 60 && pos.y <= row4 + 60 + btnH) {
+                        if (pos.x >= col1 && pos.x <= canvas.width - 40) {
+                            gameData.hardMode = !gameData.hardMode;
+                            saveGameData();
+                            playSound(gameData.hardMode ? 1000 : 800, 0.2);
+                        }
                     }
                     return;
                 }
