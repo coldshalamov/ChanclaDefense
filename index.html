@@ -162,7 +162,7 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige', MISSIONS: 'missions', STATS: 'stats' };
 
             function getPrestigeMultiplier() {
-                return (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                return (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1) * (gameData.hardMode ? 2.0 : 1.0);
             }
             let state = STATE.TITLE;
             let isEndless = false;
@@ -193,6 +193,7 @@
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
                 if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
+                if (gameData.hardMode === undefined) gameData.hardMode = false;
                 if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
 
                 if (!gameData.achievements) gameData.achievements = {};
@@ -485,6 +486,7 @@
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
                 if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
+                if (gameData.hardMode === undefined) gameData.hardMode = false;
                 if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
                 gameData.stats.gamesPlayed++;
                 saveGameData();
@@ -506,14 +508,15 @@
                 clashMeter = 50;
                 clashChancla = null;
                 const wins = gameData.stats.wins || 1;
+                const isHard = gameData.hardMode;
                 if (isEndless) {
                     isa.maxAnger = Infinity;
                     isa.anger = Infinity;
                     isa.displayAnger = Infinity;
                 } else {
-                    isa.maxAnger = 100 + (wins - 1) * 20;
-                isa.anger = isa.maxAnger;
-                isa.displayAnger = isa.maxAnger;
+                    isa.maxAnger = 100 + (wins - 1) * (isHard ? 40 : 20);
+                    isa.anger = isa.maxAnger;
+                    isa.displayAnger = isa.maxAnger;
                 }
                 isa.x = canvas.width / 2;
                 isa.y = 70;
@@ -531,10 +534,10 @@
                 comboCount = 0;
                 fiestaMode = false;
                 fiestaHue = 0;
-                spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
-                minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
+                spawnInterval = Math.max(0.15, (isHard ? 1.0 : 1.2) - (wins - 1) * (isHard ? 0.08 : 0.05));
+                minSpawnInterval = Math.max(0.05, (isHard ? 0.35 : 0.45) - (wins - 1) * (isHard ? 0.03 : 0.02));
                 spawnTimer = 0;
-                baseSpeed = 140 + (wins - 1) * 5;
+                baseSpeed = (isHard ? 180 : 140) + (wins - 1) * (isHard ? 8 : 5);
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1979,6 +1982,12 @@
                     ctx.fillStyle = '#222'; ctx.font = '16px sans-serif'; ctx.fillText('Prestige', col2 + btnW / 2, row4 + 28);
                 }
 
+                if ((gameData.prestige || 0) > 0) {
+                    const row5 = 670;
+                    ctx.fillStyle = gameData.hardMode ? '#ff5252' : '#555'; roundRect(ctx, col1, row5, btnW * 2 + 10, btnH, 12); ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.fillText('Hard Mode: ' + (gameData.hardMode ? 'ON' : 'OFF'), canvas.width / 2, row5 + 28);
+                }
+
                 ctx.fillStyle = '#00bcd4'; roundRect(ctx, col1, row4, btnW, btnH, 12); ctx.fill();
                 ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.fillText('Stats', col1 + btnW / 2, row4 + 28);
 
@@ -2777,6 +2786,7 @@
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
                 if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
+                if (gameData.hardMode === undefined) gameData.hardMode = false;
                 if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
                 gameData.stats.xp += amount;
                 let leveledUp = false;
@@ -3504,6 +3514,12 @@
                                         } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.STATS; }
                         if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                    } else if ((gameData.prestige || 0) > 0 && pos.y >= 670 && pos.y <= 670 + btnH) {
+                        if (pos.x >= col1 && pos.x <= col2 + btnW) {
+                            gameData.hardMode = !gameData.hardMode;
+                            saveGameData();
+                            playSound(850, 0.1);
+                        }
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
@@ -3693,6 +3709,12 @@
                                         } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.STATS; }
                         if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                    } else if ((gameData.prestige || 0) > 0 && pos.y >= 670 && pos.y <= 670 + btnH) {
+                        if (pos.x >= col1 && pos.x <= col2 + btnW) {
+                            gameData.hardMode = !gameData.hardMode;
+                            saveGameData();
+                            playSound(850, 0.1);
+                        }
                     }
                     return;
                 }
