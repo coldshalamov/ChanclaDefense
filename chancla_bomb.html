@@ -162,7 +162,8 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige', MISSIONS: 'missions', STATS: 'stats' };
 
             function getPrestigeMultiplier() {
-                return (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                const hardMod = gameData.hardMode ? 2 : 1;
+                return (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1) * hardMod;
             }
             let state = STATE.TITLE;
             let isEndless = false;
@@ -197,6 +198,7 @@
 
                 if (!gameData.achievements) gameData.achievements = {};
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
+                if (gameData.hardMode === undefined) gameData.hardMode = false;
                 if (!gameData.currentHat) gameData.currentHat = 'none';
             } catch (e) { console.error(e); }
             checkMissionsInit();
@@ -302,7 +304,7 @@
             let score = 0;
             let bestScore = 0;
             let spawnInterval = 1.2;
-            let minSpawnInterval = 0.45;
+            let minSpawnInterval = gameData.hardMode ? 0.35 : 0.45;
             let spawnTimer = 0;
             let baseSpeed = 140;
             let timeElapsed = 0;
@@ -511,7 +513,7 @@
                     isa.anger = Infinity;
                     isa.displayAnger = Infinity;
                 } else {
-                    isa.maxAnger = 100 + (wins - 1) * 20;
+                    isa.maxAnger = (100 + (wins - 1) * 20) * (gameData.hardMode ? 1.5 : 1);
                 isa.anger = isa.maxAnger;
                 isa.displayAnger = isa.maxAnger;
                 }
@@ -532,9 +534,9 @@
                 fiestaMode = false;
                 fiestaHue = 0;
                 spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
-                minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
+                minSpawnInterval = Math.max(0.1, (gameData.hardMode ? 0.35 : 0.45) - (wins - 1) * 0.02);
                 spawnTimer = 0;
-                baseSpeed = 140 + (wins - 1) * 5;
+                baseSpeed = (140 + (wins - 1) * 5) * (gameData.hardMode ? 1.4 : 1);
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1977,6 +1979,12 @@
                 if ((gameData.stats.wins || 1) >= 10) {
                     ctx.fillStyle = '#ffb347'; roundRect(ctx, col2, row4, btnW, btnH, 12); ctx.fill();
                     ctx.fillStyle = '#222'; ctx.font = '16px sans-serif'; ctx.fillText('Prestige', col2 + btnW / 2, row4 + 28);
+                }
+
+                if ((gameData.prestige || 0) >= 1) {
+                    const row5 = row4 + 60;
+                    ctx.fillStyle = gameData.hardMode ? '#d32f2f' : '#607d8b'; roundRect(ctx, col1, row5, btnW * 2 + 10, btnH, 12); ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.fillText('Hard Mode ' + (gameData.hardMode ? 'ON' : 'OFF'), col1 + (btnW * 2 + 10) / 2, row5 + 28);
                 }
 
                 ctx.fillStyle = '#00bcd4'; roundRect(ctx, col1, row4, btnW, btnH, 12); ctx.fill();
@@ -3693,6 +3701,11 @@
                                         } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.STATS; }
                         if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                    } else if ((gameData.prestige || 0) >= 1 && pos.y >= row4 + 60 && pos.y <= row4 + 60 + btnH) {
+                        if (pos.x >= col1 && pos.x <= col1 + btnW * 2 + 10) {
+                            gameData.hardMode = !gameData.hardMode;
+                            playSound(gameData.hardMode ? 1000 : 800, 0.1);
+                        }
                     }
                     return;
                 }
