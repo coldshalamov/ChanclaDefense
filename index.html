@@ -1482,6 +1482,74 @@
                 ctx.restore();
             }
 
+            function drawComboMeter() {
+                if (comboCount < 3) return;
+
+                ctx.save();
+                // Position on the right side, above the middle
+                const x = canvas.width - 120;
+                const y = canvas.height / 2 - 40;
+
+                // Add some juice: pulsing effect
+                const pulse = 1 + Math.sin(timeElapsed * 15) * 0.05;
+                // Add a little shake based on combo size
+                const shakeX = (Math.random() - 0.5) * Math.min(comboCount / 5, 5);
+                const shakeY = (Math.random() - 0.5) * Math.min(comboCount / 5, 5);
+
+                ctx.translate(x + shakeX, y + shakeY);
+                ctx.scale(pulse, pulse);
+
+                let rankText = "";
+                let subText = "";
+                let color = "";
+                let glowColor = "";
+
+                if (comboCount >= 25) { rankText = "SSS"; subText = "LEGEND! 👑"; color = "#ffd700"; glowColor = "#ffaa00"; }
+                else if (comboCount >= 20) { rankText = "SS"; subText = "IMPOSSIBLE! 🤯"; color = "#ff00ff"; glowColor = "#aa00aa"; }
+                else if (comboCount >= 15) { rankText = "S"; subText = "DIOS MIO! 😱"; color = "#ff0000"; glowColor = "#aa0000"; }
+                else if (comboCount >= 10) { rankText = "A"; subText = "FUEGO! 🔥"; color = "#ff8800"; glowColor = "#aa5500"; }
+                else if (comboCount >= 6) { rankText = "B"; subText = "SPICY! 🌶️"; color = "#00ff00"; glowColor = "#00aa00"; }
+                else if (comboCount >= 3) { rankText = "C"; subText = "CRAZY!"; color = "#00ffff"; glowColor = "#00aaaa"; }
+
+                // Draw Rank Letter
+                ctx.font = 'italic 900 70px "Arial Black", "Arial", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#000';
+
+                // Glow
+                ctx.shadowColor = glowColor;
+                ctx.shadowBlur = 20;
+
+                // Gradient Fill
+                const grad = ctx.createLinearGradient(0, -35, 0, 35);
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(1, color);
+                ctx.fillStyle = grad;
+
+                ctx.strokeText(rankText, 0, 0);
+                ctx.fillText(rankText, 0, 0);
+
+                // Reset shadow for subtext
+                ctx.shadowBlur = 0;
+
+                // Draw Subtext
+                ctx.font = 'italic bold 18px sans-serif';
+                ctx.fillStyle = color;
+                ctx.lineWidth = 3;
+                ctx.strokeText(subText, 0, 45);
+                ctx.fillText(subText, 0, 45);
+
+                // Draw Combo Number
+                ctx.font = 'bold 22px sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeText(comboCount + " HITS", 0, 70);
+                ctx.fillText(comboCount + " HITS", 0, 70);
+
+                ctx.restore();
+            }
+
             function drawHUD() {
                 ctx.save();
                 ctx.fillStyle = '#fff';
@@ -3158,6 +3226,7 @@
                     drawLowHealthVignette();
                     drawFlash();
                     drawHUD();
+                    drawComboMeter();
                     drawFloatTexts();
                     drawDialogue();
                     drawPlayerDialogue();
