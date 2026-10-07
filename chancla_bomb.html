@@ -518,6 +518,8 @@
                 isa.miradaState = 0;
                 isa.miradaTimer = 0;
                 isa.miradaCooldown = 15;
+                isa.illusions = [];
+                isa.illusionTimer = 0;
                 chanclas = [];
                 floatTexts = [];
                 fireParticles = [];
@@ -847,6 +849,21 @@
             }
 
             function drawIsa() {
+                if (isa.illusions) {
+                    isa.illusions.forEach(ill => {
+                        ctx.save();
+                        let ix = ill.x;
+                        let iy = ill.y;
+                        if (ill.hitTimer > 0) {
+                            ix += (Math.random() - 0.5) * 12;
+                            iy += (Math.random() - 0.5) * 12;
+                        }
+                        ctx.globalAlpha = ill.alpha;
+                        ctx.filter = 'hue-rotate(240deg) brightness(1.5)';
+                        drawIsaAvatar(ctx, ix, iy, 78, ill.hitTimer > 0);
+                        ctx.restore();
+                    });
+                }
                 ctx.save();
                 let drawX = isa.x;
                 let drawY = isa.y;
@@ -2441,6 +2458,28 @@
                         // Check collision with Isa for slapped chanclas
                         // Isa radius approx 40. c radius approx w/2.
                         const distToIsa = Math.sqrt(Math.pow(c.x - isa.x, 2) + Math.pow(c.y - isa.y, 2));
+                        let hitIllusion = false;
+                        if (isa.illusions) {
+                            for (let k = 0; k < isa.illusions.length; k++) {
+                                const ill = isa.illusions[k];
+                                if (ill.state !== 'active') continue;
+                                const distToIllusion = Math.sqrt(Math.pow(c.x - ill.x, 2) + Math.pow(c.y - ill.y, 2));
+                                if (distToIllusion < 40 + c.w / 2) {
+                                    hitIllusion = true;
+                                    ill.state = 'dying';
+                                    ill.hitTimer = 0.5;
+                                    addFloatText('ILLUSION BROKEN! 💨', ill.x, ill.y);
+                                    score += Math.floor(300 * getPrestigeMultiplier());
+                                    gameData.coins += Math.floor(10 * getPrestigeMultiplier());
+                                    playSound(1000, 0.2);
+                                    spawnImpact(ill.x, ill.y, true);
+                                    chanclas.splice(i, 1);
+                                    break;
+                                }
+                            }
+                        }
+                        if (hitIllusion) continue;
+
                         if (distToIsa < 40 + c.w / 2) {
                             // Hit Isa
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
@@ -2899,6 +2938,65 @@
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
                         meteorTimer = 0;
+                    }
+                }
+
+                if (isa.enraged) {
+                    if (isa.illusions === undefined) {
+                        isa.illusions = [];
+                        isa.illusionTimer = 0;
+                    }
+                    isa.illusionTimer += enemyDt;
+                    if (isa.illusionTimer > 8 && isa.illusions.length < 2) {
+                        isa.illusionTimer = 0;
+                        const side = isa.illusions.length % 2 === 0 ? -1 : 1;
+                        const xOffset = side * 100;
+                        isa.illusions.push({
+                            x: isa.x + xOffset,
+                            y: isa.y + (Math.random() - 0.5) * 20,
+                            targetX: isa.x + xOffset,
+                            alpha: 0,
+                            state: 'spawning',
+                            hitTimer: 0
+                        });
+                        addFloatText('ESPEJISMO! 👥', isa.x + xOffset, isa.y + 40, '#ff99ff', 16);
+                        playSound(900, 0.3);
+                    }
+
+                    for (let i = isa.illusions.length - 1; i >= 0; i--) {
+                        const ill = isa.illusions[i];
+                        if (ill.state === 'spawning') {
+                            ill.alpha += 2 * enemyDt;
+                            if (ill.alpha >= 0.5) {
+                                ill.alpha = 0.5;
+                                ill.state = 'active';
+                            }
+                        } else if (ill.state === 'dying') {
+                            ill.alpha -= 3 * enemyDt;
+                            if (ill.alpha <= 0) {
+                                isa.illusions.splice(i, 1);
+                                continue;
+                            }
+                        }
+
+                        if (ill.hitTimer > 0) ill.hitTimer -= dt;
+                        ill.x += (ill.targetX - ill.x) * 2 * enemyDt;
+                        if (Math.random() < 0.02) ill.targetX = isa.x + (i % 2 === 0 ? -1 : 1) * (80 + Math.random() * 40);
+
+                        if (ill.state === 'active' && Math.random() < 0.005) {
+                            chanclas.push({
+                                x: ill.x,
+                                y: ill.y + 40,
+                                vx: (Math.random() - 0.5) * 30,
+                                vy: baseSpeed + 20,
+                                w: 32, h: 18, type: 'ghost', rotation: 0, rotSpeed: (Math.random() - 0.5) * 5,
+                                slapped: false
+                            });
+                        }
+                    }
+                } else {
+                    if (isa.illusions && isa.illusions.length > 0) {
+                        isa.illusions = [];
                     }
                 }
 
