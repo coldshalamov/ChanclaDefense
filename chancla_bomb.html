@@ -321,6 +321,8 @@
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
                 witchTimeTimer = 0;
+            let blackoutTimer = 0;
+            let blackoutCooldown = 0;
 
             let lastTapLeft = 0;
             let clashState = 0; // 0: inactive, 1: tug-of-war
@@ -535,6 +537,8 @@
                 slapCooldown = 0;
                 winAnimationStart = 0;
                 shakeTimer = 0;
+                blackoutTimer = 0;
+                blackoutCooldown = 15;
                 hitStop = 0;
                 meteorTimer = 0;
                 flash.timer = 0;
@@ -2894,7 +2898,18 @@
                 }
 
 
-                if (isa.enraged) {
+                                if (isa.enraged) {
+                    if (blackoutCooldown > 0) blackoutCooldown -= enemyDt;
+                    if (blackoutTimer > 0) {
+                        blackoutTimer -= enemyDt;
+                    } else if (blackoutCooldown <= 0 && !isa.miradaState && Math.random() < 0.2 * enemyDt) {
+                        blackoutTimer = 8;
+                        blackoutCooldown = 25;
+                        playSound(1000, 0.5);
+                        triggerShake(10, 0.5);
+                        addFloatText('¡APAGÓN! 🌑', canvas.width/2, canvas.height/2, '#aa00ff', 40);
+                    }
+
                     meteorTimer += enemyDt;
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
@@ -3007,7 +3022,24 @@
                 } else {
                     drawLowHealthVignette();
                     drawFlash();
-                    drawHUD();
+                                    if (blackoutTimer > 0) {
+                    ctx.save();
+                    const alpha = Math.min(0.95, Math.min(blackoutTimer, 1.0));
+                    ctx.fillStyle = `rgba(5, 5, 15, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.rect(0, 0, canvas.width, canvas.height);
+
+                    const pRadius = 150 + Math.sin(timeElapsed * 5) * 10;
+                    ctx.arc(player.x, player.y, pRadius, 0, Math.PI * 2, true);
+
+                    const iRadius = 100 + Math.cos(timeElapsed * 4) * 10;
+                    ctx.arc(isa.x, isa.y, iRadius, 0, Math.PI * 2, true);
+
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                drawHUD();
                     drawFloatTexts();
                     drawDialogue();
                     drawPlayerDialogue();
