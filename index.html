@@ -273,7 +273,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, stunTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false, miradaState: 0, miradaTimer: 0, miradaCooldown: 15 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false, miradaState: 0, miradaTimer: 0, miradaCooldown: 15, illusions: [], illusionTimer: 0 };
 
             const COSMETICS_LIST = [
                 { id: 'none', name: 'No Hat', icon: '', cost: 0 },
@@ -518,6 +518,8 @@
                 isa.miradaState = 0;
                 isa.miradaTimer = 0;
                 isa.miradaCooldown = 15;
+                isa.illusions = [];
+                isa.illusionTimer = 0;
                 chanclas = [];
                 floatTexts = [];
                 fireParticles = [];
@@ -867,6 +869,16 @@
                 drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
 
                 ctx.restore();
+
+                if (isa.illusions && isa.illusions.length > 0) {
+                    isa.illusions.forEach(ill => {
+                        ctx.save();
+                        ctx.globalAlpha = 0.6;
+                        ctx.filter = 'hue-rotate(90deg) contrast(1.2)';
+                        drawIsaAvatar(ctx, ill.x, ill.y, 78, false);
+                        ctx.restore();
+                    });
+                }
             }
 
             function roundRect(ctx, x, y, w, h, r) {
@@ -2024,8 +2036,16 @@
                 else if (isTrick) { w = 36; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
 
-                const x = 40 + Math.random() * (canvas.width - 80);
-                const y = isa.y + 40;
+                let spawnSourceX = isa.x;
+                let spawnSourceY = isa.y;
+                if (isa.illusions && isa.illusions.length > 0) {
+                    const sources = [{x: isa.x, y: isa.y}, ...isa.illusions];
+                    const chosen = sources[Math.floor(Math.random() * sources.length)];
+                    spawnSourceX = chosen.x;
+                    spawnSourceY = chosen.y;
+                }
+                const x = spawnSourceX + (Math.random() - 0.5) * 20;
+                const y = spawnSourceY + 40;
 
                 let vy = baseSpeed + Math.random() * 60;
                 if (isSuper) vy += 40;
@@ -2435,6 +2455,27 @@
                                     playSound(700, 0.1);
                                     score += Math.floor((5 + comboCount) * getPrestigeMultiplier()); // Bonus score for chaotic skill
                                 }
+                            }
+                        }
+
+                        if (isa.illusions && isa.illusions.length > 0) {
+                            let hitIllusion = false;
+                            for (let j = isa.illusions.length - 1; j >= 0; j--) {
+                                const ill = isa.illusions[j];
+                                const distToIll = Math.sqrt(Math.pow(c.x - ill.x, 2) + Math.pow(c.y - ill.y, 2));
+                                if (distToIll < 40 + c.w / 2) {
+                                    isa.illusions.splice(j, 1);
+                                    addFloatText('FAKE! 💨', ill.x, ill.y, '#fff', 20);
+                                    spawnImpact(ill.x, ill.y);
+                                    playSound(700, 0.2);
+                                    score += Math.floor(100 * getPrestigeMultiplier());
+                                    hitIllusion = true;
+                                    break;
+                                }
+                            }
+                            if (hitIllusion) {
+                                chanclas.splice(i, 1);
+                                continue;
                             }
                         }
 
@@ -2895,6 +2936,16 @@
 
 
                 if (isa.enraged) {
+                    isa.illusionTimer += enemyDt;
+                    if (isa.illusionTimer >= 12 && isa.illusions.length === 0) {
+                        isa.illusionTimer = 0;
+                        isa.illusions.push({x: isa.x - 110, y: isa.y});
+                        isa.illusions.push({x: isa.x + 110, y: isa.y});
+                        addFloatText('¡ILUSIÓN!', isa.x, isa.y + 40, '#00ffff', 24);
+                        playSound(1000, 0.4);
+                        triggerShake(10, 0.5);
+                        triggerFlash(0.3, '#00ffff');
+                    }
                     meteorTimer += enemyDt;
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
