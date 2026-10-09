@@ -1304,6 +1304,7 @@
                 else if (type === 'golden') emoji = '✨👞';
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'trick') emoji = '🃏';
+                else if (type === 'blackhole') emoji = '🌌';
                 else if (type === 'sniper') emoji = '🎯';
                 else if (type === 'ghost') emoji = '👻';
 
@@ -1334,10 +1335,14 @@
                     } else if (type === 'trick') {
                         ctx.shadowColor = '#ff00ff';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'blackhole') {
+                        ctx.shadowColor = '#9b59b6';
+                        ctx.shadowBlur = 30 + Math.sin(timeElapsed * 10) * 10;
+                        ctx.rotate(timeElapsed * 2);
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
-                ctx.rotate(rotation);
+                if (type !== 'blackhole') ctx.rotate(rotation);
                 if (c && c.invisible) ctx.globalAlpha = 0;
                 ctx.fillText(emoji, 0, h * 0.2);
                 ctx.restore();
@@ -1554,7 +1559,7 @@
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(isEndless ? "Endless Mode" : "Isa\'s Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
+                ctx.fillText(isEndless ? "Endless Mode" : "Isa's Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
 
                 ctx.restore();
             }
@@ -2010,9 +2015,10 @@
                 const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isTrick = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.10;
-                const isSniper = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.12;
-                const isGhost = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && !isGhost && Math.random() < 0.25;
+                const isBlackhole = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && Math.random() < 0.05;
+                const isSniper = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isBlackhole && Math.random() < 0.12;
+                const isGhost = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isBlackhole && !isSniper && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isTrick && !isSniper && !isGhost && !isBlackhole && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2022,6 +2028,7 @@
                 else if (isGolden) { w = 36; h = 20; }
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isTrick) { w = 36; h = 22; }
+                else if (isBlackhole) { w = 40; h = 40; }
                 else if (isSniper) { w = 34; h = 24; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
@@ -2035,6 +2042,7 @@
                 else if (isGolden) vy += 20; // slightly faster
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isTrick) vy = baseSpeed * 0.9;
+                else if (isBlackhole) vy = baseSpeed * 0.5;
                 else if (isSniper) vy = 0;
 
                 const vx = (Math.random() - 0.5) * 60;
@@ -2048,6 +2056,7 @@
                 else if (isHoming) type = 'homing';
                 else if (isBoomerang) type = 'boomerang';
                 else if (isTrick) type = 'trick';
+                else if (isBlackhole) type = 'blackhole';
                 else if (isGhost) type = 'ghost';
                 else if (isSniper) type = 'sniper';
 
@@ -2219,6 +2228,9 @@
                             if (isa.anger <= 0) triggerWin();
                             spawnImpact(c.x, c.y);
                             playSound(850, 0.15);
+                        } else if (c.type === 'blackhole') {
+                            triggerShake(10, 0.3);
+                            addFloatText('GRAVITY REVERSED! 🌌', c.x, c.y, '#9b59b6');
                         } else if (isPerfect) {
                             gameData.coins += Math.floor(2 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(2 * getPrestigeMultiplier());
@@ -2397,6 +2409,37 @@
                         }
                     }
 
+                    // Blackhole logic
+                    if (c.type === 'blackhole') {
+                        const dtToUse = c.slapped ? dt : enemyDt;
+                        for (let j = 0; j < chanclas.length; j++) {
+                            const other = chanclas[j];
+                            if (c !== other && !other.slapped && other.type !== 'blackhole' && other.type !== 'meteor') {
+                                const dx = c.x - other.x;
+                                const dy = c.y - other.y;
+                                const dist = Math.sqrt(dx*dx + dy*dy);
+                                if (dist < 200) {
+                                    const pullStrength = c.slapped ? 800 : 300;
+                                    other.vx += (dx / dist) * pullStrength * dtToUse;
+                                    other.vy += (dy / dist) * pullStrength * dtToUse;
+                                    if (dist < c.w / 2) {
+                                        other.slapped = true;
+                                        other.y = -999;
+                                        c.w = Math.min(100, c.w + 5);
+                                        c.h = Math.min(100, c.h + 5);
+                                        c.absorbedCount = (c.absorbedCount || 0) + 1;
+                                        if (c.slapped) {
+                                            score += Math.floor(150 * getPrestigeMultiplier());
+                                            addFloatText('ABSORBED! 🌌', c.x, c.y, '#9b59b6');
+                                            spawnImpact(c.x, c.y);
+                                            playSound(700, 0.1);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     const currentDt = c.slapped ? dt : enemyDt;
                     c.x += c.vx * currentDt;
                     c.y += c.vy * currentDt;
@@ -2446,6 +2489,7 @@
                             let damage = c.type === 'super' ? 15 : (c.type === 'fire' ? 12 : 8);
                             if (c.type === 'meteor') damage = 40;
                             if (c.type === 'bomb') damage = 20;
+                            if (c.type === 'blackhole') damage = 10 + (c.absorbedCount || 0) * 15;
                             if (c.type === 'golden' || c.type === 'trick') damage = 0; // Prevent double-dipping as damage is applied in trySlap
 
 
@@ -2455,6 +2499,12 @@
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
+
+                            if (c.type === 'blackhole') {
+                                triggerShake(30, 0.8);
+                                triggerFlash(0.5, '#9b59b6');
+                                addFloatText('SINGULARITY! 🌌', isa.x, isa.y + 30);
+                            }
 
                             if (c.type === 'bomb') {
                                 triggerShake(20, 0.5);
