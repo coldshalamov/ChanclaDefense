@@ -162,7 +162,9 @@
             const STATE = { TITLE: 'title', PLAYING: 'playing', GAMEOVER: 'gameover', WIN: 'win', SHOP: 'shop', ACHIEVEMENTS: 'achievements', COSMETICS: 'cosmetics', PRESTIGE: 'prestige', MISSIONS: 'missions', STATS: 'stats' };
 
             function getPrestigeMultiplier() {
-                return (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                let mult = (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                if (gameData.hardMode) mult *= 2;
+                return mult;
             }
             let state = STATE.TITLE;
             let isEndless = false;
@@ -512,6 +514,11 @@
                 isa.anger = isa.maxAnger;
                 isa.displayAnger = isa.maxAnger;
                 }
+                if (gameData.hardMode) {
+                    isa.maxAnger *= 1.5;
+                    isa.anger = isa.maxAnger;
+                    isa.displayAnger = isa.maxAnger;
+                }
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.enraged = false;
@@ -529,6 +536,7 @@
                 minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
                 spawnTimer = 0;
                 baseSpeed = 140 + (wins - 1) * 5;
+                if (gameData.hardMode) baseSpeed += 50;
                 timeElapsed = 0;
                 superEnabled = false;
                 specialAttackBar = 0;
@@ -1878,43 +1886,47 @@
                 drawPlayer();
                 ctx.save();
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                const panelHeight = (gameData.stats.wins || 1) >= 10 ? 420 : 360;
+
+                const hasPrestige = (gameData.prestige || 0) >= 1;
+                const panelHeight = hasPrestige ? 480 : ((gameData.stats.wins || 1) >= 10 ? 420 : 360);
                 const panelHeightAdjusted = panelHeight + 60;
-                roundRect(ctx, 30, 260, canvas.width - 60, panelHeightAdjusted, 16);
+                const dy = hasPrestige ? -50 : 0;
+
+                roundRect(ctx, 30, 260 + dy, canvas.width - 60, panelHeightAdjusted, 16);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
                 ctx.font = '24px sans-serif';
-                ctx.fillText('Chancla Bomb', canvas.width / 2, 300);
+                ctx.fillText('Chancla Bomb', canvas.width / 2, 300 + dy);
                 ctx.font = '16px sans-serif';
-                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
+                ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330 + dy);
                 ctx.font = '14px sans-serif';
-                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360 + dy);
 
                 const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1);
                 ctx.font = 'bold 16px sans-serif';
                 ctx.fillStyle = '#ff9f1c';
-                ctx.fillText(rankStr, canvas.width / 2, 390);
+                ctx.fillText(rankStr, canvas.width / 2, 390 + dy);
 
                 const reqXp = (gameData.stats.rank || 1) * 500;
                 const xp = gameData.stats.xp || 0;
                 const progress = Math.min(1, xp / reqXp);
                 ctx.fillStyle = '#333';
-                roundRect(ctx, canvas.width / 2 - 80, 400, 160, 12, 6);
+                roundRect(ctx, canvas.width / 2 - 80, 400 + dy, 160, 12, 6);
                 ctx.fill();
                 ctx.fillStyle = '#4caf50';
                 if (progress > 0) {
-                    roundRect(ctx, canvas.width / 2 - 80, 400, 160 * progress, 12, 6);
+                    roundRect(ctx, canvas.width / 2 - 80, 400 + dy, 160 * progress, 12, 6);
                     ctx.fill();
                 }
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px sans-serif';
-                ctx.fillText(Math.floor(xp) + ' / ' + reqXp + ' XP', canvas.width / 2, 409);
-                ctx.fillText('Level ' + (gameData.stats.wins || 1), canvas.width / 2, 345);
+                ctx.fillText(Math.floor(xp) + ' / ' + reqXp + ' XP', canvas.width / 2, 409 + dy);
+                ctx.fillText('Level ' + (gameData.stats.wins || 1), canvas.width / 2, 345 + dy);
 
                 // 2-Column Layout
                 const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
-                const row1 = 430, row2 = 490, row3 = 550, row4 = 610;
+                const row1 = 430 + dy, row2 = 490 + dy, row3 = 550 + dy, row4 = 610 + dy, row5 = 670 + dy;
 
                 ctx.fillStyle = '#ff9f1c'; roundRect(ctx, col1, row1, btnW, btnH, 12); ctx.fill();
                 ctx.fillStyle = '#222'; ctx.font = '16px sans-serif'; ctx.fillText('Play / Jugar', col1 + btnW / 2, row1 + 28);
@@ -1941,6 +1953,13 @@
 
                 ctx.fillStyle = '#00bcd4'; roundRect(ctx, col1, row4, btnW, btnH, 12); ctx.fill();
                 ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.fillText('Stats', col1 + btnW / 2, row4 + 28);
+
+                if (hasPrestige) {
+                    ctx.fillStyle = gameData.hardMode ? '#ff0000' : '#555555';
+                    roundRect(ctx, col1, row5, btnW, btnH, 12); ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif';
+                    ctx.fillText('Hard Mode: ' + (gameData.hardMode ? 'ON' : 'OFF'), col1 + btnW / 2, row5 + 28);
+                }
 
                 ctx.restore();
             }
@@ -3350,8 +3369,10 @@
                 const pos = getMousePos(canvas, e);
 
                 if (state === STATE.TITLE) {
+                    const hasPrestige = (gameData.prestige || 0) >= 1;
+                    const dy = hasPrestige ? -50 : 0;
                     const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
-                    const row1 = 430, row2 = 490, row3 = 550, row4 = 610;
+                    const row1 = 430 + dy, row2 = 490 + dy, row3 = 550 + dy, row4 = 610 + dy, row5 = 670 + dy;
 
                     if (pos.y >= row1 && pos.y <= row1 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle(false);
@@ -3365,6 +3386,11 @@
                                         } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.STATS; }
                         if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                    } else if (hasPrestige && pos.y >= row5 && pos.y <= row5 + btnH) {
+                        if (pos.x >= col1 && pos.x <= col1 + btnW) {
+                            gameData.hardMode = !gameData.hardMode;
+                            saveGameData();
+                        }
                     }
                 } else if (state === STATE.SHOP) {
                     // Check Upgrade Buttons
@@ -3539,8 +3565,10 @@
                 }
 
                 if (state === STATE.TITLE) {
+                    const hasPrestige = (gameData.prestige || 0) >= 1;
+                    const dy = hasPrestige ? -50 : 0;
                     const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
-                    const row1 = 430, row2 = 490, row3 = 550, row4 = 610;
+                    const row1 = 430 + dy, row2 = 490 + dy, row3 = 550 + dy, row4 = 610 + dy, row5 = 670 + dy;
 
                     if (pos.y >= row1 && pos.y <= row1 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) startGameFromTitle(false);
@@ -3554,6 +3582,11 @@
                                         } else if (pos.y >= row4 && pos.y <= row4 + btnH) {
                         if (pos.x >= col1 && pos.x <= col1 + btnW) { setDirectionsVisible(false); state = STATE.STATS; }
                         if ((gameData.stats.wins || 1) >= 10 && pos.x >= col2 && pos.x <= col2 + btnW) { setDirectionsVisible(false); state = STATE.PRESTIGE; }
+                    } else if (hasPrestige && pos.y >= row5 && pos.y <= row5 + btnH) {
+                        if (pos.x >= col1 && pos.x <= col1 + btnW) {
+                            gameData.hardMode = !gameData.hardMode;
+                            saveGameData();
+                        }
                     }
                     return;
                 }
