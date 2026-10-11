@@ -163,6 +163,10 @@
 
             function getPrestigeMultiplier() {
                 let mult = (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                const endlessLevel = (gameData.prestigeUpgrades && gameData.prestigeUpgrades.endless_mastery) ? gameData.prestigeUpgrades.endless_mastery : 0;
+                if (endlessLevel > 0) {
+                    mult *= (1 + (gameData.endlessBestScore || 0) / 1000 * 0.01 * endlessLevel);
+                }
                 if (gameData.hardMode) mult *= 2;
                 return mult;
             }
@@ -195,7 +199,7 @@
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
                 if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
-                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0, endless_mastery: 0 };
                 if (gameData.hardMode === undefined) gameData.hardMode = false;
 
                 if (!gameData.achievements) gameData.achievements = {};
@@ -485,7 +489,7 @@
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
                 if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
-                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0, endless_mastery: 0 };
                 if (gameData.hardMode === undefined) gameData.hardMode = false;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
@@ -2714,7 +2718,7 @@
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
                 if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
-                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0, endless_mastery: 0 };
                 if (gameData.hardMode === undefined) gameData.hardMode = false;
                 gameData.stats.xp += amount;
                 let leveledUp = false;
@@ -3175,7 +3179,8 @@
                 const prestigeUpgradesList = [
                     { id: 'golden_chance', name: 'Golden Touch', icon: '✨', cost: 1, maxLevel: 3, desc: '+2% Golden Chancla chance' },
                     { id: 'witch_time', name: 'Time Wizard', icon: '⏳', cost: 1, maxLevel: 3, desc: '+0.5s Witch Time' },
-                    { id: 'combo_shield', name: 'Combo Shield', icon: '🛡️', cost: 2, maxLevel: 1, desc: 'Shield at 30 combo' }
+                    { id: 'combo_shield', name: 'Combo Shield', icon: '🛡️', cost: 2, maxLevel: 1, desc: 'Shield at 30 combo' },
+                    { id: 'endless_mastery', name: 'Endless Mastery', icon: '♾️', cost: 3, maxLevel: 5, desc: '+1% Mult per 1k Endless Score' }
                 ];
 
                 prestigeUpgradesList.forEach(u => {
@@ -3488,12 +3493,13 @@
                     const prestigeUpgradesList = [
                         { id: 'golden_chance', cost: 1, maxLevel: 3 },
                         { id: 'witch_time', cost: 1, maxLevel: 3 },
-                        { id: 'combo_shield', cost: 2, maxLevel: 1 }
+                        { id: 'combo_shield', cost: 2, maxLevel: 1 },
+                        { id: 'endless_mastery', cost: 3, maxLevel: 5 }
                     ];
                     let y = 150;
                     for (let u of prestigeUpgradesList) {
                         if (pos.y >= y && pos.y <= y + 60 && pos.x >= 30 && pos.x <= canvas.width - 30) {
-                            if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                            if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0, endless_mastery: 0 };
                 if (gameData.hardMode === undefined) gameData.hardMode = false;
                             const level = gameData.prestigeUpgrades[u.id] || 0;
                             if (level < u.maxLevel && (gameData.prestigeTokens || 0) >= u.cost) {
@@ -3588,12 +3594,13 @@
                     const prestigeUpgradesList = [
                         { id: 'golden_chance', cost: 1, maxLevel: 3 },
                         { id: 'witch_time', cost: 1, maxLevel: 3 },
-                        { id: 'combo_shield', cost: 2, maxLevel: 1 }
+                        { id: 'combo_shield', cost: 2, maxLevel: 1 },
+                        { id: 'endless_mastery', cost: 3, maxLevel: 5 }
                     ];
                     let y = 150;
                     for (let u of prestigeUpgradesList) {
                         if (pos.y >= y && pos.y <= y + 60 && pos.x >= 30 && pos.x <= canvas.width - 30) {
-                            if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                            if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0, endless_mastery: 0 };
                 if (gameData.hardMode === undefined) gameData.hardMode = false;
                             const level = gameData.prestigeUpgrades[u.id] || 0;
                             if (level < u.maxLevel && (gameData.prestigeTokens || 0) >= u.cost) {
