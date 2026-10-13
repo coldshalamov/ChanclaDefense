@@ -321,6 +321,7 @@
             let impacts = [];
             let chainEffects = [];
             let comboCount = 0;
+            let comboTimer = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
                 witchTimeTimer = 0;
@@ -530,6 +531,7 @@
                 impacts = [];
                 score = 0;
                 comboCount = 0;
+                comboTimer = 0;
                 spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
                 minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
                 spawnTimer = 0;
@@ -1562,6 +1564,49 @@
                 ctx.fillText(isEndless ? "Endless Mode" : "Isa\'s Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
 
                 ctx.restore();
+                // Draw Combo Meter
+                if (comboCount > 1) {
+                    const comboX = canvas.width - 12;
+                    const comboY = 60;
+                    ctx.save();
+
+                    const pulse = 1 + Math.sin(timeElapsed * 15) * 0.05;
+                    ctx.translate(comboX, comboY);
+                    ctx.scale(pulse, pulse);
+
+                    ctx.textAlign = 'right';
+                    ctx.fillStyle = '#ffb347';
+                    ctx.font = 'bold 22px sans-serif';
+                    ctx.shadowColor = '#000';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText(comboCount + 'x COMBO', 0, 0);
+
+                    const phrase = getComboPhrase(comboCount);
+                    if (phrase) {
+                        ctx.fillStyle = '#00e5ff';
+                        ctx.font = 'italic 14px sans-serif';
+                        ctx.fillText(phrase, 0, 20);
+                    }
+
+                    ctx.restore();
+
+                    // Timer bar
+                    const barW = 80;
+                    const barH = 6;
+                    const p = Math.max(0, comboTimer / 2.5);
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                    roundRect(ctx, canvas.width - 12 - barW, comboY + 30, barW, barH, 3);
+                    ctx.fill();
+
+                    ctx.fillStyle = p > 0.3 ? '#ffb347' : '#ff4d4d';
+                    ctx.save();
+                    ctx.beginPath();
+                    roundRect(ctx, canvas.width - 12 - barW, comboY + 30, barW * p, barH, 3);
+                    ctx.clip();
+                    roundRect(ctx, canvas.width - 12 - barW, comboY + 30, barW * p, barH, 3);
+                    ctx.fill();
+                    ctx.restore();
+                }
             }
 
 
@@ -2175,6 +2220,7 @@
                             slappedAny = true;
                         }
                         comboCount++;
+                        comboTimer = 2.5;
                         if (comboCount > (gameData.stats.maxCombo || 0)) gameData.stats.maxCombo = comboCount;
                         score += Math.floor(comboCount * getPrestigeMultiplier());
 
@@ -2261,6 +2307,7 @@
                 } else {
                     slapCooldown = 0.15;
                     comboCount = 0;
+                    comboTimer = 0;
                     playWhoosh();
                 }
             }
@@ -2440,6 +2487,7 @@
                                     other.vy = -300 + (Math.random() - 0.5) * 100;
 
                                     comboCount++;
+                                    comboTimer = 2.5;
                                     if (comboCount > (gameData.stats.maxCombo || 0)) gameData.stats.maxCombo = comboCount;
                                     const comboPhrase = getComboPhrase(comboCount);
                                     addFloatText(`CHAIN! x${comboCount} ${comboPhrase}`, other.x, other.y);
@@ -2549,6 +2597,7 @@
                         }
                         const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper') ? 2 : 1;
                         comboCount = 0;
+                        comboTimer = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' || c.type === 'boomerang' || c.type === 'sniper' ? 15 : 8);
                         triggerShake(shakeAmt, 0.4);
                         player.lives -= dmg;
@@ -2601,6 +2650,7 @@
                             triggerShake(15, 0.3);
                             if (player.lives <= 0) endGame();
                             comboCount = 0;
+                            comboTimer = 0;
                         } else {
                             score += Math.floor(1 * getPrestigeMultiplier());
                             const prevBest = bestScore;
@@ -2764,6 +2814,14 @@
                 if (witchTimeTimer > 0) witchTimeTimer -= dt;
                 const enemyDt = witchTimeTimer > 0 ? dt * 0.3 : dt;
 
+                if (comboCount > 0) {
+                    comboTimer -= dt;
+                    if (comboTimer <= 0) {
+                        comboCount = 0;
+                        comboTimer = 0;
+                    }
+                }
+
                 if (shakeTimer > 0) {
                     shakeTimer -= dt;
                     const dx = (Math.random() - 0.5) * shakeIntensity * 2;
@@ -2810,6 +2868,7 @@
                         isa.hitTimer = 1.0;
                         if (isa.anger <= 0) triggerWin();
                         comboCount += 5;
+                        comboTimer = 2.5;
                     } else if (clashMeter <= 0) {
                         // Lose Clash
                         clashState = 0;
