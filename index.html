@@ -2603,13 +2603,6 @@
                                     isShrapnel: true
                                 });
                             }
-                        } else if (c.type === 'golden') {
-                            player.lives -= 2;
-                            addFloatText('MISSED GOLDEN! 💔', c.x, canvas.height - 20, '#ff5252');
-                            triggerShake(15, 0.3);
-                            if (player.lives <= 0) endGame();
-                            comboCount = 0;
-                            comboTimer = 0;
                         } else {
                             score += Math.floor(1 * getPrestigeMultiplier());
                             const prevBest = bestScore;
