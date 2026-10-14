@@ -1312,6 +1312,7 @@
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'sniper') emoji = '🎯';
                 else if (type === 'ghost') emoji = '👻';
+                else if (type === 'blackhole') emoji = '🌌';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1330,6 +1331,9 @@
 
                     if (type === 'meteor') {
                         ctx.shadowColor = 'red';
+                        ctx.shadowBlur = 20;
+                    } else if (type === 'blackhole') {
+                        ctx.shadowColor = '#9b59b6';
                         ctx.shadowBlur = 20;
                     } else if (type === 'homing') {
                         ctx.shadowColor = '#8a2be2';
@@ -2064,7 +2068,8 @@
                 const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isSniper = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.12;
                 const isGhost = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isBlackhole = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.05;
+                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && !isBlackhole && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2074,6 +2079,7 @@
                 else if (isGolden) { w = 36; h = 20; }
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
+                else if (isBlackhole) { w = 40; h = 40; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2086,6 +2092,7 @@
                 else if (isGolden) vy += 20; // slightly faster
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isSniper) vy = 0;
+                else if (isBlackhole) vy = baseSpeed * 0.5;
 
                 const vx = (Math.random() - 0.5) * 60;
                 if (gameData.hardMode) vy *= 1.5;
@@ -2100,6 +2107,7 @@
                 else if (isBoomerang) type = 'boomerang';
                 else if (isGhost) type = 'ghost';
                 else if (isSniper) type = 'sniper';
+                else if (isBlackhole) type = 'blackhole';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed,
                     sniperTimer: isSniper ? 1.5 : 0 });
@@ -2145,7 +2153,14 @@
                 let slappedAny = false;
                 let slappedMeteor = false;
 
-                                for (let i = chanclas.length - 1; i >= 0; i--) {
+                                let activeBlackHole = null;
+                for (let j = 0; j < chanclas.length; j++) {
+                    if (chanclas[j].type === 'blackhole' && !chanclas[j].slapped) {
+                        activeBlackHole = chanclas[j];
+                        break;
+                    }
+                }
+                for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
                     if (c.type === 'meteor' && !c.slapped) {
@@ -2252,6 +2267,15 @@
                             isa.anger = Math.max(0, isa.anger - 35);
                             if (isa.anger <= 0) triggerWin();
                             spawnImpact(c.x, c.y, true);
+                            playSound(850, 0.2);
+                        } else if (c.type === 'blackhole') {
+                            gameData.coins += Math.floor(15 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(15 * getPrestigeMultiplier());
+                            score += Math.floor(300 * getPrestigeMultiplier());
+                            addFloatText('GRAVITY REVERSED! 🌌', c.x, c.y, '#9b59b6');
+                            isa.anger = Math.max(0, isa.anger - 25);
+                            if (isa.anger <= 0) triggerWin();
+                            spawnImpact(c.x, c.y);
                             playSound(850, 0.2);
                         } else if (c.type === 'ghost') {
                             gameData.coins += Math.floor(5 * getPrestigeMultiplier());
@@ -2378,6 +2402,13 @@
 
 
             function updateChanclas(dt, enemyDt) {
+                let activeBlackHole = null;
+                for (let j = 0; j < chanclas.length; j++) {
+                    if (chanclas[j].type === 'blackhole' && !chanclas[j].slapped) {
+                        activeBlackHole = chanclas[j];
+                        break;
+                    }
+                }
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
@@ -2403,6 +2434,18 @@
                         const maxHomingSpeed = 150;
                         if (Math.abs(c.vx) > maxHomingSpeed) {
                             c.vx = Math.sign(c.vx) * maxHomingSpeed;
+                        }
+                    }
+
+
+                    // Gravity Logic for Black Hole
+                    if (activeBlackHole && c.type !== 'blackhole' && !c.slapped) {
+                        const dx = activeBlackHole.x - c.x;
+                        const dy = activeBlackHole.y - c.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist > 5 && dist < 300) {
+                            c.vx += (dx / dist) * 200 * enemyDt;
+                            c.vy += (dy / dist) * 200 * enemyDt;
                         }
                     }
 
