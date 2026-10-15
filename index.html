@@ -1312,6 +1312,7 @@
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'sniper') emoji = '🎯';
                 else if (type === 'ghost') emoji = '👻';
+                else if (type === 'blackhole') emoji = '🌌';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1337,6 +1338,9 @@
                     } else if (type === 'golden') {
                         ctx.shadowColor = '#ffd700';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'blackhole') {
+                        ctx.shadowColor = '#9b59b6';
+                        ctx.shadowBlur = 30;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -2058,13 +2062,14 @@
             function spawnChancla() {
                 const extraGolden = (gameData.prestigeUpgrades?.golden_chance || 0) * 0.02;
                 const isBomb = Math.random() < 0.08;
-                const isGolden = !isBomb && Math.random() < (0.05 + extraGolden);
-                const isHoming = superEnabled && !isBomb && !isGolden && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isHoming && !isGolden && Math.random() < 0.18;
-                const isBoomerang = !isBomb && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
-                const isSniper = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.12;
-                const isGhost = !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
+                const isGolden = !isBomb && !isBlackhole && Math.random() < (0.05 + extraGolden);
+                const isHoming = superEnabled && !isBomb && !isBlackhole && !isGolden && Math.random() < 0.10;
+                const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isGolden && Math.random() < 0.18;
+                const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
+                const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.12;
+                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2074,6 +2079,7 @@
                 else if (isGolden) { w = 36; h = 20; }
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
+                else if (isBlackhole) { w = 36; h = 36; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2086,6 +2092,7 @@
                 else if (isGolden) vy += 20; // slightly faster
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isSniper) vy = 0;
+                else if (isBlackhole) vy = baseSpeed * 0.5; // very slow
 
                 const vx = (Math.random() - 0.5) * 60;
                 if (gameData.hardMode) vy *= 1.5;
@@ -2093,6 +2100,7 @@
 
                 let type = 'normal';
                 if (isBomb) type = 'bomb';
+                else if (isBlackhole) type = 'blackhole';
                 else if (isGolden) type = 'golden';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
@@ -2253,6 +2261,16 @@
                             if (isa.anger <= 0) triggerWin();
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.2);
+                        } else if (c.type === 'blackhole') {
+                            gameData.coins += Math.floor(15 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(15 * getPrestigeMultiplier());
+                            score += Math.floor(300 * getPrestigeMultiplier());
+                            triggerFlash(0.3, '#9b59b6');
+                            addFloatText('GRAVITY REVERSED! 🌌', c.x, c.y, '#9b59b6');
+                            isa.anger = Math.max(0, isa.anger - 25);
+                            if (isa.anger <= 0) triggerWin();
+                            spawnImpact(c.x, c.y, true);
+                            playSound(850, 0.2);
                         } else if (c.type === 'ghost') {
                             gameData.coins += Math.floor(5 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(5 * getPrestigeMultiplier());
@@ -2378,8 +2396,29 @@
 
 
             function updateChanclas(dt, enemyDt) {
+                // Find active blackhole
+                let activeBlackhole = null;
+                for (let i = 0; i < chanclas.length; i++) {
+                    if (chanclas[i].type === 'blackhole' && !chanclas[i].slapped) {
+                        activeBlackhole = chanclas[i];
+                        break; // Only use one blackhole for gravity to avoid complex vector summing
+                    }
+                }
+
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    // Blackhole Gravity
+                    if (activeBlackhole && c !== activeBlackhole && !c.slapped && c.type !== 'meteor' && c.type !== 'sniper') {
+                        const dx = activeBlackhole.x - c.x;
+                        const dy = activeBlackhole.y - c.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist > 10 && dist < 300) { // Apply gravity within range
+                            const force = 5000 / (dist * dist); // Inverse square law approximation
+                            c.vx += (dx / dist) * force * enemyDt;
+                            c.vy += (dy / dist) * force * enemyDt;
+                        }
+                    }
 
                     // Sniper Logic
                     if (c.type === 'sniper' && !c.slapped) {
