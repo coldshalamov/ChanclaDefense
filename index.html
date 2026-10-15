@@ -276,7 +276,7 @@
             }
 
             const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, stunTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false, miradaState: 0, miradaTimer: 0, miradaCooldown: 15 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false, miradaState: 0, miradaTimer: 0, miradaCooldown: 15, stagger: 0, maxStagger: 100, staggerTimer: 0 };
 
             const COSMETICS_LIST = [
                 { id: 'none', name: 'No Hat', icon: '', cost: 0 },
@@ -524,6 +524,9 @@
                 isa.miradaState = 0;
                 isa.miradaTimer = 0;
                 isa.miradaCooldown = 15;
+                isa.stagger = 0;
+                isa.maxStagger = 100 + (wins - 1) * 20;
+                isa.staggerTimer = 0;
                 chanclas = [];
                 floatTexts = [];
                 fireParticles = [];
@@ -871,7 +874,13 @@
                     ctx.shadowBlur = 30 + Math.sin(timeElapsed * 20) * 15;
                 }
 
-                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
+                drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0 || isa.staggerTimer > 0);
+
+                if (isa.staggerTimer > 0) {
+                    ctx.font = '24px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('💫', drawX, drawY - 40 + Math.sin(timeElapsed * 15) * 5);
+                }
 
                 ctx.restore();
             }
@@ -1558,6 +1567,45 @@
                 ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(isEndless ? "Endless Mode" : "Isa\'s Anger", angerBarX + angerBarWidth / 2, angerBarY - 2);
+
+                // Draw Stagger Bar
+                const staggerBarWidth = 120;
+                const staggerBarHeight = 6;
+                const staggerBarX = canvas.width / 2 - staggerBarWidth / 2;
+                const staggerBarY = angerBarY + angerBarHeight + 4;
+
+                // Background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                roundRect(ctx, staggerBarX, staggerBarY, staggerBarWidth, staggerBarHeight, 3);
+                ctx.fill();
+
+                if (isa.staggerTimer > 0) {
+                    const staggerProgress = isa.staggerTimer / 4.0;
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.save();
+                    ctx.beginPath();
+                    roundRect(ctx, staggerBarX, staggerBarY, staggerBarWidth * staggerProgress, staggerBarHeight, 3);
+                    ctx.clip();
+                    roundRect(ctx, staggerBarX, staggerBarY, staggerBarWidth * staggerProgress, staggerBarHeight, 3);
+                    ctx.fill();
+                    ctx.restore();
+                } else if (isa.stagger > 0) {
+                    const staggerProgress = Math.min(1, isa.stagger / isa.maxStagger);
+                    ctx.fillStyle = '#00ffff';
+                    ctx.save();
+                    ctx.beginPath();
+                    roundRect(ctx, staggerBarX, staggerBarY, staggerBarWidth * staggerProgress, staggerBarHeight, 3);
+                    ctx.clip();
+                    roundRect(ctx, staggerBarX, staggerBarY, staggerBarWidth * staggerProgress, staggerBarHeight, 3);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                // Border
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.0;
+                roundRect(ctx, staggerBarX, staggerBarY, staggerBarWidth, staggerBarHeight, 3);
+                ctx.stroke();
 
                 ctx.restore();
                 // Draw Combo Meter
@@ -2473,6 +2521,21 @@
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
 
+                            if (isa.staggerTimer > 0) {
+                                damage *= 2;
+                                addFloatText(`-${Math.floor(damage)}`, isa.x + (Math.random() - 0.5) * 40, isa.y + (Math.random() - 0.5) * 40, '#ff00ff', 20);
+                            } else {
+                                addFloatText(`-${Math.floor(damage)}`, isa.x + (Math.random() - 0.5) * 40, isa.y + (Math.random() - 0.5) * 40, '#fff', 20);
+                                isa.stagger += damage;
+                                if (isa.stagger >= isa.maxStagger) {
+                                    isa.staggerTimer = 4.0;
+                                    triggerShake(15, 0.5);
+                                    triggerFlash(0.3, '#00ffff');
+                                    addFloatText('STAGGERED! 💫', isa.x, isa.y + 20, '#00ffff', 24);
+                                    playSound(1200, 0.5);
+                                }
+                            }
+
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
 
@@ -2838,7 +2901,9 @@
                     player.stunTimer -= dt;
                 }
 
-                if (isa.miradaCooldown > 0) {
+                if (isa.staggerTimer > 0) {
+                    // Pause mirada
+                } else if (isa.miradaCooldown > 0) {
                     isa.miradaCooldown -= enemyDt;
                 } else if (isa.miradaState === 0 && isa.hitTimer <= 0) {
                     isa.miradaState = 1;
@@ -2903,19 +2968,28 @@
 
 
 
-                spawnTimer += enemyDt;
-                if (timeElapsed > 12) {
-                    // Ramp up difficulty faster if enraged
-                    const intervalDec = isa.enraged ? 0.05 : 0.02;
-                    const speedInc = isa.enraged ? 10 : 5;
-
-                    spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
-                    baseSpeed += dt * speedInc;
+                if (isa.staggerTimer > 0) {
+                    isa.staggerTimer -= enemyDt;
+                    if (isa.staggerTimer <= 0) {
+                        isa.stagger = 0;
+                    }
                 }
-                if (timeElapsed > 18) superEnabled = true;
-                if (spawnTimer >= spawnInterval) {
-                    spawnChancla();
-                    spawnTimer = 0;
+
+                if (isa.staggerTimer <= 0) {
+                    spawnTimer += enemyDt;
+                    if (timeElapsed > 12) {
+                        // Ramp up difficulty faster if enraged
+                        const intervalDec = isa.enraged ? 0.05 : 0.02;
+                        const speedInc = isa.enraged ? 10 : 5;
+
+                        spawnInterval = Math.max(minSpawnInterval, spawnInterval - dt * intervalDec);
+                        baseSpeed += dt * speedInc;
+                    }
+                    if (timeElapsed > 18) superEnabled = true;
+                    if (spawnTimer >= spawnInterval) {
+                        spawnChancla();
+                        spawnTimer = 0;
+                    }
                 }
 
 
