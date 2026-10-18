@@ -275,8 +275,8 @@
                 }
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, stunTimer: 0 };
-            const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false, miradaState: 0, miradaTimer: 0, miradaCooldown: 15 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0 };
+            const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false };
 
             const COSMETICS_LIST = [
                 { id: 'none', name: 'No Hat', icon: '', cost: 0 },
@@ -497,7 +497,6 @@
                 player.lives = 3 + (gameData.upgrades.lives || 0);
                 player.shield = (gameData.upgrades.shield || 0) > 0;
                 player.hitTimer = 0;
-                player.stunTimer = 0;
                 lastTapLeft = 0;
                 lastTapRight = 0;
                 dashTimer = 0;
@@ -521,9 +520,6 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.enraged = false;
-                isa.miradaState = 0;
-                isa.miradaTimer = 0;
-                isa.miradaCooldown = 15;
                 chanclas = [];
                 floatTexts = [];
                 fireParticles = [];
@@ -824,10 +820,7 @@
                 ctx.textAlign = 'center';
                 ctx.fillText('GRINGO', x, y - h / 2 - 10);
 
-                if (player.stunTimer > 0) {
-                    ctx.font = '24px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
-                    ctx.fillText('💫', x, y - h / 2 - 30 + Math.sin(timeElapsed * 15) * 5);
-                } else if (highestThreat === 2) {
+                if (highestThreat === 2) {
                     ctx.font = '24px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
                     ctx.fillText('⚡', x, y - h / 2 - 30);
                 } else if (highestThreat === 1) {
@@ -838,7 +831,6 @@
                 // Determine expression
                 let expression = 'normal';
                 if (player.hitTimer > 0) expression = 'hit';
-                else if (player.stunTimer > 0) expression = 'hit';
                 else if (slapEffect.timer > 0) expression = 'slap';
                 else if (comboCount >= 5) expression = 'cocky';
 
@@ -865,10 +857,6 @@
                 if (isa.enraged) {
                     ctx.shadowColor = '#ff4d4d';
                     ctx.shadowBlur = 20 + Math.sin(timeElapsed * 10) * 10;
-                }
-                if (isa.miradaState > 0) {
-                    ctx.shadowColor = '#8a2be2';
-                    ctx.shadowBlur = 30 + Math.sin(timeElapsed * 20) * 15;
                 }
 
                 drawIsaAvatar(ctx, drawX, drawY, 78, isa.hitTimer > 0);
@@ -933,17 +921,7 @@
                 ctx.fill();
 
                 // Eyes
-                if (isa.miradaState > 0) {
-                    ctx.fillStyle = '#ff0000';
-                    ctx.beginPath();
-                    ctx.arc(-faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
-                    ctx.arc(faceW * 0.2, -faceH * 0.05, faceW * 0.08, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.shadowColor = '#ff0000';
-                    ctx.shadowBlur = 10;
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                } else if (isHit) {
+                if (isHit) {
                     // X Eyes
                     ctx.strokeStyle = '#1d1411';
                     ctx.lineWidth = 3;
@@ -2120,27 +2098,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
             }
 
 
-            function triggerStun() {
-                player.stunTimer = 1.5;
-                isa.miradaState = 0;
-                isa.miradaCooldown = 15 + Math.random() * 5;
-                addFloatText('STUNNED! 😵', player.x, player.y - 40, '#ff0000', 24);
-                playSound(200, 0.5);
-                triggerShake(15, 0.5);
-
-                chanclas.push({
-                    x: isa.x, y: isa.y + 40,
-                    vx: (player.x - isa.x) * 1.5, vy: 900,
-                    w: 46, h: 26, type: 'super', rotation: 0, rotSpeed: 15,
-                    slapped: false
-                });
-            }
-
             function trySlap() {
-                if (isa.miradaState === 2 && player.stunTimer <= 0) {
-                    triggerStun();
-                    return;
-                }
                 if (slapCooldown > 0) return;
 
                 slapEffect.timer = slapEffect.duration;
@@ -2314,10 +2272,6 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
             }
 
             function fireSpecialAttack() {
-                if (isa.miradaState === 2 && player.stunTimer <= 0) {
-                    triggerStun();
-                    return;
-                }
                 if (specialAttackBar >= maxSpecialAttack) {
                     // Fire special attack at Isa
                     specialProjectiles.push({
@@ -2861,43 +2815,6 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     return; // Pause the rest of the game logic during clash
                 }
 
-                if (player.stunTimer > 0) {
-                    player.stunTimer -= dt;
-                }
-
-                if (isa.miradaCooldown > 0) {
-                    isa.miradaCooldown -= enemyDt;
-                } else if (isa.miradaState === 0 && isa.hitTimer <= 0) {
-                    isa.miradaState = 1;
-                    isa.miradaTimer = 1.0;
-                    addFloatText('👀 LA MIRADA! FREEZE!', isa.x, isa.y + 40, '#ff00ff', 24);
-                    playSound(400, 0.5);
-                    triggerShake(5, 1.0);
-                }
-
-                if (isa.miradaState === 1) {
-                    isa.miradaTimer -= enemyDt;
-                    if (isa.miradaTimer <= 0) {
-                        isa.miradaState = 2;
-                        isa.miradaTimer = 2.0;
-                        triggerFlash(0.2, '#8a2be2');
-                    }
-                } else if (isa.miradaState === 2) {
-                    isa.miradaTimer -= enemyDt;
-
-                    if (player.stunTimer <= 0) {
-                        const moved = keys.left || keys.right || touch.left || touch.right || dashTimer > 0;
-                        if (moved) {
-                            triggerStun();
-                        }
-                    }
-
-                    if (isa.miradaTimer <= 0) {
-                        isa.miradaState = 0;
-                        isa.miradaCooldown = 15 + Math.random() * 5;
-                    }
-                }
-
                 if (isEndless) {
                     if (timeElapsed > 30 && !isa.enraged) {
                         isa.enraged = true;
@@ -2957,7 +2874,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 if (dashTimer > 0) {
                     player.x += dashDir * 800 * dt;
                     dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
-                } else if (player.stunTimer <= 0) {
+                } else {
                     const speed = player.speed;
                     const moveLeft = keys.left || touch.left;
                     const moveRight = keys.right || touch.right;
