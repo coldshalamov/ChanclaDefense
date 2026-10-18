@@ -333,6 +333,8 @@
             let lastTapRight = 0;
             let dashTimer = 0;
             let dashCooldown = 0;
+            let blackoutTimer = 0;
+            let blackoutCooldown = 0;
             let dashDir = 0;
             let dashTrails = [];
 
@@ -502,6 +504,8 @@
                 lastTapRight = 0;
                 dashTimer = 0;
                 dashCooldown = 0;
+                blackoutTimer = 0;
+                blackoutCooldown = 0;
                 dashDir = 0;
                 dashTrails = [];
                 clashState = 0;
@@ -2790,6 +2794,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
             function update(dt) {
                 if (state !== STATE.PLAYING) return;
 
+                if (blackoutTimer > 0) blackoutTimer -= dt;
+                if (blackoutCooldown > 0) blackoutCooldown -= dt;
+
                 if (witchTimeTimer > 0) witchTimeTimer -= dt;
                 const enemyDt = witchTimeTimer > 0 ? dt * 0.3 : dt;
 
@@ -2907,6 +2914,12 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
                         triggerChanclaStorm();
                     }
+                    if (isa.enraged && blackoutCooldown <= 0 && Math.random() < 0.005) {
+                        blackoutTimer = 6.0;
+                        blackoutCooldown = 15.0;
+                        triggerFlash(0.5, '#000');
+                        addFloatText('APAGÓN! 🌑', canvas.width / 2, canvas.height / 2, '#fff', 24);
+                    }
                 } else {
                     if (isa.anger <= isa.maxAnger * 0.3 && !isa.enraged) {
                     isa.enraged = true;
@@ -2917,6 +2930,12 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     addFloatText('¡ENRAGED!', isa.x, isa.y - 30);
                     triggerChanclaStorm();
                 }
+                    if (isa.enraged && blackoutCooldown <= 0 && Math.random() < 0.005) {
+                        blackoutTimer = 6.0;
+                        blackoutCooldown = 15.0;
+                        triggerFlash(0.5, '#000');
+                        addFloatText('APAGÓN! 🌑', canvas.width / 2, canvas.height / 2, '#fff', 24);
+                    }
 
                     if (isa.displayAnger > isa.anger) {
                     isa.displayAnger -= (isa.maxAnger * 0.5) * enemyDt;
@@ -3027,6 +3046,41 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 ctx.restore();
             }
 
+            function drawBlackout() {
+                if (blackoutTimer <= 0) return;
+
+                const alpha = Math.min(0.95, blackoutTimer / 1.0); // Fade out at the end
+                ctx.save();
+                ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+
+                ctx.beginPath();
+                // Clockwise path covering entire canvas
+                ctx.rect(0, 0, canvas.width, canvas.height);
+
+                // Counter-clockwise sub-path for player spotlight
+                const playerRadius = 70 + Math.sin(timeElapsed * 5) * 5;
+                ctx.moveTo(player.x + playerRadius, player.y - player.h / 2);
+                ctx.arc(player.x, player.y - player.h / 2, playerRadius, 0, Math.PI * 2, true);
+
+                // Counter-clockwise sub-path for Isa spotlight
+                const isaRadius = 80 + Math.sin(timeElapsed * 4) * 5;
+                ctx.moveTo(isa.x + isaRadius, isa.y);
+                ctx.arc(isa.x, isa.y, isaRadius, 0, Math.PI * 2, true);
+
+                // Counter-clockwise sub-paths for golden/fire/blackhole/bomb/meteor chanclas
+                chanclas.forEach(c => {
+                    if (['golden', 'fire', 'blackhole', 'bomb', 'meteor'].includes(c.type)) {
+                        let cRadius = c.w * 1.5;
+                        if (c.type === 'meteor') cRadius = c.w * 0.8;
+                        ctx.moveTo(c.x + cRadius, c.y);
+                        ctx.arc(c.x, c.y, cRadius, 0, Math.PI * 2, true);
+                    }
+                });
+
+                ctx.fill();
+                ctx.restore();
+            }
+
             function draw() {
                 drawBackground();
                 drawIsa();
@@ -3053,6 +3107,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 drawSlapEffect();
 
                 ctx.restore();
+
+                drawBlackout();
 
                 if (clashState === 1) {
                     drawClash();
@@ -3362,6 +3418,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
             window.getFloatTexts = () => floatTexts;
             window.setTimeElapsed = (t) => { timeElapsed = t; };
             window.startGameTest = startGameFromTitle;
+            window.blackoutTimer = blackoutTimer;
+            window.setBlackoutTimer = (t) => { blackoutTimer = t; };
             window.setComboCount = (c) => { comboCount = c; };
             window.setComboTimer = (t) => { comboTimer = t; };
 
