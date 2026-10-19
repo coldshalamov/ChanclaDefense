@@ -1313,6 +1313,7 @@
                 else if (type === 'sniper') emoji = '🎯';
                 else if (type === 'ghost') emoji = '👻';
                 else if (type === 'blackhole') emoji = '🌌';
+                else if (type === 'tupperware') emoji = '🥡';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1341,6 +1342,9 @@
                     } else if (type === 'blackhole') {
                         ctx.shadowColor = '#9b59b6';
                         ctx.shadowBlur = 25;
+                    } else if (type === 'tupperware') {
+                        ctx.shadowColor = '#00ffff';
+                        ctx.shadowBlur = 15;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -2069,7 +2073,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.12;
                 const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isTupperware = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.05;
+                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && !isTupperware && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2080,6 +2085,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
                 else if (isBlackhole) { w = 40; h = 40; }
+                else if (isTupperware) { w = 36; h = 36; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2093,6 +2099,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isSniper) vy = 0;
                 else if (isBlackhole) vy = baseSpeed * 0.5;
+                else if (isTupperware) vy = baseSpeed * 0.6;
 
                 const vx = (Math.random() - 0.5) * 60;
                 if (gameData.hardMode) vy *= 1.5;
@@ -2108,6 +2115,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isGhost) type = 'ghost';
                 else if (isSniper) type = 'sniper';
                 else if (isBlackhole) type = 'blackhole';
+                else if (isTupperware) type = 'tupperware';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed,
                     sniperTimer: isSniper ? 1.5 : 0 });
@@ -2199,7 +2207,28 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         if (isPerfect) slapEffect.type = 'perfect';
                         else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
 
-                        if (c.type === 'super' && isPerfect && clashState === 0) {
+                        if (c.type === 'tupperware') {
+                            c.vx = (c.x - player.x) * 8;
+                            c.vy = -300;
+                            c.slapped = true;
+                            c.rotSpeed = 25;
+                            slappedAny = true;
+                            hitStop = 0.2;
+                            isa.anger = Math.min(isa.maxAnger, isa.anger + 15);
+                            addFloatText('BROKE TUPPERWARE! 😱', c.x, c.y, '#ff0000');
+                            playSound(400, 0.5);
+                            triggerShake(15, 0.5);
+                            triggerFlash(0.3, '#ff0000');
+                            // Spawns revenge fire chanclas
+                            for (let j = 0; j < 3; j++) {
+                                chanclas.push({
+                                    x: isa.x, y: isa.y + 40,
+                                    vx: (Math.random() - 0.5) * 150,
+                                    vy: 200 + Math.random() * 100,
+                                    w: 32, h: 18, type: 'fire', rotation: 0, rotSpeed: 10
+                                });
+                            }
+                        } else if (c.type === 'super' && isPerfect && clashState === 0) {
                             clashState = 1;
                             clashMeter = 50;
                             clashChancla = c;
@@ -2494,6 +2523,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             if (c.type === 'bomb') damage = 20;
                             if (c.type === 'blackhole') damage = 25;
                             if (c.type === 'golden') damage = 0; // Prevent double-dipping as damage is applied in trySlap
+                            if (c.type === 'tupperware') damage = 0;
 
 
 
@@ -2550,6 +2580,18 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     }
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
+                        if (c.type === 'tupperware') {
+                            if (!player.shield) {
+                                player.shield = true;
+                                addFloatText('SAVED TUPPERWARE! 🛡️', player.x, player.y - 30, '#00ffff');
+                                playSound(800, 0.2);
+                            } else {
+                                addFloatText('TUPPERWARE CAUGHT! 🍲', player.x, player.y - 30, '#00ffff');
+                                score += Math.floor(200 * getPrestigeMultiplier());
+                            }
+                            chanclas.splice(i, 1);
+                            continue;
+                        }
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
                         if (dashTimer > 0) { // I-frames during dash -> Perfect Dodge (Graze)
                             if (!c.grazed) {
@@ -2614,7 +2656,11 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             addFloatText('SWOOP! 🪃', c.x, canvas.height - 20);
                             continue;
                         }
-                        if (c.type === 'bomb') {
+                        if (c.type === 'tupperware') {
+                            addFloatText('TUPPERWARE LOST! 😭', c.x, canvas.height - 20, '#ff0000');
+                            isa.anger = Math.min(isa.maxAnger, isa.anger + 10);
+                            triggerShake(10, 0.3);
+                        } else if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
                             triggerFlash(0.1, '#fff');
                             playSound(1000, 0.4);
