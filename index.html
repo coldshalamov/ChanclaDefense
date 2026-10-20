@@ -163,6 +163,9 @@
 
             function getPrestigeMultiplier() {
                 let mult = (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                if (gameData.prestigeUpgrades && gameData.prestigeUpgrades.endless_mastery) {
+                    mult += (gameData.prestigeUpgrades.endless_mastery * (gameData.endlessBestScore || 0) * 0.0001);
+                }
                 if (gameData.hardMode) mult *= 2;
                 return mult;
             }
@@ -195,7 +198,7 @@
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
                 if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
-                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0, endless_mastery: 0 };
                 if (gameData.hardMode === undefined) gameData.hardMode = false;
 
                 if (!gameData.achievements) gameData.achievements = {};
@@ -486,7 +489,7 @@
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
                 if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
-                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0, endless_mastery: 0 };
                 if (gameData.hardMode === undefined) gameData.hardMode = false;
                 gameData.stats.gamesPlayed++;
                 saveGameData();
@@ -2743,7 +2746,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 if (!gameData.stats.rank) gameData.stats.rank = 1;
                 if (gameData.stats.maxCombo === undefined) gameData.stats.maxCombo = 0;
                 if (gameData.prestigeTokens === undefined) gameData.prestigeTokens = 0;
-                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0, endless_mastery: 0 };
                 if (gameData.hardMode === undefined) gameData.hardMode = false;
                 gameData.stats.xp += amount;
                 let leveledUp = false;
@@ -3213,7 +3216,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 const prestigeUpgradesList = [
                     { id: 'golden_chance', name: 'Golden Touch', icon: '✨', cost: 1, maxLevel: 3, desc: '+2% Golden Chancla chance' },
                     { id: 'witch_time', name: 'Time Wizard', icon: '⏳', cost: 1, maxLevel: 3, desc: '+0.5s Witch Time' },
-                    { id: 'combo_shield', name: 'Combo Shield', icon: '🛡️', cost: 2, maxLevel: 1, desc: 'Shield at 30 combo' }
+                    { id: 'combo_shield', name: 'Combo Shield', icon: '🛡️', cost: 2, maxLevel: 1, desc: 'Shield at 30 combo' },
+                    { id: 'endless_mastery', name: 'Endless Mastery', icon: '♾️', cost: 3, maxLevel: 3, desc: 'Endless Best boosts Mult' }
                 ];
 
                 prestigeUpgradesList.forEach(u => {
@@ -3255,15 +3259,15 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                 // Prestige Confirmation Button
                 ctx.fillStyle = '#ffb347';
-                roundRect(ctx, 50, 390, canvas.width - 100, 50, 12);
+                roundRect(ctx, 50, 460, canvas.width - 100, 50, 12);
                 ctx.fill();
                 ctx.fillStyle = '#111';
                 ctx.font = 'bold 20px sans-serif';
-                ctx.fillText('PRESTIGE NOW', canvas.width / 2, 422);
+                ctx.fillText('PRESTIGE NOW', canvas.width / 2, 492);
 
                 ctx.fillStyle = '#ff5252';
                 ctx.font = 'bold 12px sans-serif';
-                ctx.fillText('WARNING: CANNOT BE UNDONE!', canvas.width / 2, 460);
+                ctx.fillText('WARNING: CANNOT BE UNDONE!', canvas.width / 2, 530);
 
                 // Back Button
                 ctx.fillStyle = '#ff5252';
@@ -3529,12 +3533,13 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     const prestigeUpgradesList = [
                         { id: 'golden_chance', cost: 1, maxLevel: 3 },
                         { id: 'witch_time', cost: 1, maxLevel: 3 },
-                        { id: 'combo_shield', cost: 2, maxLevel: 1 }
+                        { id: 'combo_shield', cost: 2, maxLevel: 1 },
+                        { id: 'endless_mastery', cost: 3, maxLevel: 3 }
                     ];
                     let y = 150;
                     for (let u of prestigeUpgradesList) {
                         if (pos.y >= y && pos.y <= y + 60 && pos.x >= 30 && pos.x <= canvas.width - 30) {
-                            if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                            if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0, endless_mastery: 0 };
                 if (gameData.hardMode === undefined) gameData.hardMode = false;
                             const level = gameData.prestigeUpgrades[u.id] || 0;
                             if (level < u.maxLevel && (gameData.prestigeTokens || 0) >= u.cost) {
@@ -3549,8 +3554,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         y += 70;
                     }
 
-                    // Check Prestige Confirmation (50, 390, w-100, 50)
-                    if (pos.y >= 390 && pos.y <= 440 && pos.x >= 50 && pos.x <= canvas.width - 50) {
+                    // Check Prestige Confirmation (50, 460, w-100, 50)
+                    if (pos.y >= 460 && pos.y <= 510 && pos.x >= 50 && pos.x <= canvas.width - 50) {
                         gameData.prestige = (gameData.prestige || 0) + 1;
                         gameData.prestigeTokens = (gameData.prestigeTokens || 0) + 1;
                         gameData.stats.wins = 1;
@@ -3629,12 +3634,13 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     const prestigeUpgradesList = [
                         { id: 'golden_chance', cost: 1, maxLevel: 3 },
                         { id: 'witch_time', cost: 1, maxLevel: 3 },
-                        { id: 'combo_shield', cost: 2, maxLevel: 1 }
+                        { id: 'combo_shield', cost: 2, maxLevel: 1 },
+                        { id: 'endless_mastery', cost: 3, maxLevel: 3 }
                     ];
                     let y = 150;
                     for (let u of prestigeUpgradesList) {
                         if (pos.y >= y && pos.y <= y + 60 && pos.x >= 30 && pos.x <= canvas.width - 30) {
-                            if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0 };
+                            if (!gameData.prestigeUpgrades) gameData.prestigeUpgrades = { golden_chance: 0, witch_time: 0, combo_shield: 0, endless_mastery: 0 };
                 if (gameData.hardMode === undefined) gameData.hardMode = false;
                             const level = gameData.prestigeUpgrades[u.id] || 0;
                             if (level < u.maxLevel && (gameData.prestigeTokens || 0) >= u.cost) {
@@ -3649,8 +3655,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         y += 70;
                     }
 
-                    // Check Prestige Confirmation (50, 390, w-100, 50)
-                    if (pos.y >= 390 && pos.y <= 440 && pos.x >= 50 && pos.x <= canvas.width - 50) {
+                    // Check Prestige Confirmation (50, 460, w-100, 50)
+                    if (pos.y >= 460 && pos.y <= 510 && pos.x >= 50 && pos.x <= canvas.width - 50) {
                         gameData.prestige = (gameData.prestige || 0) + 1;
                         gameData.prestigeTokens = (gameData.prestigeTokens || 0) + 1;
                         gameData.stats.wins = 1;
