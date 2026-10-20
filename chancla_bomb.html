@@ -325,6 +325,8 @@
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
                 witchTimeTimer = 0;
+            let blackoutTimer = 0;
+            let blackoutCooldown = 0;
 
             let lastTapLeft = 0;
             let clashState = 0; // 0: inactive, 1: tug-of-war
@@ -546,6 +548,8 @@
                 meteorTimer = 0;
                 flash.timer = 0;
                 specialReadyTriggered = false;
+                blackoutTimer = 0;
+                blackoutCooldown = 0;
                 chainEffects = [];
                 wrapper.style.transform = 'none';
                 sayRandom('start');
@@ -2952,6 +2956,23 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         spawnMeteor();
                         meteorTimer = 0;
                     }
+
+                    if (blackoutCooldown > 0) {
+                        blackoutCooldown -= enemyDt;
+                    } else if (blackoutTimer <= 0) {
+                        if (Math.random() < 0.2 * enemyDt) { // Small chance per frame
+                            blackoutTimer = 5.0 + Math.random() * 3.0; // 5 to 8 seconds
+                            addFloatText('¡APAGÓN!', canvas.width / 2, canvas.height / 2, '#fff', 30);
+                            playSound(400, 0.5);
+                        }
+                    }
+                }
+
+                if (blackoutTimer > 0) {
+                    blackoutTimer -= enemyDt;
+                    if (blackoutTimer <= 0) {
+                        blackoutCooldown = 15 + Math.random() * 10;
+                    }
                 }
 
                 if (dashTimer > 0) {
@@ -3027,6 +3048,20 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 ctx.restore();
             }
 
+            function drawBlackout() {
+                if (blackoutTimer <= 0) return;
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                ctx.beginPath();
+                ctx.rect(0, 0, canvas.width, canvas.height);
+
+                ctx.arc(player.x, player.y, 90, 0, Math.PI * 2, true);
+
+                ctx.fill();
+                ctx.restore();
+            }
+
             function draw() {
                 drawBackground();
                 drawIsa();
@@ -3057,6 +3092,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 if (clashState === 1) {
                     drawClash();
                 } else {
+                    drawBlackout();
                     drawLowHealthVignette();
                     drawFlash();
                     drawHUD();
