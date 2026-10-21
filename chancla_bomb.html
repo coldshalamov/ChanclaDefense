@@ -1316,6 +1316,10 @@
                 else if (type === 'sniper') emoji = '🎯';
                 else if (type === 'ghost') emoji = '👻';
                 else if (type === 'blackhole') emoji = '🌌';
+                else if (type === 'roulette') {
+                    const opts = ['❤️', '💰', '🛡️', '💀'];
+                    emoji = opts[c.rouletteIndex || 0];
+                }
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1344,6 +1348,10 @@
                     } else if (type === 'blackhole') {
                         ctx.shadowColor = '#9b59b6';
                         ctx.shadowBlur = 25;
+                    } else if (type === 'roulette') {
+                        const colors = ['#ff0000', '#ffd700', '#00ffff', '#000000'];
+                        ctx.shadowColor = colors[c.rouletteIndex || 0];
+                        ctx.shadowBlur = 15;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -2066,13 +2074,14 @@
                 const extraGolden = (gameData.prestigeUpgrades?.golden_chance || 0) * 0.02;
                 const isBomb = Math.random() < 0.08;
 const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
-                const isGolden = !isBomb && !isBlackhole && Math.random() < (0.05 + extraGolden);
-                const isHoming = superEnabled && !isBomb && !isBlackhole && !isGolden && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isGolden && Math.random() < 0.18;
-                const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
-                const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.12;
-                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isRoulette = !isBomb && !isBlackhole && Math.random() < 0.06;
+                const isGolden = !isBomb && !isBlackhole && !isRoulette && Math.random() < (0.05 + extraGolden);
+                const isHoming = superEnabled && !isBomb && !isBlackhole && !isRoulette && !isGolden && Math.random() < 0.10;
+                const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isRoulette && !isGolden && Math.random() < 0.18;
+                const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isRoulette && !isGolden && Math.random() < 0.15;
+                const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isRoulette && !isGolden && !isBoomerang && Math.random() < 0.12;
+                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isRoulette && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isRoulette && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2083,6 +2092,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
                 else if (isBlackhole) { w = 40; h = 40; }
+                else if (isRoulette) { w = 38; h = 38; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2096,6 +2106,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isSniper) vy = 0;
                 else if (isBlackhole) vy = baseSpeed * 0.5;
+                else if (isRoulette) vy = baseSpeed * 0.5;
 
                 const vx = (Math.random() - 0.5) * 60;
                 if (gameData.hardMode) vy *= 1.5;
@@ -2111,9 +2122,10 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isGhost) type = 'ghost';
                 else if (isSniper) type = 'sniper';
                 else if (isBlackhole) type = 'blackhole';
+                else if (isRoulette) type = 'roulette';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed,
-                    sniperTimer: isSniper ? 1.5 : 0 });
+                    sniperTimer: isSniper ? 1.5 : 0, rouletteTimer: 0, rouletteIndex: 0, rouletteOptions: ['heart', 'coin', 'shield', 'skull'] });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2264,6 +2276,33 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             if (isa.anger <= 0) triggerWin();
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.2);
+                        } else if (c.type === 'roulette') {
+                            const outcome = c.rouletteOptions[c.rouletteIndex];
+                            if (outcome === 'heart') {
+                                player.lives = Math.min(player.maxLives, player.lives + 1);
+                                addFloatText('+1 LIFE! ❤️', c.x, c.y, '#ff0000');
+                                playSound(1200, 0.2);
+                            } else if (outcome === 'coin') {
+                                gameData.coins += Math.floor(50 * getPrestigeMultiplier());
+                                gameData.stats.totalCoinsEarned += Math.floor(50 * getPrestigeMultiplier());
+                                score += Math.floor(1000 * getPrestigeMultiplier());
+                                addFloatText('JACKPOT! 💰', c.x, c.y, '#ffd700');
+                                playSound(850, 0.2);
+                            } else if (outcome === 'shield') {
+                                player.shield = true;
+                                addFloatText('SHIELD UP! 🛡️', c.x, c.y, '#00ffff');
+                                playSound(1200, 0.2);
+                            } else if (outcome === 'skull') {
+                                player.lives -= 1;
+                                player.hitTimer = 0.5;
+                                triggerShake(20, 0.5);
+                                addFloatText('BUST! 💀', c.x, c.y, '#ff0000');
+                                sayPlayer('hit');
+                                if (player.lives <= 0) endGame();
+                            }
+                            isa.anger = Math.max(0, isa.anger - 10);
+                            if (isa.anger <= 0) triggerWin();
+                            spawnImpact(c.x, c.y, true);
                         } else if (c.type === 'blackhole') {
                             gameData.coins += Math.floor(15 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(15 * getPrestigeMultiplier());
@@ -2401,6 +2440,14 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 const blackhole = chanclas.find(c => c.type === 'blackhole' && !c.slapped);
                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
+
+                    if (c.type === 'roulette' && !c.slapped) {
+                        c.rouletteTimer += enemyDt;
+                        if (c.rouletteTimer >= 0.2) {
+                            c.rouletteTimer = 0;
+                            c.rouletteIndex = (c.rouletteIndex + 1) % c.rouletteOptions.length;
+                        }
+                    }
 
                     // Sniper Logic
                     if (c.type === 'sniper' && !c.slapped) {
@@ -2584,7 +2631,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper' || c.type === 'roulette') ? 2 : 1;
                         comboCount = 0;
                         comboTimer = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' || c.type === 'boomerang' || c.type === 'sniper' ? 15 : 8);
