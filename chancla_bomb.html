@@ -163,6 +163,7 @@
 
             function getPrestigeMultiplier() {
                 let mult = (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                mult += ((gameData.stats.rank || 1) - 1) * 0.05;
                 if (gameData.prestigeUpgrades && gameData.prestigeUpgrades.endless_mastery) {
                     mult += (gameData.prestigeUpgrades.endless_mastery * (gameData.endlessBestScore || 0) * 0.0001);
                 }
@@ -170,6 +171,7 @@
                 return mult;
             }
             let state = STATE.TITLE;
+            window.getPrestigeMultiplier = getPrestigeMultiplier;
             let isEndless = false;
             let witchTimeTimer = 0;
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0, greed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
@@ -205,6 +207,7 @@
                 if (!gameData.cosmetics) gameData.cosmetics = ['none'];
                 if (!gameData.currentHat) gameData.currentHat = 'none';
             } catch (e) { console.error(e); }
+            window.gameData = gameData;
             checkMissionsInit();
 
             function saveGameData() {
@@ -1945,7 +1948,8 @@
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
 
-                const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1);
+                const rankBonus = ((gameData.stats.rank || 1) - 1) * 5;
+                const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1) + (rankBonus > 0 ? ` (+${rankBonus}% Mult)` : '');
                 ctx.font = 'bold 16px sans-serif';
                 ctx.fillStyle = '#ff9f1c';
                 ctx.fillText(rankStr, canvas.width / 2, 390);
