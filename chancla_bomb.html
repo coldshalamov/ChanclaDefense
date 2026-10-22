@@ -330,9 +330,6 @@
                 witchTimeTimer = 0;
 
             let lastTapLeft = 0;
-            let clashState = 0; // 0: inactive, 1: tug-of-war
-            let clashMeter = 50;
-            let clashChancla = null;
             let lastTapRight = 0;
             let dashTimer = 0;
             let dashCooldown = 0;
@@ -507,9 +504,6 @@
                 dashCooldown = 0;
                 dashDir = 0;
                 dashTrails = [];
-                clashState = 0;
-                clashMeter = 50;
-                clashChancla = null;
                 const wins = gameData.stats.wins || 1;
                 if (isEndless) {
                     isa.maxAnger = Infinity;
@@ -2202,19 +2196,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         if (isPerfect) slapEffect.type = 'perfect';
                         else if (slapEffect.type !== 'perfect') slapEffect.type = 'hit';
 
-                        if (c.type === 'super' && isPerfect && clashState === 0) {
-                            clashState = 1;
-                            clashMeter = 50;
-                            clashChancla = c;
-                            c.vx = 0;
-                            c.vy = 0;
-                            c.slapped = true;
-                            c.isPerfect = true;
-                            slappedAny = true;
-                            hitStop = 0; // Prevent normal hitstop from interfering
-                            triggerShake(10, 0.5);
-                            playSound(1000, 0.3);
-                        } else {
+                        {
                             c.vx = (c.x - player.x) * (isPerfect ? 12 : 8);
                             c.vy = isPerfect ? -550 : -300;
                             c.slapped = true;
@@ -2821,48 +2803,6 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     return;
                 }
 
-                if (clashState === 1) {
-                    clashMeter -= 35 * dt; // Isa fights back
-
-                    if (clashChancla) {
-                        // Shake the chancla between them
-                        const targetY = player.y - 120;
-                        clashChancla.x = player.x + (Math.random() - 0.5) * 10;
-                        clashChancla.y += (targetY - clashChancla.y) * 10 * dt;
-                        clashChancla.y += (Math.random() - 0.5) * 10;
-                        clashChancla.rotation = (Math.random() - 0.5) * 0.2;
-                    }
-
-                    if (clashMeter >= 100) {
-                        // Win Clash
-                        clashState = 0;
-                        if (clashChancla) {
-                            clashChancla.vx = (isa.x - clashChancla.x) * 2;
-                            clashChancla.vy = -1800; // Extreme speed
-                            clashChancla.rotSpeed = 40;
-                        }
-                        triggerFlash(0.5, '#fff');
-                        triggerShake(20, 0.5);
-                        playSound(1200, 0.5);
-                        addFloatText('TELENOVELA FINALE! 💥', player.x, player.y - 80, '#00e5ff', 24);
-                        score += Math.floor(1000 * getPrestigeMultiplier());
-                        isa.anger = Math.max(0, isa.anger - 50); // Massive damage
-                        isa.hitTimer = 1.0;
-                        if (isa.anger <= 0) triggerWin();
-                        comboCount += 5;
-                        comboTimer = 2.5;
-                    } else if (clashMeter <= 0) {
-                        // Lose Clash
-                        clashState = 0;
-                        if (clashChancla) {
-                            clashChancla.vy = 1200; // Smash player
-                            clashChancla.slapped = false;
-                        }
-                        triggerShake(15, 0.5);
-                        addFloatText('OVERPOWERED! 💀', player.x, player.y - 80, '#ff0000', 24);
-                    }
-                    return; // Pause the rest of the game logic during clash
-                }
 
                 if (player.stunTimer > 0) {
                     player.stunTimer -= dt;
@@ -3057,84 +2997,12 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                 ctx.restore();
 
-                if (clashState === 1) {
-                    drawClash();
-                } else {
-                    drawLowHealthVignette();
-                    drawFlash();
-                    drawHUD();
-                    drawFloatTexts();
-                    drawDialogue();
-                    drawPlayerDialogue();
-                }
-            }
-
-
-            function drawClash() {
-                if (clashState !== 1 || !clashChancla) return;
-
-                ctx.save();
-
-                // Cinematic Black Bars
-                ctx.fillStyle = '#000';
-                const barHeight = 80;
-                ctx.fillRect(0, 0, canvas.width, barHeight);
-                ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
-
-                // Flash overlay based on meter
-                const tension = clashMeter / 100;
-                ctx.fillStyle = `rgba(255, 255, 255, ${0.1 + (tension * 0.2)})`;
-                ctx.fillRect(0, barHeight, canvas.width, canvas.height - barHeight * 2);
-
-                // Speed lines
-                ctx.translate(clashChancla.x, clashChancla.y);
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
-                for (let i = 0; i < 12; i++) {
-                    const angle = (Math.PI * 2 * i) / 12 + timeElapsed * 10;
-                    ctx.beginPath();
-                    ctx.moveTo(Math.cos(angle) * 40, Math.sin(angle) * 40);
-                    ctx.lineTo(Math.cos(angle) * 150, Math.sin(angle) * 150);
-                    ctx.stroke();
-                }
-                ctx.translate(-clashChancla.x, -clashChancla.y);
-
-                // Tug of War UI
-                const uiW = 200;
-                const uiH = 20;
-                const uiX = canvas.width / 2 - uiW / 2;
-                const uiY = canvas.height - barHeight - 40;
-
-                ctx.fillStyle = '#ff4d4d'; // Isa red
-                roundRect(ctx, uiX, uiY, uiW, uiH, 10);
-                ctx.fill();
-
-                ctx.save();
-                ctx.fillStyle = '#00e5ff'; // Player cyan
-                ctx.beginPath();
-                roundRect(ctx, uiX, uiY, uiW * tension, uiH, 10);
-                ctx.clip();
-                roundRect(ctx, uiX, uiY, uiW * tension, uiH, 10);
-                ctx.fill();
-                ctx.restore();
-
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 3;
-                roundRect(ctx, uiX, uiY, uiW, uiH, 10);
-                ctx.stroke();
-
-                // Mash Text
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 24px sans-serif';
-                ctx.textAlign = 'center';
-                const pulse = 1 + Math.sin(timeElapsed * 20) * 0.1;
-                ctx.save();
-                ctx.translate(canvas.width / 2, uiY - 20);
-                ctx.scale(pulse, pulse);
-                ctx.fillText('MASH! MASH! MASH!', 0, 0);
-                ctx.restore();
-
-                ctx.restore();
+                drawLowHealthVignette();
+                drawFlash();
+                drawHUD();
+                drawFloatTexts();
+                drawDialogue();
+                drawPlayerDialogue();
             }
 
             function drawChanclasAll() {
@@ -3591,17 +3459,6 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     y: (touchPoint.clientY - rect.top) * scaleY
                 };
 
-                if (state === STATE.PLAYING && clashState === 1) {
-                    const relativeY = pos.y / canvas.height;
-                    if (relativeY < 0.6) {
-                        clashMeter = Math.min(100, clashMeter + 8);
-                        triggerShake(3, 0.1);
-                        playSound(600, 0.05);
-                        spawnImpact(clashChancla.x, clashChancla.y);
-                        return;
-                    }
-                }
-
                 if (state === STATE.TITLE) {
                     const col1 = 40, col2 = 205, btnW = 155, btnH = 46;
                     const row1 = 430, row2 = 490, row3 = 550, row4 = 610, row5 = 670;
@@ -3779,12 +3636,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                     // If tapping in the upper area (not movement zones at bottom), trigger slap
                     if (relativeY < 0.6) {
-                        if (clashState === 1) {
-                            clashMeter = Math.min(100, clashMeter + 8);
-                            triggerShake(3, 0.1);
-                            playSound(600, 0.05);
-                            spawnImpact(clashChancla.x, clashChancla.y);
-                        } else if (specialAttackBar >= maxSpecialAttack) {
+                        if (specialAttackBar >= maxSpecialAttack) {
                             fireSpecialAttack();
                         } else {
                             trySlap();
@@ -3826,12 +3678,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 // Slap key - spacebar
                 if (e.key === ' ' || e.key === 'Spacebar') {
                     if (isDown && state === STATE.PLAYING) {
-                        if (clashState === 1) {
-                            clashMeter = Math.min(100, clashMeter + 8);
-                            triggerShake(3, 0.1);
-                            playSound(600, 0.05);
-                            spawnImpact(clashChancla.x, clashChancla.y);
-                        } else if (specialAttackBar >= maxSpecialAttack) {
+                        if (specialAttackBar >= maxSpecialAttack) {
                             fireSpecialAttack();
                         } else {
                             trySlap();
