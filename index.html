@@ -2225,7 +2225,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         comboCount++;
                         comboTimer = 2.5;
                         if (comboCount > (gameData.stats.maxCombo || 0)) gameData.stats.maxCombo = comboCount;
-                        score += Math.floor(comboCount * getPrestigeMultiplier());
+                        score += Math.floor(comboCount * getPrestigeMultiplier() * (1 + (comboCount > 10 ? 0.5 : 0) + (comboCount > 25 ? 0.5 : 0)));
 
                         if (gameData.prestigeUpgrades?.combo_shield && comboCount % 30 === 0 && comboCount > 0) {
                             if (!player.shield) {
@@ -2502,6 +2502,11 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
+
+                            // Modern Game Feature: Dynamic combo damage scaling
+                            // Rewards maintaining high combos with up to +100% damage at a 50 combo
+                            const comboMultiplier = 1 + Math.min(1.0, Math.floor(comboCount / 5) * 0.1);
+                            damage = Math.floor(damage * comboMultiplier);
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
