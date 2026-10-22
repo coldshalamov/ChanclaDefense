@@ -163,6 +163,9 @@
 
             function getPrestigeMultiplier() {
                 let mult = (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                if (gameData.stats && gameData.stats.rank > 1) {
+                    mult += (gameData.stats.rank - 1) * 0.05;
+                }
                 if (gameData.prestigeUpgrades && gameData.prestigeUpgrades.endless_mastery) {
                     mult += (gameData.prestigeUpgrades.endless_mastery * (gameData.endlessBestScore || 0) * 0.0001);
                 }
@@ -1945,7 +1948,8 @@
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
 
-                const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1);
+                const rankMult = ((gameData.stats.rank || 1) > 1) ? ` (+${((gameData.stats.rank || 1) - 1) * 5}% Mult)` : '';
+                const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1) + rankMult;
                 ctx.font = 'bold 16px sans-serif';
                 ctx.fillStyle = '#ff9f1c';
                 ctx.fillText(rankStr, canvas.width / 2, 390);
@@ -3210,7 +3214,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                 ctx.fillStyle = '#ffd700';
                 ctx.font = 'bold 18px sans-serif';
-                ctx.fillText(`Tokens: ${gameData.prestigeTokens || 0} | Mult: x${(1 + (gameData.prestige || 0) * 0.5).toFixed(1)}`, canvas.width / 2, 130);
+                ctx.fillText(`Tokens: ${gameData.prestigeTokens || 0} | Mult: x${getPrestigeMultiplier().toFixed(2)}`, canvas.width / 2, 130);
 
                 let y = 150;
                 const prestigeUpgradesList = [
