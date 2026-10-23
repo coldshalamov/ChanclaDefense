@@ -346,6 +346,91 @@
             const dialogueDuration = 3.3;
 
             const keys = { left: false, right: false };
+
+            // Gamepad Support
+            let lastGamepadDashLeft = 0;
+            let lastGamepadDashRight = 0;
+            let lastGamepadSlap = false;
+            let lastGamepadStart = false;
+
+            let gamepadActiveLeft = false;
+            let gamepadActiveRight = false;
+
+            function pollGamepads() {
+                const connectedGamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+
+                // Track if any gamepad is pressing left/right
+                let anyLeft = false;
+                let anyRight = false;
+                let anySlap = false;
+                let anyStart = false;
+
+                for (let i = 0; i < connectedGamepads.length; i++) {
+                    const gp = connectedGamepads[i];
+                    if (gp) {
+                        // Left/Right Movement (D-Pad or Left Stick)
+                        if (gp.axes[0] < -0.5 || gp.buttons[14]?.pressed) anyLeft = true;
+                        if (gp.axes[0] > 0.5 || gp.buttons[15]?.pressed) anyRight = true;
+
+                        // Slap (Button 0 usually A/Cross, or Button 2 X/Square)
+                        if (gp.buttons[0]?.pressed || gp.buttons[2]?.pressed) anySlap = true;
+
+                        // Start (Button 9 usually Start/Options)
+                        if (gp.buttons[9]?.pressed) anyStart = true;
+                    }
+                }
+
+                if (anyStart && !lastGamepadStart && state !== STATE.PLAYING) {
+                    resetGame();
+                }
+                lastGamepadStart = anyStart;
+
+                if (state !== STATE.PLAYING) return;
+
+                if (anySlap && !lastGamepadSlap) {
+                    if (clashState === 1) {
+                        clashMeter = Math.min(100, clashMeter + 8);
+                        triggerShake(3, 0.1);
+                        playSound(600, 0.05);
+                        spawnImpact(clashChancla.x, clashChancla.y);
+                    } else if (specialAttackBar >= maxSpecialAttack) {
+                        fireSpecialAttack();
+                    } else {
+                        trySlap();
+                    }
+                }
+                lastGamepadSlap = anySlap;
+
+                if (anyLeft) {
+                    if (!keys.left && !gamepadActiveLeft && dashCooldown <= 0) {
+                        if (timeElapsed - lastGamepadDashLeft < 0.25) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = -1;
+                        }
+                        lastGamepadDashLeft = timeElapsed;
+                    }
+                    gamepadActiveLeft = true;
+                } else {
+                    gamepadActiveLeft = false;
+                }
+
+                if (anyRight) {
+                    if (!keys.right && !gamepadActiveRight && dashCooldown <= 0) {
+                        if (timeElapsed - lastGamepadDashRight < 0.25) {
+                            dashTimer = 0.15;
+                            dashCooldown = 0.8;
+                            dashDir = 1;
+                        }
+                        lastGamepadDashRight = timeElapsed;
+                    }
+                    gamepadActiveRight = true;
+                } else {
+                    gamepadActiveRight = false;
+                }
+
+            }
+
             const touch = { left: false, right: false };
 
             // Audio context for sound effects (reuse to avoid browser limits)
@@ -2791,6 +2876,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
             }
 
             function update(dt) {
+                pollGamepads();
                 if (state !== STATE.PLAYING) return;
 
                 if (witchTimeTimer > 0) witchTimeTimer -= dt;
@@ -2889,7 +2975,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     isa.miradaTimer -= enemyDt;
 
                     if (player.stunTimer <= 0) {
-                        const moved = keys.left || keys.right || touch.left || touch.right || dashTimer > 0;
+                        const moved = keys.left || keys.right || touch.left || touch.right || gamepadActiveLeft || gamepadActiveRight || dashTimer > 0;
                         if (moved) {
                             triggerStun();
                         }
@@ -2962,8 +3048,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
                 } else if (player.stunTimer <= 0) {
                     const speed = player.speed;
-                    const moveLeft = keys.left || touch.left;
-                    const moveRight = keys.right || touch.right;
+                    const moveLeft = keys.left || touch.left || gamepadActiveLeft;
+                    const moveRight = keys.right || touch.right || gamepadActiveRight;
                     if (moveLeft) player.x -= speed * dt;
                     if (moveRight) player.x += speed * dt;
                 }
