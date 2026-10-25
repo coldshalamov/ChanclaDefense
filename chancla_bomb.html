@@ -1316,6 +1316,7 @@
                 else if (type === 'sniper') emoji = '🎯';
                 else if (type === 'ghost') emoji = '👻';
                 else if (type === 'blackhole') emoji = '🌌';
+                else if (type === 'cactus') emoji = '🌵';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -2072,7 +2073,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.12;
                 const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isCactus = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.10;
+                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && !isCactus && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2083,6 +2085,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
                 else if (isBlackhole) { w = 40; h = 40; }
+                else if (isCactus) { w = 36; h = 36; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2096,6 +2099,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isSniper) vy = 0;
                 else if (isBlackhole) vy = baseSpeed * 0.5;
+                else if (isCactus) vy = baseSpeed * 0.8 + Math.random() * 20;
 
                 const vx = (Math.random() - 0.5) * 60;
                 if (gameData.hardMode) vy *= 1.5;
@@ -2196,6 +2200,22 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         if (isPerfect) {
                             gameData.stats.perfectSlaps++;
                             updateMissionProgress('perfect', 1);
+                        }
+
+                        if (c.type === 'cactus') {
+                            player.lives -= 1;
+                            player.hitTimer = 0.5;
+                            triggerShake(15, 0.4);
+                            triggerFlash(0.3, '#ff0000');
+                            addFloatText('OUCH! 🌵', player.x, player.y - 30, '#ff0000');
+                            playSound(1000, 0.3);
+                            sayPlayer('hit');
+                            chanclas.splice(i, 1);
+                            slappedAny = true;
+                            comboCount = 0;
+                            comboTimer = 0;
+                            if (player.lives <= 0) endGame();
+                            continue;
                         }
 
                         // Upgrade visual effect
@@ -2579,6 +2599,11 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             }
                             continue;
                         }
+                        if (c.type === 'cactus') {
+                            chanclas.splice(i, 1);
+                            continue;
+                        }
+
                         if (player.shield) {
                             player.shield = false;
                             chanclas.splice(i, 1);
@@ -2633,6 +2658,10 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                                     isShrapnel: true
                                 });
                             }
+                        } else if (c.type === 'cactus') {
+                            score += Math.floor(25 * getPrestigeMultiplier());
+                            addFloatText('TRICK AVOIDED! +25 🌵', player.x, player.y - 50, '#00ff00');
+                            playSound(850, 0.1);
                         } else {
                             score += Math.floor(1 * getPrestigeMultiplier());
                             const prevBest = bestScore;
