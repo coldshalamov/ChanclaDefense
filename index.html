@@ -476,6 +476,8 @@
                 shakeTimer = duration;
             }
 
+
+
             function triggerFlash(duration, color = '#fff') {
                 flash.timer = duration;
                 flash.maxTime = duration;
@@ -2818,6 +2820,14 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                 if (hitStop > 0) {
                     hitStop -= dt;
+                    // Apply visual shake effect during hitstop for intense impacts
+                    if (hitStop > 0) {
+                        const dx = (Math.random() - 0.5) * 5;
+                        const dy = (Math.random() - 0.5) * 5;
+                        wrapper.style.transform = `translate(${dx}px, ${dy}px)`;
+                    } else {
+                        wrapper.style.transform = '';
+                    }
                     return;
                 }
 
