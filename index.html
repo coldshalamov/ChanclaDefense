@@ -166,6 +166,9 @@
                 if (gameData.prestigeUpgrades && gameData.prestigeUpgrades.endless_mastery) {
                     mult += (gameData.prestigeUpgrades.endless_mastery * (gameData.endlessBestScore || 0) * 0.0001);
                 }
+                if (gameData.dailyLogin && gameData.dailyLogin.streak) {
+                    mult += Math.min(gameData.dailyLogin.streak * 0.05, 0.50);
+                }
                 if (gameData.hardMode) mult *= 2;
                 return mult;
             }
@@ -1958,22 +1961,28 @@
                 const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1);
                 ctx.font = 'bold 16px sans-serif';
                 ctx.fillStyle = '#ff9f1c';
-                ctx.fillText(rankStr, canvas.width / 2, 390);
+                ctx.fillText(rankStr, canvas.width / 2, 380);
+
+                const streakBonus = Math.floor(Math.min((gameData.dailyLogin?.streak || 0) * 5, 50));
+                const streakStr = 'Daily Streak: ' + (gameData.dailyLogin?.streak || 0) + ' (+' + streakBonus + '% Mult)';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillStyle = '#4caf50';
+                ctx.fillText(streakStr, canvas.width / 2, 396);
 
                 const reqXp = (gameData.stats.rank || 1) * 500;
                 const xp = gameData.stats.xp || 0;
                 const progress = Math.min(1, xp / reqXp);
                 ctx.fillStyle = '#333';
-                roundRect(ctx, canvas.width / 2 - 80, 400, 160, 12, 6);
+                roundRect(ctx, canvas.width / 2 - 80, 405, 160, 12, 6);
                 ctx.fill();
                 ctx.fillStyle = '#4caf50';
                 if (progress > 0) {
-                    roundRect(ctx, canvas.width / 2 - 80, 400, 160 * progress, 12, 6);
+                    roundRect(ctx, canvas.width / 2 - 80, 405, 160 * progress, 12, 6);
                     ctx.fill();
                 }
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px sans-serif';
-                ctx.fillText(Math.floor(xp) + ' / ' + reqXp + ' XP', canvas.width / 2, 409);
+                ctx.fillText(Math.floor(xp) + ' / ' + reqXp + ' XP', canvas.width / 2, 414);
                 ctx.fillText('Level ' + (gameData.stats.wins || 1), canvas.width / 2, 345);
 
                 // 2-Column Layout
