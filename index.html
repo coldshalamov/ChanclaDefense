@@ -1322,6 +1322,7 @@
                 let emoji = '🩴💨';
                 if (type === 'super') emoji = '🩴💥';
                 else if (type === 'fire') emoji = '🔥';
+                else if (type === 'cactus') emoji = '🌵';
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
                 else if (type === 'golden') emoji = '✨👞';
@@ -2083,19 +2084,21 @@
 
             function spawnChancla() {
                 const extraGolden = (gameData.prestigeUpgrades?.golden_chance || 0) * 0.02;
+                const isCactus = Math.random() < 0.05;
                 const isBomb = Math.random() < 0.08;
-const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
-                const isGolden = !isBomb && !isBlackhole && Math.random() < (0.05 + extraGolden);
-                const isHoming = superEnabled && !isBomb && !isBlackhole && !isGolden && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isGolden && Math.random() < 0.18;
-                const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
-                const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.12;
-                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+const isBlackhole = isa.enraged && !isCactus && !isBomb && Math.random() < 0.05;
+                const isGolden = !isCactus && !isBomb && !isBlackhole && Math.random() < (0.05 + extraGolden);
+                const isHoming = superEnabled && !isCactus && !isBomb && !isBlackhole && !isGolden && Math.random() < 0.10;
+                const isSuper = superEnabled && !isCactus && !isBomb && !isBlackhole && !isHoming && !isGolden && Math.random() < 0.18;
+                const isBoomerang = !isCactus && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
+                const isSniper = !isCactus && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.12;
+                const isGhost = !isCactus && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
+                const isFire = isa.enraged && !isCactus && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
                 if (isSuper) { w = 46; h = 26; }
+                else if (isCactus) { w = 32; h = 32; }
                 else if (isBomb) { w = 38; h = 38; }
                 else if (isHoming) { w = 36; h = 36; }
                 else if (isGolden) { w = 36; h = 20; }
@@ -2109,6 +2112,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 let vy = baseSpeed + Math.random() * 60;
                 if (isSuper) vy += 40;
                 else if (isFire) vy += 80;
+                else if (isCactus) vy = baseSpeed * 0.8;
                 else if (isBomb) vy = baseSpeed * 0.7 + Math.random() * 30; // slower
                 else if (isHoming) vy = baseSpeed * 0.8; // slightly slower vertical speed
                 else if (isGolden) vy += 20; // slightly faster
@@ -2121,7 +2125,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 const rotSpeed = (Math.random() - 0.5) * 5;
 
                 let type = 'normal';
-                if (isBomb) type = 'bomb';
+                if (isCactus) type = 'cactus';
+                else if (isBomb) type = 'bomb';
                 else if (isGolden) type = 'golden';
                 else if (isFire) type = 'fire';
                 else if (isSuper) type = 'super';
@@ -2292,6 +2297,13 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             if (isa.anger <= 0) triggerWin();
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.2);
+                        } else if (c.type === 'cactus') {
+                            player.lives = Math.max(0, player.lives - 1);
+                            comboCount = 0;
+                            addFloatText('CACTUS SLAPPED! 🌵💔', c.x, c.y, '#ff0000');
+                            spawnImpact(c.x, c.y);
+                            playSound(300, 0.5);
+                            triggerShake(10, 0.5);
                         } else if (c.type === 'ghost') {
                             gameData.coins += Math.floor(5 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(5 * getPrestigeMultiplier());
@@ -2571,7 +2583,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         continue;
                     }
 
-                    if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
+                    if (!c.slapped && c.type !== 'meteor' && c.type !== 'cactus' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
                         if (dashTimer > 0) { // I-frames during dash -> Perfect Dodge (Graze)
                             if (!c.grazed) {
@@ -2635,6 +2647,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             c.returning = true;
                             addFloatText('SWOOP! 🪃', c.x, canvas.height - 20);
                             continue;
+                        } else if (c.type === 'cactus' && !c.slapped) {
+                            score += 25;
+                            addFloatText('TRICK AVOIDED! 🌵', player.x, player.y - 40, '#00ff00');
                         }
                         if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
