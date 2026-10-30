@@ -1329,6 +1329,7 @@
                 else if (type === 'sniper') emoji = '🎯';
                 else if (type === 'ghost') emoji = '👻';
                 else if (type === 'blackhole') emoji = '🌌';
+                else if (type === 'cactus') emoji = '🌵';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -2091,7 +2092,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.12;
                 const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isCactus = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.10;
+                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && !isCactus && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2102,6 +2104,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
                 else if (isBlackhole) { w = 40; h = 40; }
+                else if (isCactus) { w = 34; h = 38; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2130,6 +2133,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isGhost) type = 'ghost';
                 else if (isSniper) type = 'sniper';
                 else if (isBlackhole) type = 'blackhole';
+                else if (isCactus) type = 'cactus';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed,
                     sniperTimer: isSniper ? 1.5 : 0 });
@@ -2301,6 +2305,15 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             if (isa.anger <= 0) triggerWin();
                             spawnImpact(c.x, c.y);
                             playSound(850, 0.15);
+                        } else if (c.type === 'cactus') {
+                            player.lives -= 1;
+                            comboCount = 0;
+                            comboTimer = 0;
+                            addFloatText('OUCH! 🌵', c.x, c.y, '#ff0000');
+                            spawnImpact(c.x, c.y);
+                            playSound(200, 0.3);
+                            triggerShake(10, 0.3);
+                            if (player.lives <= 0) endGame();
                         } else if (isPerfect) {
                             gameData.coins += Math.floor(2 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(2 * getPrestigeMultiplier());
@@ -2571,7 +2584,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         continue;
                     }
 
-                    if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
+                    if (!c.slapped && c.type !== 'meteor' && c.type !== 'cactus' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
                         if (dashTimer > 0) { // I-frames during dash -> Perfect Dodge (Graze)
                             if (!c.grazed) {
@@ -2653,7 +2666,12 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                                 });
                             }
                         } else {
-                            score += Math.floor(1 * getPrestigeMultiplier());
+                            if (c.type === 'cactus') {
+                                score += Math.floor(25 * getPrestigeMultiplier());
+                                addFloatText('TRICK AVOIDED! 🌵', c.x, canvas.height - 20, '#00ff00');
+                            } else {
+                                score += Math.floor(1 * getPrestigeMultiplier());
+                            }
                             const prevBest = bestScore;
                             bestScore = Math.max(bestScore, score);
                             if (score > prevBest && score % 10 === 0) sayRandom('highScore');
