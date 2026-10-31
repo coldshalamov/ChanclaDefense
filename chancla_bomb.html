@@ -1323,6 +1323,7 @@
                 else if (type === 'sniper') emoji = '🎯';
                 else if (type === 'ghost') emoji = '👻';
                 else if (type === 'blackhole') emoji = '🌌';
+                else if (type === 'pinata') emoji = '🪅';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -2084,8 +2085,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isGolden && Math.random() < 0.18;
                 const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && Math.random() < 0.15;
                 const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && Math.random() < 0.12;
-                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isPinata = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && Math.random() < 0.04;
+                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isPinata && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isBoomerang && !isSniper && !isPinata && !isGhost && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2096,6 +2098,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
                 else if (isBlackhole) { w = 40; h = 40; }
+                else if (isPinata) { w = 48; h = 48; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2109,6 +2112,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isSniper) vy = 0;
                 else if (isBlackhole) vy = baseSpeed * 0.5;
+                else if (isPinata) vy = baseSpeed * 0.3;
 
                 const vx = (Math.random() - 0.5) * 60;
                 if (gameData.hardMode) vy *= 1.5;
@@ -2124,8 +2128,11 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isGhost) type = 'ghost';
                 else if (isSniper) type = 'sniper';
                 else if (isBlackhole) type = 'blackhole';
+                else if (isPinata) type = 'pinata';
 
-                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed,
+                chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed, slapped: false, invisible: false,
+                    currentSlaps: type === 'pinata' ? 0 : undefined,
+                    slapsNeeded: type === 'pinata' ? 5 : undefined,
                     sniperTimer: isSniper ? 1.5 : 0 });
                 if (isSuper) sayPlayer('super');
             }
@@ -2172,7 +2179,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                                 for (let i = chanclas.length - 1; i >= 0; i--) {
                     const c = chanclas[i];
 
-                    if (c.type === 'meteor' && !c.slapped) {
+                    if ((c.type === 'meteor' || c.type === 'pinata') && !c.slapped) {
                         const distToMeteor = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y + c.h/2 - player.y, 2));
                         if (distToMeteor < 150) {
                             c.currentSlaps++;
@@ -2186,13 +2193,38 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                             if (c.currentSlaps >= c.slapsNeeded) {
                                 c.slapped = true;
-                                c.vy = -600;
-                                c.vx = (isa.x - c.x) * 1.5;
-                                c.rotSpeed = 15;
-                                addFloatText('METEOR REFLECTED! ☄️', c.x, c.y);
-                                playSound(1200, 0.5);
-                                triggerFlash(0.3, '#fff');
-                                specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 50);
+                                if (c.type === 'meteor') {
+                                    c.vy = -600;
+                                    c.vx = (isa.x - c.x) * 1.5;
+                                    c.rotSpeed = 15;
+                                    addFloatText('METEOR REFLECTED! ☄️', c.x, c.y);
+                                    playSound(1200, 0.5);
+                                    triggerFlash(0.3, '#fff');
+                                    specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 50);
+                                } else if (c.type === 'pinata') {
+                                    c.broken = true;
+                                    addFloatText('FIESTA! 🪅', c.x, c.y, '#ff00ff');
+                                    playSound(1200, 0.5);
+                                    triggerFlash(0.4, '#ff00ff');
+                                    gameData.coins += Math.floor(100 * getPrestigeMultiplier());
+                                    gameData.stats.totalCoinsEarned += Math.floor(100 * getPrestigeMultiplier());
+                                    score += Math.floor(1000 * getPrestigeMultiplier());
+
+                                    for(let j=0; j<20; j++){
+                                        spawnImpact(c.x + (Math.random()-0.5)*100, c.y + (Math.random()-0.5)*100, true);
+                                    }
+
+                                    // Clear all other chanclas
+                                    chanclas.forEach(otherC => {
+                                        if (otherC !== c && !otherC.slapped) {
+                                            otherC.slapped = true;
+                                            otherC.vx = (Math.random() - 0.5) * 600;
+                                            otherC.vy = -400 - Math.random() * 300;
+                                            otherC.rotSpeed = (Math.random() - 0.5) * 30;
+                                            score += Math.floor(10 * getPrestigeMultiplier());
+                                        }
+                                    });
+                                }
                             }
                             continue;
                         }
