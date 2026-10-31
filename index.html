@@ -358,6 +358,81 @@
             const keys = { left: false, right: false };
             const touch = { left: false, right: false };
 
+            let gamepadLeft = false;
+            let gamepadRight = false;
+            let lastGamepadLeft = false;
+            let lastGamepadRight = false;
+            let lastGamepadSlap = false;
+            let lastGamepadStart = false;
+
+            function pollGamepads() {
+                const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+                let anyLeft = false;
+                let anyRight = false;
+                let anySlap = false;
+                let anyStart = false;
+
+                for (let i = 0; i < gamepads.length; i++) {
+                    const gp = gamepads[i];
+                    if (!gp) continue;
+
+                    const gpLeft = (gp.buttons[14] && gp.buttons[14].pressed) || (gp.axes[0] < -0.5);
+                    const gpRight = (gp.buttons[15] && gp.buttons[15].pressed) || (gp.axes[0] > 0.5);
+                    let gpSlap = false;
+                    for (let b of [0, 1, 2, 3, 5, 7]) {
+                        if (gp.buttons[b] && gp.buttons[b].pressed) gpSlap = true;
+                    }
+                    const gpStart = gp.buttons[9] && gp.buttons[9].pressed;
+
+                    if (gpLeft) anyLeft = true;
+                    if (gpRight) anyRight = true;
+                    if (gpSlap) anySlap = true;
+                    if (gpStart) anyStart = true;
+                }
+
+                if (anyLeft && !lastGamepadLeft && dashCooldown <= 0) {
+                    if (timeElapsed - lastTapLeft < 0.25) {
+                        dashTimer = 0.15;
+                        dashCooldown = 0.8;
+                        dashDir = -1;
+                    }
+                    lastTapLeft = timeElapsed;
+                }
+
+                if (anyRight && !lastGamepadRight && dashCooldown <= 0) {
+                    if (timeElapsed - lastTapRight < 0.25) {
+                        dashTimer = 0.15;
+                        dashCooldown = 0.8;
+                        dashDir = 1;
+                    }
+                    lastTapRight = timeElapsed;
+                }
+
+                gamepadLeft = anyLeft;
+                gamepadRight = anyRight;
+
+                if (anySlap && !lastGamepadSlap) {
+                    if (state === STATE.PLAYING) {
+                        if (specialAttackBar >= maxSpecialAttack) {
+                            fireSpecialAttack();
+                        } else {
+                            trySlap();
+                        }
+                    }
+                }
+
+                if (anyStart && !lastGamepadStart) {
+                    if (state !== STATE.PLAYING) {
+                        resetGame();
+                    }
+                }
+
+                lastGamepadLeft = anyLeft;
+                lastGamepadRight = anyRight;
+                lastGamepadSlap = anySlap;
+                lastGamepadStart = anyStart;
+            }
+
             // Audio context for sound effects (reuse to avoid browser limits)
             let audioContext = null;
             function getAudioContext() {
@@ -1950,7 +2025,7 @@
                 ctx.font = '16px sans-serif';
                 ctx.fillText('Isa vs. Su Gringo Para Siempre', canvas.width / 2, 330);
                 ctx.font = '14px sans-serif';
-                ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
+                ctx.fillText('¡Manotea (Espacio/Botón A) las chanclas para regresarlas!', canvas.width / 2, 360);
 
                 const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1);
                 ctx.font = 'bold 16px sans-serif';
@@ -2845,7 +2920,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     isa.miradaTimer -= enemyDt;
 
                     if (player.stunTimer <= 0) {
-                        const moved = keys.left || keys.right || touch.left || touch.right || dashTimer > 0;
+                        const moved = keys.left || keys.right || touch.left || touch.right || gamepadLeft || gamepadRight || dashTimer > 0;
                         if (moved) {
                             triggerStun();
                         }
@@ -2918,8 +2993,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
                 } else if (player.stunTimer <= 0) {
                     const speed = player.speed;
-                    const moveLeft = keys.left || touch.left;
-                    const moveRight = keys.right || touch.right;
+                    const moveLeft = keys.left || touch.left || gamepadLeft;
+                    const moveRight = keys.right || touch.right || gamepadRight;
                     if (moveLeft) player.x -= speed * dt;
                     if (moveRight) player.x += speed * dt;
                 }
@@ -3219,6 +3294,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
             let last = 0;
 
             function loop(ts) {
+                pollGamepads();
                 const now = ts / 1000;
                 const dt = last ? Math.min(0.05, now - last) : 0;
                 last = now;
