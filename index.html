@@ -172,7 +172,7 @@
                 if (gameData.hardMode) mult *= 2;
                 return mult;
             }
-            let state = STATE.TITLE;
+            window.state = STATE.TITLE; let state = window.state; window.setState = (s) => { state = s; };
             let isEndless = false;
             let witchTimeTimer = 0;
             let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0, greed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
@@ -291,7 +291,7 @@
                 }
             }
 
-            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, stunTimer: 0 };
+            const player = { x: canvas.width / 2, y: canvas.height - 70, w: 55, h: 45, speed: 230, lives: 3, maxLives: 5, shield: false, hitTimer: 0, stunTimer: 0, jalapenoTimer: 0 };
             const isa = { x: canvas.width / 2, y: 70, anger: 100, displayAnger: 100, maxAnger: 100, hitTimer: 0, enraged: false, miradaState: 0, miradaTimer: 0, miradaCooldown: 15 };
 
             const COSMETICS_LIST = [
@@ -492,7 +492,7 @@
                 flash.color = color;
             }
 
-            function resetGame() {
+            window.resetGame = resetGame; function resetGame() {
                 if (!gameData.stats) gameData.stats = { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0 };
                 if (!gameData.stats.wins) gameData.stats.wins = 1;
                 if (!gameData.stats.xp) gameData.stats.xp = 0;
@@ -1319,6 +1319,7 @@
                 else if (type === 'bomb') emoji = '💣';
                 else if (type === 'homing') emoji = '🪬';
                 else if (type === 'golden') emoji = '✨👞';
+                else if (type === 'jalapeno') emoji = '🌶️';
                 else if (type === 'boomerang') emoji = '🪃';
                 else if (type === 'sniper') emoji = '🎯';
                 else if (type === 'ghost') emoji = '👻';
@@ -1349,6 +1350,9 @@
                     } else if (type === 'golden') {
                         ctx.shadowColor = '#ffd700';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'jalapeno') {
+                        ctx.shadowColor = '#ff3300';
+                        ctx.shadowBlur = 15;
                     } else if (type === 'blackhole') {
                         ctx.shadowColor = '#9b59b6';
                         ctx.shadowBlur = 25;
@@ -2080,7 +2084,8 @@
                 const extraGolden = (gameData.prestigeUpgrades?.golden_chance || 0) * 0.02;
                 const isBomb = Math.random() < 0.08;
 const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
-                const isCactus = !isBomb && !isBlackhole && Math.random() < 0.05;
+                const isJalapeno = !isBomb && !isBlackhole && Math.random() < 0.03;
+                const isCactus = !isBomb && !isBlackhole && !isJalapeno && Math.random() < 0.05;
                 const isGolden = !isBomb && !isBlackhole && !isCactus && Math.random() < (0.05 + extraGolden);
                 const isHoming = superEnabled && !isBomb && !isBlackhole && !isGolden && !isCactus && Math.random() < 0.10;
                 const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isGolden && !isCactus && Math.random() < 0.18;
@@ -2098,6 +2103,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
                 else if (isBlackhole) { w = 40; h = 40; }
+                else if (isJalapeno) { w = 32; h = 32; }
                 else if (isCactus) { w = 32; h = 32; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
@@ -2112,6 +2118,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isSniper) vy = 0;
                 else if (isBlackhole) vy = baseSpeed * 0.5;
+                else if (isJalapeno) vy = baseSpeed * 1.3;
                 else if (isCactus) vy = baseSpeed;
 
                 const vx = (Math.random() - 0.5) * 60;
@@ -2128,6 +2135,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isGhost) type = 'ghost';
                 else if (isSniper) type = 'sniper';
                 else if (isBlackhole) type = 'blackhole';
+                else if (isJalapeno) type = 'jalapeno';
                 else if (isCactus) type = 'cactus';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed,
@@ -2218,6 +2226,17 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                                 endGame();
                                 return;
                             }
+                            continue;
+                        }
+
+                        if (c.type === 'jalapeno') {
+                            c.slapped = true;
+                            player.jalapenoTimer = 5.0;
+                            triggerFlash(0.3, '#ff3300');
+                            playSound(1000, 0.3);
+                            addFloatText('¡FUEGO! 🌶️', player.x, player.y - 40, '#ff3300', 24);
+                            chanclas.splice(i, 1);
+                            slappedAny = true;
                             continue;
                         }
 
@@ -2573,6 +2592,17 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                     if (!c.slapped && c.type !== 'meteor' && rectsOverlap(player, c)) {
                         if (c.isShrapnel && c.vy < 0) continue; // Don't hurt player if flying upwards
+
+                        if (player.jalapenoTimer > 0) { // Jalapeno invincibility
+                            c.slapped = true;
+                            c.vy = -500;
+                            c.vx = (isa.x - c.x) * 1.2;
+                            c.rotSpeed = 15;
+                            playSound(850, 0.1);
+                            addFloatText('FUEGO DEFLECT! 🔥', c.x, c.y);
+                            continue;
+                        }
+
                         if (dashTimer > 0) { // I-frames during dash -> Perfect Dodge (Graze)
                             if (!c.grazed) {
                                 c.grazed = true;
@@ -2848,6 +2878,22 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     player.stunTimer -= dt;
                 }
 
+                if (player.jalapenoTimer > 0) {
+                    player.jalapenoTimer -= dt;
+                    // Fire trail effect
+                    if (Math.random() < 0.4) {
+                        fireParticles.push({
+                            x: player.x + (Math.random() - 0.5) * player.w,
+                            y: player.y + player.h / 2,
+                            vx: (Math.random() - 0.5) * 50,
+                            vy: Math.random() * 50,
+                            life: 0.2 + Math.random() * 0.2,
+                            maxLife: 0.5,
+                            size: 3 + Math.random() * 4
+                        });
+                    }
+                }
+
                 if (isa.miradaCooldown > 0) {
                     isa.miradaCooldown -= enemyDt;
                 } else if (isa.miradaState === 0 && isa.hitTimer <= 0) {
@@ -2941,7 +2987,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     player.x += dashDir * 800 * dt;
                     dashTrails.push({ x: player.x, y: player.y, life: 0.15 });
                 } else if (player.stunTimer <= 0) {
-                    const speed = player.speed;
+                    const speed = player.jalapenoTimer > 0 ? player.speed * 2.5 : player.speed;
                     const moveLeft = keys.left || touch.left;
                     const moveRight = keys.right || touch.right;
                     if (moveLeft) player.x -= speed * dt;
