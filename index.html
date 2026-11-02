@@ -163,6 +163,7 @@
 
             function getPrestigeMultiplier() {
                 let mult = (1 + (gameData.prestige || 0) * 0.5) * (1 + (gameData.upgrades.greed || 0) * 0.1);
+                mult += ((gameData.stats.rank || 1) - 1) * 0.05;
                 if (gameData.prestigeUpgrades && gameData.prestigeUpgrades.endless_mastery) {
                     mult += (gameData.prestigeUpgrades.endless_mastery * (gameData.endlessBestScore || 0) * 0.0001);
                 }
@@ -1953,7 +1954,8 @@
                 ctx.font = '14px sans-serif';
                 ctx.fillText('¡Manotea (Espacio) las chanclas para regresarlas!', canvas.width / 2, 360);
 
-                const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1);
+                const rankBonus = ((gameData.stats.rank || 1) - 1) * 5;
+                const rankStr = 'Gringo Rank: ' + (gameData.stats.rank || 1) + (rankBonus > 0 ? ' (+' + rankBonus + '% Mult)' : '');
                 ctx.font = 'bold 16px sans-serif';
                 ctx.fillStyle = '#ff9f1c';
                 ctx.fillText(rankStr, canvas.width / 2, 380);
