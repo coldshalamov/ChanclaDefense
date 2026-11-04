@@ -2203,7 +2203,10 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         comboCount++;
                         comboTimer = 2.5;
                         if (comboCount > (gameData.stats.maxCombo || 0)) gameData.stats.maxCombo = comboCount;
-                        score += Math.floor(comboCount * getPrestigeMultiplier());
+                        let scoreMult = 1.0;
+                        if (comboCount >= 25) scoreMult = 2.0;
+                        else if (comboCount >= 10) scoreMult = 1.5;
+                        score += Math.floor(comboCount * getPrestigeMultiplier() * scoreMult);
 
                         if (gameData.prestigeUpgrades?.combo_shield && comboCount % 30 === 0 && comboCount > 0) {
                             if (!player.shield) {
@@ -2456,7 +2459,10 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                                     spawnImpact(other.x, other.y);
                                     spawnChainEffect(c.x, c.y, other.x, other.y);
                                     playSound(700, 0.1);
-                                    score += Math.floor((5 + comboCount) * getPrestigeMultiplier()); // Bonus score for chaotic skill
+                                    let scoreMult = 1.0;
+                                    if (comboCount >= 25) scoreMult = 2.0;
+                                    else if (comboCount >= 10) scoreMult = 1.5;
+                                    score += Math.floor((5 + comboCount) * getPrestigeMultiplier() * scoreMult); // Bonus score for chaotic skill
                                 }
                             }
                         }
@@ -2476,6 +2482,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
+
+                            const comboDmgMult = 1.0 + Math.min(1.0, Math.floor(comboCount / 5) * 0.1);
+                            damage = Math.floor(damage * comboDmgMult);
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
