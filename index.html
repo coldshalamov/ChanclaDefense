@@ -175,7 +175,7 @@
             let state = STATE.TITLE;
             let isEndless = false;
             let witchTimeTimer = 0;
-            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0, greed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
+            let gameData = { coins: 0, upgrades: { lives: 0, shield: 0, cooldown: 0, speed: 0, power: 0, greed: 0 }, bestScore: 0, stats: { totalSlaps: 0, perfectSlaps: 0, gamesPlayed: 0, totalCoinsEarned: 0, xp: 0, rank: 1, maxCombo: 0 }, achievements: {}, cosmetics: ['none'], currentHat: 'none' };
             try {
                 const saved = localStorage.getItem('chancla_bomb_save');
                 if (saved) {
@@ -309,7 +309,8 @@
                 { id: 'perfect_timing', name: 'Perfect Timing', desc: 'Get 50 perfect slaps', reward: 50, check: () => gameData.stats.perfectSlaps >= 50 },
                 { id: 'high_roller', name: 'High Roller', desc: 'Score 1000 in one game', reward: 150, check: () => gameData.bestScore >= 1000 },
                 { id: 'rich_gringo', name: 'Rich Gringo', desc: 'Earn 1000 total coins', reward: 200, check: () => gameData.stats.totalCoinsEarned >= 1000 },
-                { id: 'veteran', name: 'Veteran', desc: 'Play 50 games', reward: 75, check: () => gameData.stats.gamesPlayed >= 50 }
+                { id: 'veteran', name: 'Veteran', desc: 'Play 50 games', reward: 75, check: () => gameData.stats.gamesPlayed >= 50 },
+                { id: 'combo_king', name: 'Combo King', desc: 'Reach 50 Combo', reward: 150, check: () => gameData.stats.maxCombo >= 50 }
             ];
 
 
@@ -536,6 +537,9 @@
                 specialProjectiles = [];
                 impacts = [];
                 score = 0;
+                if (comboCount > (gameData.stats.maxCombo || 0)) {
+                    gameData.stats.maxCombo = comboCount;
+                }
                 comboCount = 0;
                 comboTimer = 0;
                 spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
@@ -2167,6 +2171,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     if (dist < slapRange) {
                         if (c.type === 'cactus') {
                             c.slapped = true;
+                            if (comboCount > (gameData.stats.maxCombo || 0)) {
+                                gameData.stats.maxCombo = comboCount;
+                            }
                             comboCount = 0;
                             comboTimer = 0;
                             triggerShake(15, 0.4);
@@ -2288,6 +2295,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                 } else {
                     slapCooldown = 0.15;
+                    if (comboCount > (gameData.stats.maxCombo || 0)) {
+                        gameData.stats.maxCombo = comboCount;
+                    }
                     comboCount = 0;
                     comboTimer = 0;
                     playWhoosh();
@@ -2560,6 +2570,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         }
                         if (c.type === 'cactus') continue;
                         const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper') ? 2 : 1;
+                        if (comboCount > (gameData.stats.maxCombo || 0)) {
+                            gameData.stats.maxCombo = comboCount;
+                        }
                         comboCount = 0;
                         comboTimer = 0;
                         const shakeAmt = c.type === 'bomb' ? 20 : (c.type === 'super' || c.type === 'fire' || c.type === 'boomerang' || c.type === 'sniper' ? 15 : 8);
@@ -2740,6 +2753,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
             }
 
             function triggerWin() {
+                if (comboCount > (gameData.stats.maxCombo || 0)) {
+                    gameData.stats.maxCombo = comboCount;
+                }
                 const defeatedLevel = gameData.stats.wins || 1;
                 const bonus = Math.floor((50 + (defeatedLevel - 1) * 50) * getPrestigeMultiplier());
                 gameData.coins += bonus;
@@ -2753,6 +2769,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
             }
 
             function endGame() {
+                if (comboCount > (gameData.stats.maxCombo || 0)) {
+                    gameData.stats.maxCombo = comboCount;
+                }
                 state = STATE.GAMEOVER;
                 const earned = Math.floor(score / 10);
                 gameData.coins += earned;
@@ -2777,6 +2796,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 if (comboCount > 0) {
                     comboTimer -= dt;
                     if (comboTimer <= 0) {
+                        if (comboCount > (gameData.stats.maxCombo || 0)) {
+                            gameData.stats.maxCombo = comboCount;
+                        }
                         comboCount = 0;
                         comboTimer = 0;
                     }
