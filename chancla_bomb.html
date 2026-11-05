@@ -1302,6 +1302,7 @@
                 else if (type === 'ghost') emoji = '👻';
                 else if (type === 'blackhole') emoji = '🌌';
                 else if (type === 'cactus') emoji = '🌵';
+                else if (type === 'pinata') emoji = '🪅';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -2058,14 +2059,15 @@
                 const extraGolden = (gameData.prestigeUpgrades?.golden_chance || 0) * 0.02;
                 const isBomb = Math.random() < 0.08;
 const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
-                const isCactus = !isBomb && !isBlackhole && Math.random() < 0.05;
-                const isGolden = !isBomb && !isBlackhole && !isCactus && Math.random() < (0.05 + extraGolden);
-                const isHoming = superEnabled && !isBomb && !isBlackhole && !isGolden && !isCactus && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isGolden && !isCactus && Math.random() < 0.18;
-                const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && Math.random() < 0.15;
-                const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && Math.random() < 0.12;
-                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isPinata = !isBomb && !isBlackhole && Math.random() < 0.04;
+                const isCactus = !isBomb && !isBlackhole && !isPinata && Math.random() < 0.05;
+                const isGolden = !isBomb && !isBlackhole && !isPinata && !isCactus && Math.random() < (0.05 + extraGolden);
+                const isHoming = superEnabled && !isBomb && !isBlackhole && !isPinata && !isGolden && !isCactus && Math.random() < 0.10;
+                const isSuper = superEnabled && !isBomb && !isBlackhole && !isPinata && !isHoming && !isGolden && !isCactus && Math.random() < 0.18;
+                const isBoomerang = !isBomb && !isBlackhole && !isPinata && !isHoming && !isSuper && !isGolden && !isCactus && Math.random() < 0.15;
+                const isSniper = !isBomb && !isBlackhole && !isPinata && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && Math.random() < 0.12;
+                const isGhost = !isBomb && !isBlackhole && !isPinata && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isBlackhole && !isPinata && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2077,6 +2079,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isSniper) { w = 34; h = 24; }
                 else if (isBlackhole) { w = 40; h = 40; }
                 else if (isCactus) { w = 32; h = 32; }
+                else if (isPinata) { w = 40; h = 40; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2091,6 +2094,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isSniper) vy = 0;
                 else if (isBlackhole) vy = baseSpeed * 0.5;
                 else if (isCactus) vy = baseSpeed;
+                else if (isPinata) vy = baseSpeed * 0.6;
 
                 const vx = (Math.random() - 0.5) * 60;
                 if (gameData.hardMode) vy *= 1.5;
@@ -2107,9 +2111,12 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isSniper) type = 'sniper';
                 else if (isBlackhole) type = 'blackhole';
                 else if (isCactus) type = 'cactus';
+                else if (isPinata) type = 'pinata';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed,
-                    sniperTimer: isSniper ? 1.5 : 0 });
+                    sniperTimer: isSniper ? 1.5 : 0,
+                    slapsNeeded: type === 'pinata' ? 5 : 0,
+                    currentSlaps: 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2157,6 +2164,40 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                                 playSound(1200, 0.5);
                                 triggerFlash(0.3, '#fff');
                                 specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 50);
+                            }
+                            continue;
+                        }
+                    }
+
+                    if (c.type === 'pinata' && !c.slapped) {
+                        const distToPinata = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y + c.h/2 - player.y, 2));
+                        if (distToPinata < slapRange) {
+                            c.currentSlaps++;
+                            c.vy -= 15;
+                            c.y -= 5;
+                            spawnImpact(player.x, player.y - 40, true);
+                            addFloatText(`HIT! ${c.currentSlaps}/${c.slapsNeeded}`, c.x + (Math.random()-0.5)*40, c.y + c.h/2 + (Math.random()-0.5)*20, '#ffb347');
+                            triggerShake(3, 0.1);
+                            slappedAny = true;
+
+                            if (c.currentSlaps >= c.slapsNeeded) {
+                                c.slapped = true;
+                                c.vy = -500;
+                                c.vx = (Math.random() - 0.5) * 400;
+                                c.rotSpeed = 30;
+                                addFloatText('FIESTA! 🪅✨', c.x, c.y, '#ffd700', 20);
+                                playSound(1200, 0.5);
+                                triggerFlash(0.3, '#ff69b4');
+
+                                // Shower coins and points
+                                const coinsGained = Math.floor(50 * getPrestigeMultiplier());
+                                gameData.coins += coinsGained;
+                                gameData.stats.totalCoinsEarned += coinsGained;
+                                score += Math.floor(1000 * getPrestigeMultiplier());
+
+                                // Clear all other active non-meteor chanclas
+                                chanclas = chanclas.filter(ch => ch === c || ch.slapped || ch.type === 'meteor');
+                                break;
                             }
                             continue;
                         }
