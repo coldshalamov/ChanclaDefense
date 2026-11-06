@@ -2246,6 +2246,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             triggerFlash(0.3, '#ffd700');
                             addFloatText('GOLDEN SLAP! ✨', c.x, c.y, '#ffd700');
                             isa.anger = Math.max(0, isa.anger - 35);
+                            addFloatText('-35', isa.x + (Math.random() - 0.5) * 40, isa.y + (Math.random() - 0.5) * 40, '#ff3333', 20);
                             if (isa.anger <= 0) triggerWin();
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.2);
@@ -2488,6 +2489,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             damage += (gameData.upgrades.power || 0) * 2;
 
                             isa.anger = Math.max(0, isa.anger - damage);
+                            addFloatText('-' + damage, isa.x + (Math.random() - 0.5) * 40, isa.y + (Math.random() - 0.5) * 40, '#ff3333', 20);
                             isa.hitTimer = 0.5;
 
                             if (c.type === 'bomb') {
@@ -2688,6 +2690,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         // Hit Isa!
                         let dmg = 20 + (gameData.upgrades.power || 0) * 5;
                         isa.anger = Math.max(0, isa.anger - dmg);
+                        addFloatText('-' + dmg, isa.x + (Math.random() - 0.5) * 40, isa.y + (Math.random() - 0.5) * 40, '#ff3333', 20);
                         isa.hitTimer = 0.7;
                         specialProjectiles.splice(i, 1);
 
