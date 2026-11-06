@@ -339,6 +339,7 @@
             let chainEffects = [];
             let comboCount = 0;
             let comboTimer = 0;
+            let spicyModeTimer = 0;
             const flash = { timer: 0, maxTime: 0, color: '#fff' };
             let specialReadyTriggered = false;
                 witchTimeTimer = 0;
@@ -542,6 +543,7 @@
                 }
                 comboCount = 0;
                 comboTimer = 0;
+                spicyModeTimer = 0;
                 spawnInterval = Math.max(0.2, 1.2 - (wins - 1) * 0.05);
                 minSpawnInterval = Math.max(0.1, 0.45 - (wins - 1) * 0.02);
                 spawnTimer = 0;
@@ -574,12 +576,10 @@
             }
 
             const cityShapes = [];
-            const cactusShapes = [];
             const starDots = [];
 
             function buildBackgroundElements() {
                 cityShapes.length = 0;
-                cactusShapes.length = 0;
                 starDots.length = 0;
                 for (let i = 0; i < 6; i++) {
                     const w = 40 + Math.random() * 30;
@@ -591,7 +591,6 @@
                 for (let i = 0; i < 3; i++) {
                     const baseX = 60 + i * 120 + Math.random() * 40;
                     const baseY = canvas.height - 30;
-                    cactusShapes.push({ baseX, baseY });
                 }
                 for (let i = 0; i < 30; i++) {
                     starDots.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.6 });
@@ -625,17 +624,7 @@
                 cityShapes.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
                 ctx.restore();
 
-                ctx.save();
-                ctx.translate(playerOffsetX * 0.6, 0);
-                ctx.fillStyle = '#1b8c6e';
-                cactusShapes.forEach(c => {
-                    ctx.beginPath();
-                    ctx.moveTo(c.baseX, c.baseY);
-                    ctx.lineTo(c.baseX + 20, c.baseY - 70);
-                    ctx.lineTo(c.baseX + 40, c.baseY);
-                    ctx.fill();
-                });
-                ctx.restore();
+
             }
 
             function drawFlash() {
@@ -1305,7 +1294,7 @@
                 else if (type === 'sniper') emoji = '🎯';
                 else if (type === 'ghost') emoji = '👻';
                 else if (type === 'blackhole') emoji = '🌌';
-                else if (type === 'cactus') emoji = '🌵';
+                else if (type === 'jalapeno') emoji = '🌶️';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -2062,14 +2051,14 @@
                 const extraGolden = (gameData.prestigeUpgrades?.golden_chance || 0) * 0.02;
                 const isBomb = Math.random() < 0.08;
 const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
-                const isCactus = !isBomb && !isBlackhole && Math.random() < 0.05;
-                const isGolden = !isBomb && !isBlackhole && !isCactus && Math.random() < (0.05 + extraGolden);
-                const isHoming = superEnabled && !isBomb && !isBlackhole && !isGolden && !isCactus && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isGolden && !isCactus && Math.random() < 0.18;
-                const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && Math.random() < 0.15;
-                const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && Math.random() < 0.12;
-                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isJalapeno = !isBomb && !isBlackhole && Math.random() < 0.05;
+                const isGolden = !isBomb && !isBlackhole && !isJalapeno && Math.random() < (0.05 + extraGolden);
+                const isHoming = superEnabled && !isBomb && !isBlackhole && !isGolden && !isJalapeno && Math.random() < 0.10;
+                const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isGolden && !isJalapeno && Math.random() < 0.18;
+                const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isJalapeno && Math.random() < 0.15;
+                const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isJalapeno && !isBoomerang && Math.random() < 0.12;
+                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isJalapeno && !isBoomerang && !isSniper && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isJalapeno && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2080,7 +2069,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) { w = 38; h = 22; }
                 else if (isSniper) { w = 34; h = 24; }
                 else if (isBlackhole) { w = 40; h = 40; }
-                else if (isCactus) { w = 32; h = 32; }
+                else if (isJalapeno) { w = 32; h = 32; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2094,7 +2083,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isBoomerang) vy = baseSpeed * 1.2; // faster down
                 else if (isSniper) vy = 0;
                 else if (isBlackhole) vy = baseSpeed * 0.5;
-                else if (isCactus) vy = baseSpeed;
+                else if (isJalapeno) vy = baseSpeed;
 
                 const vx = (Math.random() - 0.5) * 60;
                 if (gameData.hardMode) vy *= 1.5;
@@ -2110,7 +2099,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isGhost) type = 'ghost';
                 else if (isSniper) type = 'sniper';
                 else if (isBlackhole) type = 'blackhole';
-                else if (isCactus) type = 'cactus';
+                else if (isJalapeno) type = 'jalapeno';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed,
                     sniperTimer: isSniper ? 1.5 : 0 });
@@ -2125,7 +2114,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
 
             function trySlap() {
-                if (slapCooldown > 0) return;
+                if (slapCooldown > 0 && spicyModeTimer <= 0) return;
 
                 slapEffect.timer = slapEffect.duration;
                 slapEffect.type = 'miss';
@@ -2169,21 +2158,15 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     const dist = Math.sqrt(Math.pow(c.x - player.x, 2) + Math.pow(c.y - player.y, 2));
 
                     if (dist < slapRange) {
-                        if (c.type === 'cactus') {
+                        if (c.type === 'jalapeno') {
                             c.slapped = true;
-                            if (comboCount > (gameData.stats.maxCombo || 0)) {
-                                gameData.stats.maxCombo = comboCount;
-                            }
-                            comboCount = 0;
-                            comboTimer = 0;
-                            triggerShake(15, 0.4);
-                            player.lives -= 1;
-                            addFloatText('CACTUS SLAP! 🌵💔', c.x, c.y - 20);
+                            spicyModeTimer = 5.0;
+                            addFloatText('SPICY MODE! 🌶️🔥', player.x, player.y - 60, '#ff4500', 20);
+                            playSound(1200, 0.4);
+                            c.vy = -600;
+                            c.vx = (isa.x - c.x) * 1.5;
+                            triggerFlash(0.3, '#ff4500');
                             slappedAny = true;
-                            if (player.lives <= 0) {
-                                endGame();
-                                return;
-                            }
                             continue;
                         }
 
@@ -2301,6 +2284,18 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     comboCount = 0;
                     comboTimer = 0;
                     playWhoosh();
+                }
+                if (spicyModeTimer > 0) {
+                    slapCooldown = 0.08;
+                    chanclas.push({
+                        x: player.x,
+                        y: player.y - 20,
+                        vx: (Math.random() - 0.5) * 50,
+                        vy: -800,
+                        w: 32, h: 18, type: 'fire', rotation: 0, rotSpeed: 15,
+                        slapped: true
+                    });
+                    playSound(800, 0.1);
                 }
             }
 
@@ -2568,8 +2563,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             chanclas.splice(i, 1);
                             continue;
                         }
-                        if (c.type === 'cactus') continue;
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper') ? 2 : 1;
+                                                const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper') ? 2 : 1;
                         if (comboCount > (gameData.stats.maxCombo || 0)) {
                             gameData.stats.maxCombo = comboCount;
                         }
@@ -2605,10 +2599,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             addFloatText('SWOOP! 🪃', c.x, canvas.height - 20);
                             continue;
                         }
-                        if (c.type === 'cactus' && !c.slapped) {
-                            score += Math.floor(25 * getPrestigeMultiplier());
-                            addFloatText('TRICK AVOIDED! 🌵', c.x, canvas.height - 20);
-                        } else if (c.type === 'bomb') {
+                        if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
                             triggerFlash(0.1, '#fff');
                             playSound(1000, 0.4);
@@ -2791,6 +2782,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 if (state !== STATE.PLAYING) return;
 
                 if (witchTimeTimer > 0) witchTimeTimer -= dt;
+                if (spicyModeTimer > 0) spicyModeTimer -= dt;
                 const enemyDt = witchTimeTimer > 0 ? dt * 0.3 : dt;
 
                 if (comboCount > 0) {
