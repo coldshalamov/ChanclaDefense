@@ -2887,6 +2887,29 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                     const moveRight = keys.right || touch.right;
                     if (moveLeft) player.x -= speed * dt;
                     if (moveRight) player.x += speed * dt;
+
+                    // Controller trigger/bumper dash logic
+                    if (dashCooldown <= 0) {
+                        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+                        for (let i = 0; i < gamepads.length; i++) {
+                            const gp = gamepads[i];
+                            if (!gp) continue;
+
+                            // Check triggers or bumpers
+                            const ltPressed = gp.buttons[6]?.pressed || gp.buttons[4]?.pressed;
+                            const rtPressed = gp.buttons[7]?.pressed || gp.buttons[5]?.pressed;
+
+                            if (ltPressed && moveLeft) {
+                                dashTimer = 0.15;
+                                dashCooldown = 0.8;
+                                dashDir = -1;
+                            } else if (rtPressed && moveRight) {
+                                dashTimer = 0.15;
+                                dashCooldown = 0.8;
+                                dashDir = 1;
+                            }
+                        }
+                    }
                 }
                 player.x = Math.max(player.w / 2 + 10, Math.min(canvas.width - player.w / 2 - 10, player.x));
 
