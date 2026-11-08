@@ -568,6 +568,12 @@
                 setDirectionsVisible(false);
             }
 
+            function getComboScoreMultiplier() {
+                if (comboCount >= 25) return 2.0;
+                if (comboCount >= 10) return 1.5;
+                return 1.0;
+            }
+
             function getComboPhrase(c) {
                 if (c >= 25) return "LEGEND! 👑";
                 if (c >= 15) return "IMPOSSIBLE! 🤯";
@@ -2216,7 +2222,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         comboCount++;
                         comboTimer = 2.5;
                         if (comboCount > (gameData.stats.maxCombo || 0)) gameData.stats.maxCombo = comboCount;
-                        score += Math.floor(comboCount * getPrestigeMultiplier());
+                        score += Math.floor(comboCount * getPrestigeMultiplier() * getComboScoreMultiplier());
 
                         if (gameData.prestigeUpgrades?.combo_shield && comboCount % 30 === 0 && comboCount > 0) {
                             if (!player.shield) {
@@ -2248,7 +2254,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         if (c.type === 'golden') {
                             gameData.coins += Math.floor(25 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(25 * getPrestigeMultiplier());
-                            score += Math.floor(500 * getPrestigeMultiplier());
+                            score += Math.floor(500 * getPrestigeMultiplier() * getComboScoreMultiplier());
                             triggerFlash(0.3, '#ffd700');
                             addFloatText('GOLDEN SLAP! ✨', c.x, c.y, '#ffd700');
                             isa.anger = Math.max(0, isa.anger - 35);
@@ -2258,7 +2264,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         } else if (c.type === 'blackhole') {
                             gameData.coins += Math.floor(15 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(15 * getPrestigeMultiplier());
-                            score += Math.floor(300 * getPrestigeMultiplier());
+                            score += Math.floor(300 * getPrestigeMultiplier() * getComboScoreMultiplier());
                             addFloatText('GRAVITY REVERSED! 🌌', c.x, c.y, '#9b59b6');
                             isa.anger = Math.max(0, isa.anger - 25);
                             if (isa.anger <= 0) triggerWin();
@@ -2267,7 +2273,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         } else if (c.type === 'ghost') {
                             gameData.coins += Math.floor(5 * getPrestigeMultiplier());
                             gameData.stats.totalCoinsEarned += Math.floor(5 * getPrestigeMultiplier());
-                            score += Math.floor(150 * getPrestigeMultiplier());
+                            score += Math.floor(150 * getPrestigeMultiplier() * getComboScoreMultiplier());
                             addFloatText('GHOST BUSTED! 👻', c.x, c.y, '#fff');
                             isa.anger = Math.max(0, isa.anger - 10);
                             if (isa.anger <= 0) triggerWin();
@@ -2472,7 +2478,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                                     spawnImpact(other.x, other.y);
                                     spawnChainEffect(c.x, c.y, other.x, other.y);
                                     playSound(700, 0.1);
-                                    score += Math.floor((5 + comboCount) * getPrestigeMultiplier()); // Bonus score for chaotic skill
+                                    score += Math.floor((5 + comboCount) * getPrestigeMultiplier() * getComboScoreMultiplier()); // Bonus score for chaotic skill
                                 }
                             }
                         }
@@ -2492,6 +2498,9 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
 
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
+
+                            const damageMult = 1.0 + Math.min(1.0, Math.floor(comboCount / 5) * 0.1);
+                            damage = Math.floor(damage * damageMult);
 
                             isa.anger = Math.max(0, isa.anger - damage);
                             isa.hitTimer = 0.5;
@@ -2548,7 +2557,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             if (!c.grazed) {
                                 c.grazed = true;
                                 updateMissionProgress('dodge', 1);
-                                score += Math.floor(5 * getPrestigeMultiplier());
+                                score += Math.floor(5 * getPrestigeMultiplier() * getComboScoreMultiplier());
                                 specialAttackBar = Math.min(maxSpecialAttack, specialAttackBar + 5);
                                 addFloatText('PERFECT DODGE!', player.x, player.y - 30, '#00ffff');
                                 playSound(850, 0.1);
@@ -2612,7 +2621,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             continue;
                         }
                         if (c.type === 'cactus' && !c.slapped) {
-                            score += Math.floor(25 * getPrestigeMultiplier());
+                            score += Math.floor(25 * getPrestigeMultiplier() * getComboScoreMultiplier());
                             addFloatText('TRICK AVOIDED! 🌵', c.x, canvas.height - 20);
                         } else if (c.type === 'bomb') {
                             triggerShake(15, 0.3);
@@ -2631,7 +2640,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                                 });
                             }
                         } else {
-                            score += Math.floor(1 * getPrestigeMultiplier());
+                            score += Math.floor(1 * getPrestigeMultiplier() * getComboScoreMultiplier());
                             const prevBest = bestScore;
                             bestScore = Math.max(bestScore, score);
                             if (score > prevBest && score % 10 === 0) sayRandom('highScore');
