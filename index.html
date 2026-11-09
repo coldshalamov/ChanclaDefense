@@ -1310,6 +1310,7 @@
                 else if (type === 'ghost') emoji = '👻';
                 else if (type === 'blackhole') emoji = '🌌';
                 else if (type === 'cactus') emoji = '🌵';
+                else if (type === 'vampire') emoji = '🦇';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -2069,13 +2070,14 @@
                 const isBomb = Math.random() < 0.08;
 const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 const isCactus = !isBomb && !isBlackhole && Math.random() < 0.05;
-                const isGolden = !isBomb && !isBlackhole && !isCactus && Math.random() < (0.05 + extraGolden);
-                const isHoming = superEnabled && !isBomb && !isBlackhole && !isGolden && !isCactus && Math.random() < 0.10;
-                const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isGolden && !isCactus && Math.random() < 0.18;
-                const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && Math.random() < 0.15;
-                const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && Math.random() < 0.12;
-                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isVampire = !isBomb && !isBlackhole && !isCactus && Math.random() < 0.04;
+                const isGolden = !isBomb && !isBlackhole && !isCactus && !isVampire && Math.random() < (0.05 + extraGolden);
+                const isHoming = superEnabled && !isBomb && !isBlackhole && !isGolden && !isCactus && !isVampire && Math.random() < 0.10;
+                const isSuper = superEnabled && !isBomb && !isBlackhole && !isHoming && !isGolden && !isCactus && !isVampire && Math.random() < 0.18;
+                const isBoomerang = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isVampire && Math.random() < 0.15;
+                const isSniper = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isVampire && !isBoomerang && Math.random() < 0.12;
+                const isGhost = !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isVampire && !isBoomerang && !isSniper && Math.random() < 0.12;
+                const isFire = isa.enraged && !isBomb && !isBlackhole && !isHoming && !isSuper && !isGolden && !isCactus && !isVampire && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2087,6 +2089,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isSniper) { w = 34; h = 24; }
                 else if (isBlackhole) { w = 40; h = 40; }
                 else if (isCactus) { w = 32; h = 32; }
+                else if (isVampire) { w = 36; h = 24; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2101,6 +2104,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isSniper) vy = 0;
                 else if (isBlackhole) vy = baseSpeed * 0.5;
                 else if (isCactus) vy = baseSpeed;
+                else if (isVampire) vy = baseSpeed * 0.9;
 
                 const vx = (Math.random() - 0.5) * 60;
                 if (gameData.hardMode) vy *= 1.5;
@@ -2117,9 +2121,10 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                 else if (isSniper) type = 'sniper';
                 else if (isBlackhole) type = 'blackhole';
                 else if (isCactus) type = 'cactus';
+                else if (isVampire) type = 'vampire';
 
                 chanclas.push({ x, y, vx, vy, w, h, type, rotation: 0, rotSpeed,
-                    sniperTimer: isSniper ? 1.5 : 0 });
+                    sniperTimer: isSniper ? 1.5 : 0, vampirePhase: isVampire ? Math.random() * Math.PI * 2 : 0 });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2254,6 +2259,20 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             isa.anger = Math.max(0, isa.anger - 35);
                             if (isa.anger <= 0) triggerWin();
                             spawnImpact(c.x, c.y, true);
+                            playSound(850, 0.2);
+                        } else if (c.type === 'vampire') {
+                            gameData.coins += Math.floor(20 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(20 * getPrestigeMultiplier());
+                            score += Math.floor(250 * getPrestigeMultiplier());
+                            if (isPerfect) {
+                                player.lives = Math.min(player.maxLives, player.lives + 1);
+                                addFloatText('VAMP HEAL! 🦇❤️', c.x, c.y, '#ff0044');
+                            } else {
+                                addFloatText('VAMPIRE SLAPPED! 🦇', c.x, c.y, '#ff0044');
+                            }
+                            isa.anger = Math.max(0, isa.anger - 15);
+                            if (isa.anger <= 0) triggerWin();
+                            spawnImpact(c.x, c.y, isPerfect);
                             playSound(850, 0.2);
                         } else if (c.type === 'blackhole') {
                             gameData.coins += Math.floor(15 * getPrestigeMultiplier());
@@ -2417,6 +2436,12 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         }
                     }
 
+                    // Vampire Logic
+                    if (c.type === 'vampire' && !c.slapped) {
+                        c.vampirePhase += 10 * enemyDt;
+                        c.vx = Math.sin(c.vampirePhase) * 150;
+                    }
+
                     // Ghost Logic
                     if (c.type === 'ghost') {
                         if (c.y > canvas.height * 0.25 && c.y < canvas.height * 0.75) {
@@ -2575,7 +2600,7 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             continue;
                         }
                         if (c.type === 'cactus') continue;
-                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper') ? 2 : 1;
+                        const dmg = (c.type === 'super' || c.type === 'fire' || c.type === 'bomb' || c.type === 'golden' || c.type === 'sniper' || c.type === 'vampire') ? 2 : 1;
                         if (comboCount > (gameData.stats.maxCombo || 0)) {
                             gameData.stats.maxCombo = comboCount;
                         }
