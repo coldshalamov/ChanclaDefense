@@ -2216,7 +2216,12 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                         comboCount++;
                         comboTimer = 2.5;
                         if (comboCount > (gameData.stats.maxCombo || 0)) gameData.stats.maxCombo = comboCount;
-                        score += Math.floor(comboCount * getPrestigeMultiplier());
+
+                        let comboMult = 1.0;
+                        if (comboCount >= 25) comboMult = 2.0;
+                        else if (comboCount >= 10) comboMult = 1.5;
+
+                        score += Math.floor(comboCount * getPrestigeMultiplier() * comboMult);
 
                         if (gameData.prestigeUpgrades?.combo_shield && comboCount % 30 === 0 && comboCount > 0) {
                             if (!player.shield) {
@@ -2488,7 +2493,8 @@ const isBlackhole = isa.enraged && !isBomb && Math.random() < 0.05;
                             if (c.type === 'blackhole') damage = 25;
                             if (c.type === 'golden') damage = 0; // Prevent double-dipping as damage is applied in trySlap
 
-
+                            let dmgMult = 1.0 + Math.min(1.0, Math.floor(comboCount / 5) * 0.1);
+                            damage = damage * dmgMult;
 
                             if (c.isPerfect) damage += 7;
                             damage += (gameData.upgrades.power || 0) * 2;
