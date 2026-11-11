@@ -535,6 +535,9 @@
                 isa.x = canvas.width / 2;
                 isa.y = 70;
                 isa.enraged = false;
+                isa.tornadoState = 'idle';
+                isa.tornadoCooldown = 15;
+                isa.tornadoTimer = 0;
                 chanclas = [];
                 floatTexts = [];
                 fireParticles = [];
@@ -1311,6 +1314,7 @@
                 else if (type === 'blackhole') emoji = '🌌';
                 else if (type === 'vampire') emoji = '🦇';
                 else if (type === 'cactus') emoji = '🌵';
+                else if (type === 'splitter') emoji = '🩴✂️';
 
                 // Prioritize Noto Color Emoji and system emoji fonts
 
@@ -1342,6 +1346,9 @@
                     } else if (type === 'vampire') {
                         ctx.shadowColor = '#ff0000';
                         ctx.shadowBlur = 20;
+                    } else if (type === 'splitter') {
+                        ctx.shadowColor = '#ff9900';
+                        ctx.shadowBlur = 15;
                     }
                     ctx.font = `${Math.max(28, w * 1.4)}px 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
                 ctx.textAlign = 'center';
@@ -2080,7 +2087,8 @@
                 const isBoomerang = !isBomb && !isBlackhole && !isVampire && !isHoming && !isSuper && !isGolden && !isCactus && Math.random() < 0.15;
                 const isSniper = !isBomb && !isBlackhole && !isVampire && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && Math.random() < 0.12;
                 const isGhost = !isBomb && !isBlackhole && !isVampire && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && Math.random() < 0.12;
-                const isFire = isa.enraged && !isBomb && !isBlackhole && !isVampire && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.25;
+                const isSplitter = !isBomb && !isBlackhole && !isVampire && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && !isGhost && Math.random() < 0.15;
+                const isFire = isa.enraged && !isBomb && !isBlackhole && !isVampire && !isHoming && !isSuper && !isGolden && !isCactus && !isBoomerang && !isSniper && !isGhost && !isSplitter && Math.random() < 0.25;
 
                 let w = 32;
                 let h = 18;
@@ -2093,6 +2101,7 @@
                                 else if (isBlackhole) { w = 40; h = 40; }
                 else if (isVampire) { w = 34; h = 24; }
                 else if (isCactus) { w = 32; h = 32; }
+                else if (isSplitter) { w = 36; h = 26; }
 
                 const x = 40 + Math.random() * (canvas.width - 80);
                 const y = isa.y + 40;
@@ -2108,6 +2117,7 @@
                                 else if (isBlackhole) vy = baseSpeed * 0.5;
                 else if (isVampire) vy = baseSpeed * 0.9;
                 else if (isCactus) vy = baseSpeed;
+                else if (isSplitter) vy = baseSpeed * 0.8;
 
                 const vx = (Math.random() - 0.5) * 60;
                 if (gameData.hardMode) vy *= 1.5;
@@ -2125,9 +2135,10 @@
                 else if (isBlackhole) type = 'blackhole';
                 else if (isVampire) type = 'vampire';
                 else if (isCactus) type = 'cactus';
+                else if (isSplitter) type = 'splitter';
 
                                 chanclas.push({ x, y, vx, vy, vx_saved: vx, vy_saved: vy, w, h, type, rotation: 0, rotSpeed,
-                    sniperTimer: isSniper ? 1.5 : 0, vampirePhase: isVampire ? Math.random() * Math.PI * 2 : 0 });
+                    sniperTimer: isSniper ? 1.5 : 0, vampirePhase: isVampire ? Math.random() * Math.PI * 2 : 0, hasSplit: false });
                 if (isSuper) sayPlayer('super');
             }
 
@@ -2288,6 +2299,15 @@
                                 addFloatText('+1 LIFE!', c.x, c.y - 40, '#00ff00');
                                 sayPlayer('heal');
                             }
+                            if (isa.anger <= 0) triggerWin();
+                            spawnImpact(c.x, c.y, true);
+                            playSound(850, 0.2);
+                        } else if (c.type === 'splitter') {
+                            gameData.coins += Math.floor(5 * getPrestigeMultiplier());
+                            gameData.stats.totalCoinsEarned += Math.floor(5 * getPrestigeMultiplier());
+                            score += Math.floor(200 * getPrestigeMultiplier());
+                            addFloatText('SPLITTER CATCH! ✂️', c.x, c.y, '#ff9900');
+                            isa.anger = Math.max(0, isa.anger - 10);
                             if (isa.anger <= 0) triggerWin();
                             spawnImpact(c.x, c.y, true);
                             playSound(850, 0.2);
@@ -2466,6 +2486,28 @@
                         c.vy += (dy / dist) * 150 * enemyDt;
                     }
 
+                    if (c.type === 'splitter' && !c.slapped && !c.hasSplit && c.y > canvas.height * 0.35) {
+                        c.hasSplit = true;
+                        addFloatText('SPLIT! ✂️', c.x, c.y, '#ff9900');
+                        playSound(1000, 0.2);
+
+                        chanclas.push({
+                            x: c.x - 20, y: c.y, vx: c.vx - 120, vy: c.vy * 1.1, vx_saved: c.vx - 120, vy_saved: c.vy * 1.1,
+                            w: 32, h: 18, type: 'normal', rotation: c.rotation, rotSpeed: c.rotSpeed,
+                            sniperTimer: 0, vampirePhase: 0, hasSplit: true
+                        });
+
+                        chanclas.push({
+                            x: c.x + 20, y: c.y, vx: c.vx + 120, vy: c.vy * 1.1, vx_saved: c.vx + 120, vy_saved: c.vy * 1.1,
+                            w: 32, h: 18, type: 'normal', rotation: c.rotation, rotSpeed: -c.rotSpeed,
+                            sniperTimer: 0, vampirePhase: 0, hasSplit: true
+                        });
+
+                        c.type = 'normal'; // Main one also becomes normal
+                        c.w = 32;
+                        c.h = 18;
+                    }
+
 
                     const currentDt = c.slapped ? dt : enemyDt;
                     c.x += c.vx * currentDt;
@@ -2519,6 +2561,7 @@
                             if (c.type === 'bomb') damage = 20;
                             if (c.type === 'blackhole') damage = 25;
                             if (c.type === 'vampire') damage = 2;
+                            if (c.type === 'splitter') damage = 10;
                             if (c.type === 'golden') damage = 0; // Prevent double-dipping as damage is applied in trySlap
 
                             let dmgMult = 1.0 + Math.min(1.0, Math.floor(comboCount / 5) * 0.1);
@@ -2915,6 +2958,74 @@
                     if (meteorTimer >= 12 && !chanclas.some(c => c.type === 'meteor')) {
                         spawnMeteor();
                         meteorTimer = 0;
+                    }
+
+                    if (isa.tornadoState === 'idle') {
+                        isa.tornadoCooldown -= enemyDt;
+                        if (isa.tornadoCooldown <= 0) {
+                            isa.tornadoState = 'pulling';
+                            isa.tornadoTimer = 1.5;
+                            addFloatText('CHANCLA-NADO! 🌪️', isa.x, isa.y + 40, '#ff4d4d', 20);
+                            playSound(1000, 0.5);
+                            triggerShake(10, 3.0);
+                        }
+                    } else if (isa.tornadoState === 'pulling') {
+                        isa.tornadoTimer -= enemyDt;
+                        const tCenterX = canvas.width / 2;
+                        const tCenterY = isa.y + 150;
+                        for (let i = 0; i < chanclas.length; i++) {
+                            const c = chanclas[i];
+                            if (!c.slapped && c.type !== 'meteor') {
+                                const dx = tCenterX - c.x;
+                                const dy = tCenterY - c.y;
+                                c.vx += dx * 5 * enemyDt;
+                                c.vy += dy * 5 * enemyDt;
+                            }
+                        }
+                        if (isa.tornadoTimer <= 0) {
+                            isa.tornadoState = 'spinning';
+                            isa.tornadoTimer = 1.5;
+                        }
+                    } else if (isa.tornadoState === 'spinning') {
+                        isa.tornadoTimer -= enemyDt;
+                        const tCenterX = canvas.width / 2;
+                        const tCenterY = isa.y + 150;
+                        for (let i = 0; i < chanclas.length; i++) {
+                            const c = chanclas[i];
+                            if (!c.slapped && c.type !== 'meteor') {
+                                const dx = tCenterX - c.x;
+                                const dy = tCenterY - c.y;
+                                const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                                const targetVx = (dy / dist) * 300;
+                                const targetVy = (-dx / dist) * 300;
+                                const pullVx = (dx / dist) * 100;
+                                const pullVy = (dy / dist) * 100;
+                                c.vx = c.vx * 0.9 + (targetVx + pullVx) * 0.1;
+                                c.vy = c.vy * 0.9 + (targetVy + pullVy) * 0.1;
+                            }
+                        }
+                        if (isa.tornadoTimer <= 0) {
+                            isa.tornadoState = 'blasting';
+                            isa.tornadoTimer = 0.2;
+                            triggerShake(20, 0.5);
+                            playSound(800, 0.5);
+                            for (let i = 0; i < chanclas.length; i++) {
+                                const c = chanclas[i];
+                                if (!c.slapped && c.type !== 'meteor') {
+                                    const angle = Math.random() * Math.PI * 2;
+                                    const speed = 400 + Math.random() * 300;
+                                    c.vx = Math.cos(angle) * speed;
+                                    c.vy = Math.sin(angle) * speed;
+                                    if (c.vy < 0) c.vy *= -0.5; // mostly downward
+                                }
+                            }
+                        }
+                    } else if (isa.tornadoState === 'blasting') {
+                        isa.tornadoTimer -= enemyDt;
+                        if (isa.tornadoTimer <= 0) {
+                            isa.tornadoState = 'idle';
+                            isa.tornadoCooldown = 15;
+                        }
                     }
                 }
 
